@@ -1,0 +1,125 @@
+from prefect import flow, task 
+import asyncio
+import pandas as pd
+import numpy as np
+import logging
+from retry import retry
+from src.fetch_data.opendota_api import fetch_opendota_api
+from src.fetch_data.fetch_promatch import fetch_promatch_ids
+import psycopg2
+from datetime import datetime 
+from src.config import ROOT_DIR
+from src.utils.set_logging import get_logger
+from src.postgresql import insert_to_table, insert_to_table_async
+
+# Set up logger
+logger = get_logger(__name__)
+match_info_handler = logging.FileHandler(f'{ROOT_DIR}/logs/stored_pro_matchs.log')
+handler_format = logging.Formatter('%(asctime)s - %(message)s')
+match_info_handler.setFormatter(handler_format)
+match_info_handler.addFilter(lambda record: record.levelno == logging.INFO)
+logger.addHandler(match_info_handler)
+
+# Get the current date in YYYYMMDD format
+current_date = datetime.now().strftime('%Y%m%d')
+
+# Define paths
+INPUT_FILE_PATH = ROOT_DIR / "data" / "pro_match_ids"/ f'dota2_pro_match_ids_{current_date}.csv'
+
+BATCH_SIZE = 10
+
+def pro_match_template():
+    template = {
+        'match_id': np.nan,
+        'radiant_team_id': np.nan,
+        'radiant_name': np.nan,
+        'dire_team_id': np.nan,
+        'dire_name': np.nan,
+        'duration': np.nan,
+        'start_time': np.nan,
+        'radiant_win': np.nan
+    }
+    for i in list(range(0, 5)) + list(range(128, 133)):
+        template[f"{i}_account_id"] = np.nan
+        template[f"{i}_hero_id"] = np.nan
+    return template
+
+def populate_data_to_dict(dictionary, result):
+    dictionary.update({
+        'match_id': result.get('match_id', np.nan),
+        'radiant_team_id': result.get('radiant_team_id', np.nan),
+        'radiant_name': result.get('radiant_name', np.nan),
+        'dire_team_id': result.get('dire_team_id', np.nan),
+        'dire_name': result.get('dire_name', np.nan),
+        'duration': result.get('duration', np.nan),
+        'start_time': result.get('start_time', np.nan),
+        'radiant_win': result.get('radiant_win', np.nan)
+    })
+    for player in result.get('players', {}):
+        slot = player.get('player_slot')
+        if slot is not None:
+            dictionary[f"{slot}_account_id"] = player.get('account_id', np.nan)
+            dictionary[f"{slot}_hero_id"] = player.get('hero_id', np.nan)
+
+def extract_data_from_match_records(records):
+    matches = []
+    for record in records:
+        if record is not None:
+            match_dict = pro_match_template()
+            populate_data_to_dict(match_dict, record)
+            matches.append(match_dict)
+        else:
+            logger.error(f"Received NoneType result for match {record}")
+    return matches
+
+
+@task
+async def get_match_details(match_id):
+    url = f'http://api.opendota.com/api/matches/{match_id}'
+    status, res = await fetch_opendota_api(url)
+    
+    if res and status == 200:
+        return res
+    else:
+        logger.error(f"Failed with status code: {res.status_code if res else 'No response'}")
+
+        return None    
+
+@task
+async def process_and_store_batch(match_ids):
+    match_records = []
+    for match_id in match_ids:
+        match_data = await get_match_details(match_id)
+        if match_data is not None:
+            match_records.append(match_data)
+    list_matches = extract_data_from_match_records(match_records)
+    
+    try: 
+        insert_to_table('pro_matches', list_matches, 'match_id')
+    except Exception as e:
+        logger.error(f'failed to insert into table with error: {e}')
+
+    
+@flow
+async def main():
+    # Fetch and update list of pro_matches to request
+    fetch_promatch_ids()
+    
+    try:
+        with open(INPUT_FILE_PATH, 'r') as file:
+            df = pd.read_csv(file)       
+    except Exception as e:
+        logger.error(f"Error reading input file: {INPUT_FILE_PATH} - {str(e)}")
+        return 
+    
+    match_ids = df['match_id'].to_list()
+    match_ids = match_ids
+    
+    for i in range(0, len(match_ids), BATCH_SIZE):
+        batch_ids = match_ids[i: i + BATCH_SIZE]
+        await process_and_store_batch(batch_ids)
+        logger.info(f"Successfully Stored batch {i // BATCH_SIZE + 1} ending match_id: {batch_ids[-1]}")
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
