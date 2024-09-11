@@ -1,3 +1,4 @@
 **/.DS_Store
 .env
 Miniconda3-latest-Linux-x86_64.sh
+backend/models/random_forest_model.joblib
