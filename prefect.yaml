@@ -3,7 +3,7 @@
 # control along with your flow code.
 
 # Generic metadata about this project
-name: backend
+name: Dota2Predictor
 prefect-version: 3.0.1
 
 # build section allows you to manage and build docker images
@@ -17,16 +17,16 @@ pull:
 - prefect.deployments.steps.git_clone:
     repository: https://github.com/Haochen92/dota2pred.git
     branch: remote
-    access_token: "{{ prefect.blocks.secret.github }}"
+    access_token: "{{prefect.blocks.secret.github}}"
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-- name: fetch opendota data
+- name: update dota constants
   version:
   tags: []
   concurrency_limit:
   description:
-  entrypoint: src/utils/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches
+  entrypoint: backend/src/fetch_data/fetch_constants.py:main
   parameters: {}
   work_pool:
     name: opendota_api_calls
@@ -40,12 +40,12 @@ deployments:
     active: true
     max_active_runs:
     catchup: false
-- name: update opendota constants
+- name: fetch and store professional match data
   version:
   tags: []
   concurrency_limit:
   description:
-  entrypoint: src/fetch_data/fetch_constants.py:main
+  entrypoint: backend/src/utils/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches
   parameters: {}
   work_pool:
     name: opendota_api_calls
