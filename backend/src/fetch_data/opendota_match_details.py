@@ -5,7 +5,6 @@ import numpy as np
 import logging
 from retry import retry
 from src.fetch_data.opendota_api import fetch_opendota_api
-from src.fetch_data.fetch_promatch import fetch_promatch_ids
 import psycopg2
 from datetime import datetime 
 from src.config import ROOT_DIR
@@ -101,10 +100,7 @@ async def process_and_store_batch(match_ids):
 
     
 @flow
-async def main():
-    # Fetch and update list of pro_matches to request
-    fetch_promatch_ids()
-    
+async def match_details_main():
     try:
         with open(INPUT_FILE_PATH, 'r') as file:
             df = pd.read_csv(file)       
@@ -122,4 +118,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(match_details_main())
