@@ -15,7 +15,7 @@ push:
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.git_clone:
-    repository: https://gitlab.com/Haochen92/dota2predictor.git
+    repository: https://github.com/Haochen92/dota2pred.git
     branch: remote
     access_token: "{{ prefect.blocks.secret.github }}"
 
