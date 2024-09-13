@@ -1,0 +1,61 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: backend
+prefect-version: 3.0.1
+
+# build section allows you to manage and build docker images
+build:
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push:
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.git_clone:
+    repository: https://gitlab.com/Haochen92/dota2predictor.git
+    branch: remote
+    access_token: "{{ prefect.blocks.github-credentials.haochen92 }}"
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name: fetch opendota data
+  version:
+  tags: []
+  concurrency_limit:
+  description:
+  entrypoint: src/utils/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches
+  parameters: {}
+  work_pool:
+    name: opendota_api_calls
+    work_queue_name:
+    job_variables: {}
+  enforce_parameter_schema: true
+  schedules:
+  - cron: 0 0 * * *
+    timezone: Singapore
+    day_or: true
+    active: true
+    max_active_runs:
+    catchup: false
+- name: update opendota constants
+  version:
+  tags: []
+  concurrency_limit:
+  description:
+  entrypoint: src/fetch_data/fetch_constants.py:main
+  parameters: {}
+  work_pool:
+    name: opendota_api_calls
+    work_queue_name:
+    job_variables: {}
+  enforce_parameter_schema: true
+  schedules:
+  - cron: 0 0 * * *
+    timezone: Singapore
+    day_or: true
+    active: true
+    max_active_runs:
+    catchup: false
