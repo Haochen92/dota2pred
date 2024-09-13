@@ -17,7 +17,7 @@ pull:
 - prefect.deployments.steps.git_clone:
     repository: https://gitlab.com/Haochen92/dota2predictor.git
     branch: remote
-    access_token: "{{ prefect.blocks.github-credentials.haochen92 }}"
+    access_token: "{{ prefect.blocks.secret.github }}"
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
