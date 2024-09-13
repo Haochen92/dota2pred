@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = true
+[remote "origin"]
+	url = git@gitlab.com:Haochen92/projects.git
+	fetch = +refs/*:refs/*
+	mirror = true
+[remote "github"]
+	url = https://github.com/Haochen92/dota2pred.git
+	fetch = +refs/heads/*:refs/remotes/github/*
