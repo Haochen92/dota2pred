@@ -7,9 +7,12 @@ from retry import retry
 from datetime import datetime 
 from src.config import ROOT_DIR
 import asyncio
+import pytz
+
 
 # Get the current date in YYYYMMDD format
-current_date = datetime.now().strftime('%Y%m%d')
+timezone = pytz.timezone('Asia/Singapore')
+current_date = datetime.now(timezone).strftime('%Y%m%d')
 
 # Define paths
 root_path = ROOT_DIR

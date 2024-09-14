@@ -3,6 +3,7 @@ import asyncio
 import pandas as pd
 import numpy as np
 import logging
+import pytz
 from retry import retry
 from src.fetch_data.opendota_api import fetch_opendota_api
 import psycopg2
@@ -20,7 +21,8 @@ match_info_handler.addFilter(lambda record: record.levelno == logging.INFO)
 logger.addHandler(match_info_handler)
 
 # Get the current date in YYYYMMDD format
-current_date = datetime.now().strftime('%Y%m%d')
+timezone = pytz.timezone('Asia/Singapore')
+current_date = datetime.now(timezone).strftime('%Y%m%d')
 
 # Define paths
 INPUT_FILE_PATH = ROOT_DIR / "data" / "pro_match_ids"/ f'dota2_pro_match_ids_{current_date}.csv'
