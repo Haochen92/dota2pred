@@ -7,10 +7,11 @@ import pytz
 from retry import retry
 from src.fetch_data.opendota_api import fetch_opendota_api
 import psycopg2
-from datetime import datetime 
+from datetime import datetime, timedelta 
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
 from src.postgresql import insert_to_table, insert_to_table_async
+from prefect.cache_policies import INPUTS, TASK_SOURCE
 
 # Set up logger
 logger = get_logger(__name__)
@@ -74,7 +75,7 @@ def extract_data_from_match_records(records):
     return matches
 
 
-@task
+@task(retries=3, retry_delay_seconds=2, cache_policy=INPUTS + TASK_SOURCE, cache_expiration=timedelta(days=10))
 async def get_match_details(match_id):
     url = f'http://api.opendota.com/api/matches/{match_id}'
     status, res = await fetch_opendota_api(url)
