@@ -46,7 +46,7 @@ def fetch_data(url):
         logger.error(err)
         raise RuntimeError(f"An error occurred when accessing {url}: {e}")
 
-@task
+@task(cache_policy=INPUTS + TASK_SOURCE, cache_expiration=timedelta(days=1))
 def save_to_csv(data_json, include_header=True):
     '''
     Saves json data to csv file. Will only include headers columns for the first iteration. 

@@ -17,7 +17,7 @@ pull:
 - prefect.deployments.steps.git_clone:
     repository: https://github.com/Haochen92/dota2pred.git
     branch: remote
-    access_token: "{{prefect.blocks.secret.github}}"
+    access_token: '{{prefect.blocks.secret.github}}'
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
@@ -45,7 +45,7 @@ deployments:
   tags: []
   concurrency_limit:
   description:
-  entrypoint: backend/src/utils/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches
+  entrypoint: backend/src/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches
   parameters: {}
   work_pool:
     name: opendota_api_calls
@@ -56,6 +56,24 @@ deployments:
   - cron: 0 0 * * *
     timezone: Singapore
     day_or: true
+    active: true
+    max_active_runs:
+    catchup: false
+- name: clear prefect cache
+  version:
+  tags: []
+  concurrency_limit:
+  description:
+  entrypoint: backend/src/prefect/clear_cache.py:clear_prefect_cache
+  parameters: {}
+  work_pool:
+    name: opendota_api_calls
+    work_queue_name:
+    job_variables: {}
+  enforce_parameter_schema: true
+  schedules:
+  - rrule: FREQ=MONTHLY;INTERVAL=1;BYDAY=1MO
+    timezone: Singapore
     active: true
     max_active_runs:
     catchup: false
