@@ -12,7 +12,6 @@ def get_logger(name):
     
     # Avoid adding handlers multiple times
     if not logger.hasHandlers():
-        print("No handlers found, setting up handlers.")
         # Set up handlers
         console_handler = logging.StreamHandler()
         file_handler = logging.FileHandler(output_fpath)
@@ -32,10 +31,7 @@ def get_logger(name):
         logger.addHandler(console_handler)
         logger.addHandler(file_handler)
     else:
-        print("Handlers already set up.")
-        for handler in logger.handlers:
-            print("printing handlers")
-            print(f"Handler: {handler}, Level: {handler.level}")
+        logger.info(f"Handlers already set up {logger.handlers}")
     
     return logger
 
