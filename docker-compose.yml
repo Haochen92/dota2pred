@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres
+    container_name: my-postgres
+    environment:
+      - POSTGRES_USER=liuhaochen
+      - POSTGRES_PASSWORD=110799
+      - POSTGRES_DB=db
+    ports:
+      - "6000:5432"
+    volumes:
+      # SQL file for initialization (only runs once if the database is not initialized yet)
+      # - ../database/pg_dump.sql:/docker-entrypoint-initdb.d/existingdb_backup.sql
+      # Volume for PostgreSQL data persistence
+      - my-psql:/var/lib/postgresql/data
+    networks:
+      - dota-pred
+
+networks:
+  dota-pred:
+    driver: bridge
+
+volumes:
+  my-psql:    # Properly define the volume here
+  backend:    # Unused for now, but can be used later
