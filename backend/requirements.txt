@@ -1,0 +1,14 @@
+filelock
+pyyaml
+prefect
+pandas
+numpy
+requests
+aiohttp
+retry
+tenacity
+pytz
+python-dotenv
+psycopg2-binary
+sqlalchemy
+prefect_sqlalchemy
