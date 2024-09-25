@@ -4,7 +4,7 @@ from prefect import flow
 import asyncio
 
 
-@flow
+@flow(log_prints=True)
 async def fetch_and_store_promatches():
     fetch_promatch_ids()
     await match_details_main()
