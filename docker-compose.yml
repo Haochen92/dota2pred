@@ -21,6 +21,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: my-app
+    environment:
+      - PREFECT_API_KEY=pnu_840CPoLQS29FPKDOKdzmpG8qeltPlj2GPTvp
+      - PREFECT_API_URL=https://api.prefect.cloud/api/accounts/0e59c550-4bb3-4bf2-9d0d-af300c4e4428/workspaces/0d5682bd-eb2d-4b4b-9192-ba58ba741461
     ports:
       - "8000:8000"
     depends_on:

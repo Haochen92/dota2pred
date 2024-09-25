@@ -7,7 +7,6 @@ from middlewares.track_api import track_api_calls
 from dotenv import load_dotenv
 import os
 from src.utils.set_logging import get_logger
-import objgraph
 
 logger = get_logger(__name__)
 load_dotenv()
