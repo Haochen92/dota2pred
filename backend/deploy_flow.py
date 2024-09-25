@@ -1,11 +1,13 @@
-# deploy_flow.py
-from src.prefect.fetch_and_store_promatches import fetch_and_store_promatches  # Import the flow
+from prefect import flow
 
 if __name__ == "__main__":
-    fetch_and_store_promatches.deploy(
+    flow.from_source(
+        source="https://github.com/Haochen92/dota2pred.git",
+        branch="remote",
+        access_token='{{prefect.blocks.secret.github}}',
+        entrypoint="backend/src/prefect/fetch_and_store_promatches.py:fetch_and_store_promatches"
+        ).deploy(
         name="fetch-promatches-deployment",
-        work_pool_name="docker-pool",
-        image="gengie/fetch_and_store_promatches:latest",
-        build=True,
+        work_pool_name="work-pool",
         cron="0 0 * * *" 
     )
