@@ -12,3 +12,4 @@ python-dotenv
 psycopg2-binary
 sqlalchemy
 prefect_sqlalchemy
+prefect_github
