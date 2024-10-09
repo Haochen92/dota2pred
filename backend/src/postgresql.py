@@ -22,7 +22,7 @@ def get_engine():
             host='localhost',
             port='5432',
             password='110799',
-            database='test'
+            database='dota2'
         )
         _engine_instance = create_engine(url_object)
     return _engine_instance
