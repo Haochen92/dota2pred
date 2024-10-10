@@ -7,10 +7,11 @@ from middlewares.track_api import track_api_calls
 from dotenv import load_dotenv
 import os
 from src.utils.set_logging import get_logger
+from prefect.blocks.system import Secret
 
 logger = get_logger(__name__)
 load_dotenv()
-API_KEY = os.getenv('OPEN_DOTA_API')
+API_KEY = Secret.load("opendota-api-key")
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
