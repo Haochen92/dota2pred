@@ -36,6 +36,8 @@ async def fetch_opendota(query):
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 async def fetch_opendota_api(url):
     # Paid api calls using API_KEY
+    print(API_KEY)
+    print(url)
     timeout = aiohttp.ClientTimeout(total=60)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         params = {'api_key': API_KEY}
