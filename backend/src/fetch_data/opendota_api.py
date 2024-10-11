@@ -7,11 +7,10 @@ from middlewares.track_api import track_api_calls
 from dotenv import load_dotenv
 import os
 from src.utils.set_logging import get_logger
-from prefect.blocks.system import Secret
 
 logger = get_logger(__name__)
 load_dotenv()
-API_KEY = Secret.load("opendota-api-key")
+API_KEY = os.getenv('OPEN_DOTA_API')
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
@@ -36,8 +35,6 @@ async def fetch_opendota(query):
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 async def fetch_opendota_api(url):
     # Paid api calls using API_KEY
-    print(API_KEY)
-    print(url)
     timeout = aiohttp.ClientTimeout(total=60)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         params = {'api_key': API_KEY}
