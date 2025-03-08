@@ -1,5 +1,6 @@
 import Image from "next/image";
 import styles from "./page.module.css";
+import HeroIcon from "@/components/HeroIcon";
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
           height={38}
           priority
         />
+        <HeroIcon hero_id={1}/>
         <ol>
           <li>
             Get started by editing <code>src/app/page.js</code>.
