@@ -1,20 +1,32 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from 'next/font/local'
 import "./globals.css";
 import '@mantine/core/styles.css';
 import '@mantine/charts/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css'
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
+import Home from './page';
+import customTheme from "@/components/theme/customTheme";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const CircularStd = localFont({
+  src: [
+    {
+      path:'/fonts/CircularStd-Black.ttf',
+      weight:'700',
+      style:'black',
+    },
+    {
+      path:'/fonts/CircularStd-Bold.ttf',
+      weight:'500',
+      style:'bold',
+    },{
+      path:'/fonts/CircularStd-Book.ttf',
+      weight:'400',
+      style:'book',
+    },
+  ],
+  variable:'--my-font'
+})
 
 export const metadata = {
   title: "Create Next App",
@@ -27,8 +39,12 @@ export default function RootLayout({ children }) {
       <head>
         <ColorSchemeScript/>
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <MantineProvider>{children}</MantineProvider>
+      <body className={CircularStd.className}>
+        <MantineProvider theme={customTheme}>
+          <Home>
+            {children}
+          </Home>
+        </MantineProvider>
       </body>
     </html>
   );
