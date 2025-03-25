@@ -1,18 +1,15 @@
 services:
   db:
-    image: postgres
+    image: postgres:14
     container_name: my-postgres
     environment:
       - POSTGRES_USER=liuhaochen
       - POSTGRES_PASSWORD=110799
-      - POSTGRES_DB=db
+      - POSTGRES_DB=dota2
     ports:
       - "6000:5432"
     volumes:
-      # SQL file for initialization (only runs once if the database is not initialized yet)
-      # - ../database/pg_dump.sql:/docker-entrypoint-initdb.d/existingdb_backup.sql
-      # Volume for PostgreSQL data persistence
-      - my-psql:/var/lib/postgresql/data
+      - psql:/var/lib/postgresql/data
     networks:
       - dota-pred
 
@@ -22,14 +19,16 @@ services:
       dockerfile: Dockerfile
     container_name: my-app
     environment:
+      - PYTHONPATH=/app
       - PREFECT_API_KEY=pnu_840CPoLQS29FPKDOKdzmpG8qeltPlj2GPTvp
       - PREFECT_API_URL=https://api.prefect.cloud/api/accounts/0e59c550-4bb3-4bf2-9d0d-af300c4e4428/workspaces/0d5682bd-eb2d-4b4b-9192-ba58ba741461
+      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
     ports:
       - "8000:8000"
     depends_on:
       - db
     volumes:
-      - ./backend:/app  # This maps the local directory to the container directory for development purposes
+      - ./backend:/app  # Local code is mapped for development purposes
     networks:
       - dota-pred
 
@@ -38,5 +37,5 @@ networks:
     driver: bridge
 
 volumes:
-  my-psql:    # Properly define the volume here
+  psql:
   backend:    # Unused for now, but can be used later
