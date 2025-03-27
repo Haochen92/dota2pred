@@ -1,4 +1,4 @@
-import psycopg2
+import os
 from sqlalchemy.engine import create_engine, URL
 from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects.postgresql import insert
@@ -16,15 +16,19 @@ _engine_instance = None
 def get_engine():
     global _engine_instance
     if _engine_instance is None:
-        url_object = URL.create(
-            "postgresql+psycopg2",
-            username='liuhaochen',
-            host='localhost',
-            port='5432',
-            password='110799',
-            database='dota2'
-        )
-        _engine_instance = create_engine(url_object)
+        db_url = os.environ.get("DATABASE_URL")
+        if db_url:
+            _engine_instance = create_engine(db_url)
+        else:
+            url_object = URL.create(
+                "postgresql+psycopg2",
+                username='liuhaochen',
+                host='localhost',
+                port='5432',
+                password='110799',
+                database='dota2'
+            )
+            _engine_instance = create_engine(url_object)
     return _engine_instance
 
 @lru_cache(maxsize=128)
