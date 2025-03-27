@@ -2,6 +2,7 @@ from prefect import flow, task
 import asyncio
 import pandas as pd
 import numpy as np
+import math
 import logging
 import pytz
 from retry import retry
@@ -100,6 +101,7 @@ async def process_and_store_batch(match_ids):
         insert_to_table('pro_matches', list_matches, 'match_id')
     except Exception as e:
         logger.error(f'failed to insert into table with error: {e}')
+        return False
 
     
 @flow
@@ -112,12 +114,17 @@ async def match_details_main():
         return 
     
     match_ids = df['match_id'].to_list()
-    match_ids = match_ids
+    total_matches = len(match_ids)
+    num_batches = (total_matches + BATCH_SIZE - 1) // BATCH_SIZE
     
-    for i in range(0, len(match_ids), BATCH_SIZE):
+    for i in range(0, total_matches, BATCH_SIZE):
         batch_ids = match_ids[i: i + BATCH_SIZE]
-        await process_and_store_batch(batch_ids)
-        logger.info(f"Successfully Stored batch {i // BATCH_SIZE + 1} ending match_id: {batch_ids[-1]}")
+        curr_batch = i // BATCH_SIZE + 1
+        success = await process_and_store_batch(batch_ids)
+        if success:
+            logger.info(f"Successfully Stored batch {curr_batch} / {num_batches} ending match_id: {batch_ids[-1]}")
+        else:
+            logger.error(f"Failed to store batch {curr_batch} / {num_batches} ending match_id: {batch_ids[-1]}")
 
 
 if __name__ == '__main__':
