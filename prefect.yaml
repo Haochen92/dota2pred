@@ -13,11 +13,11 @@ build:
 push:
 
 # pull section allows you to provide instructions for cloning this project in remote locations
-pull:
-- prefect.deployments.steps.git_clone:
-    repository: https://github.com/Haochen92/dota2pred.git
-    branch: remote
-    access_token: '{{prefect.blocks.secret.github}}'
+# pull:
+# - prefect.deployments.steps.git_clone:
+#     repository: https://github.com/Haochen92/dota2pred.git
+#     branch: remote
+#     access_token: '{{prefect.blocks.secret.github}}'
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
