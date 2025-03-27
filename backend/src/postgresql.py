@@ -44,20 +44,19 @@ def create_records(df, table_name: str, replace=False):
 def insert_to_table(table_name: str, list_records: list[dict], uuid: str = None):
     engine = get_engine()
     metadata = MetaData()
-    with engine.connect() as conn:
-        table = Table(table_name, metadata, autoload_with=conn)
-        stmt = insert(table).values(list_records)
-    
-        if uuid is not None:
-            stmt = stmt.on_conflict_do_nothing(index_elements=[uuid])
-        
-        try:
+    try:
+        with engine.begin() as conn:
+            table = Table(table_name, metadata, autoload_with=conn)
+            stmt = insert(table).values(list_records)
+
+            if uuid is not None:
+                stmt = stmt.on_conflict_do_nothing(index_elements=[uuid])
+
             conn.execute(stmt)
-            conn.commit()
             logger.info(f"Successfully inserted records into {table_name}")
-        except Exception as e:
-            logger.error(f"Error occurred: {e}")
-            raise
+    except Exception as e:
+        logger.error(f"Error occurred: {e}")
+        raise
 
 
 async def insert_to_table_async(table_name: str, list_records: list[dict], uuid: str = None):
