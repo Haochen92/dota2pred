@@ -11,5 +11,7 @@ pytz
 python-dotenv
 psycopg2-binary
 sqlalchemy
+sqlmodel
 prefect_sqlalchemy
 prefect_github
+alembic
