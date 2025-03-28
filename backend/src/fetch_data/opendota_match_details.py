@@ -2,16 +2,13 @@ from prefect import flow, task
 import asyncio
 import pandas as pd
 import numpy as np
-import math
 import logging
 import pytz
-from retry import retry
 from src.fetch_data.opendota_api import fetch_opendota_api
-import psycopg2
 from datetime import datetime, timedelta 
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
-from src.postgresql import insert_to_table, insert_to_table_async
+from src.postgresql import insert_to_table
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
 # Set up logger

@@ -4,10 +4,10 @@ import pandas as pd
 import time 
 import yaml
 import requests
-from retry import retry
 from datetime import datetime, timedelta
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
+from src.postgresql import insert_promatch_ids
 import pytz
 
 # Config logging
@@ -55,7 +55,6 @@ def save_to_csv(data_json, include_header=True):
     output = pd.DataFrame(selected_json)
     output.to_csv(output_file_path, encoding='utf-8', mode='a', index=False, header=include_header)
 
-
 @flow   
 def fetch_promatch_ids(): 
     min_match_id = 0 
@@ -76,7 +75,8 @@ def fetch_promatch_ids():
         if not data_json:
             continue
         
-        save_to_csv(data_json, include_header=first_iteration)
+        insert_promatch_ids(data_json)
+        
         
         if first_iteration:
             initial_max_match_id = max([x['match_id'] for x in data_json])

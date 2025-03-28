@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from functools import lru_cache
 import logging
 from prefect_sqlalchemy import SqlAlchemyConnector
+from models import ProMatchID
 
 # Set up logging
 logging.basicConfig(filename='lru_info.log', level=logging.ERROR)
@@ -77,3 +78,19 @@ async def insert_to_table_async(table_name: str, list_records: list[dict], uuid:
         except Exception as e:
             logger.error(f"Error occurred: {e}")
             raise
+
+def insert_promatch_ids(data_json):
+    '''
+    Saves match IDs from json data to the PostgreSQL database
+    '''
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            match_ids = [{"match_id": x['match_id']} for x in data_json]
+            stmt = insert(ProMatchID).values(match_ids).on_conflict_do_nothing(
+                index_elements=["match_id"]
+            )
+            conn.execute(stmt)
+    except Exception as e:
+        logger.error(f"failed to insert promatch_id into database")
+        raise
