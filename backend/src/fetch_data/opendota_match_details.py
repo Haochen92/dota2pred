@@ -8,7 +8,7 @@ from src.fetch_data.opendota_api import fetch_opendota_api
 from datetime import datetime, timedelta 
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
-from src.postgresql import insert_to_table
+from src.postgresql import insert_to_table, fetch_promatch_ids
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
 # Set up logger
@@ -92,10 +92,15 @@ async def process_and_store_batch(match_ids):
         match_data = await get_match_details(match_id)
         if match_data is not None:
             match_records.append(match_data)
+    
+    if not match_records:
+        return None
+    
     list_matches = extract_data_from_match_records(match_records)
     
     try: 
         insert_to_table('pro_matches', list_matches, 'match_id')
+        return True
     except Exception as e:
         logger.error(f'failed to insert into table with error: {e}')
         return False
@@ -103,25 +108,24 @@ async def process_and_store_batch(match_ids):
     
 @flow
 async def match_details_main():
-    try:
-        with open(INPUT_FILE_PATH, 'r') as file:
-            df = pd.read_csv(file)       
-    except Exception as e:
-        logger.error(f"Error reading input file: {INPUT_FILE_PATH} - {str(e)}")
-        return 
+    batch_no = 0
+    while True:
+        try:
+            match_ids = fetch_promatch_ids(BATCH_SIZE)
+        except Exception as e:
+            logger.error(f"Error in batch processing: {e}")
+            return False
     
-    match_ids = df['match_id'].to_list()
-    total_matches = len(match_ids)
-    num_batches = (total_matches + BATCH_SIZE - 1) // BATCH_SIZE
+        if not match_ids:
+            logger.info(f"No more matches left to process")
+            return False
     
-    for i in range(0, total_matches, BATCH_SIZE):
-        batch_ids = match_ids[i: i + BATCH_SIZE]
-        curr_batch = i // BATCH_SIZE + 1
-        success = await process_and_store_batch(batch_ids)
+        success = await process_and_store_batch(match_ids)
         if success:
-            logger.info(f"Successfully Stored batch {curr_batch} / {num_batches} ending match_id: {batch_ids[-1]}")
+            batch_no += 1
+            logger.info(f"Successfully Stored batch {batch_no} ending match_id: {match_ids[-1]}")
         else:
-            logger.error(f"Failed to store batch {curr_batch} / {num_batches} ending match_id: {batch_ids[-1]}")
+            logger.error(f"Failed to store batch ending match_id: {match_ids[-1]}")
 
 
 if __name__ == '__main__':

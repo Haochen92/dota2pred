@@ -1,6 +1,6 @@
 import os
 from sqlalchemy.engine import create_engine, URL
-from sqlalchemy import MetaData, Table
+from sqlalchemy import MetaData, Table, select, delete
 from sqlalchemy.dialects.postgresql import insert
 from functools import lru_cache
 import logging
@@ -55,6 +55,9 @@ def insert_to_table(table_name: str, list_records: list[dict], uuid: str = None)
 
             conn.execute(stmt)
             logger.info(f"Successfully inserted records into {table_name}")
+            match_ids = [row["match_id"] for row in list_records]
+            delete_processed_matches(match_ids, conn)
+            
     except Exception as e:
         logger.error(f"Error occurred: {e}")
         raise
@@ -92,5 +95,26 @@ def insert_promatch_ids(data_json):
             )
             conn.execute(stmt)
     except Exception as e:
-        logger.error(f"failed to insert promatch_id into database")
+        logger.error(f"failed to insert promatch_id into database {e}")
+        raise
+    
+    
+def fetch_promatch_ids(batch_size: int = 10):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            stmt = select(ProMatchID.match_id).limit(batch_size)
+            result = conn.execute(stmt) # Returns a iterator
+            match_ids = [row[0] for row in result.fetchall()]
+            return match_ids
+    except Exception as e:
+        logger.error(f"Error reading match IDs from db: {e}")
+        raise
+    
+def delete_processed_matches(list_match_ids: list, conn):
+    try:
+        stmt = delete(ProMatchID).where(ProMatchID.match_id.in_(list_match_ids))
+        conn.execute(stmt)
+    except Exception as e:
+        logger.error(f"Failure to delete data for batch size ending {list_match_ids[-1]} error: {e}")
         raise
