@@ -44,4 +44,4 @@ class ProMatchID(SQLModel, table=True):
     # Transient table, serving as checkpoint for fetching match_details using pro matches match_id
     __tablename__ = "pro_matches_id"
     
-    match_id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": False})
+    match_id: int = Field(sa_column=Column(BigInteger, primary_key=True, autoincrement=False))
