@@ -10,7 +10,7 @@ from src.config import ROOT_DIR
 STEAM_URL = 'http://api.steampowered.com/'
 LIVE_LEAGUE_GAMES = 'IDOTA2Match_570/GetLiveLeagueGames/v1'
 API_KEY = 'F0E5D7D11B592792FE20D84FBB745D97'
-LEAGUE_IDS_FILE = ROOT_DIR / 'constants' /'league_id.yml'
+LEAGUE_IDS_FILE = ROOT_DIR / 'constants' /'league_ids.yml'
 
 # Setup request session for Steam API
 session = requests.Session()
@@ -88,7 +88,7 @@ def populate_live_matches(games, premium_list, professional_list):
 
     return live_league_games
 
-def main():
+def retrieve_live_league_games():
     game_data = fetch_live_league_games()
     games = game_data['result']['games']
 
@@ -98,8 +98,9 @@ def main():
     if not live_league_games:
         print("No premium or professional games right now")
     else:
-        pd.DataFrame(live_league_games).to_csv(output_fp, index=False)        
+        # pd.DataFrame(live_league_games).to_csv(output_fp, index=False)    
+        return live_league_games    
          
 
 if __name__ == '__main__':
-    main()
+    retrieve_live_league_games()
