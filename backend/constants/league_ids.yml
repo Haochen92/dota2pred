@@ -213,6 +213,7 @@ PREMIUM_LEAGUES:
   adsf: 11894
 PROFESSIONAL_LEAGUES:
   ' American dota cup': 13336
+  ' Asian Regional League': 17838
   ' Gold Bull Horns Championship': 12858
   ' Hainan  Master League ': 11332
   ' IVPL (Indonesian Virtual Predator League) SEASON 1': 10629
@@ -220,6 +221,7 @@ PROFESSIONAL_LEAGUES:
   ' MID.TV Challenge Cup': 9621
   ' Nxtgame Invitational 2022 ': 14121
   ' Russian League': 11318
+  ' Universal League S2': 17747
   '"GameGod Games Arena" DOTA 2 Championship': 2179
   '#2K14dotaprincess': 2145
   '0': 1008
@@ -237,6 +239,7 @@ PROFESSIONAL_LEAGUES:
   '1XPLORE Series LATAM #2': 15267
   '1XPLORE Series LATAM #3': 15268
   '1XPLORE Series LATAM #4': 15269
+  1win Series Dota 2: 17662
   1x Series: 14486
   1xBet Dota 2 Championship Myanmar: 13320
   1xbet Dota 2 Championship Myanmar Season-2: 15432
@@ -260,8 +263,10 @@ PROFESSIONAL_LEAGUES:
   2023 Xmas Cup: 16011
   "2023\u7535\u7ADE\u4E0A\u6D77\u5927\u5E08\u8D5B": 15972
   2024 New Year Cup: 16108
+  2025 New Year Cup: 17677
   4D ESPORTS: 12031
   4th National E-sports Championship - Nepal: 16337
+  5th Nepal Esports Championship &amp; Expo 2025: 17826
   5v5 Lonely Women Cup. Season 2: 16978
   64Quarters Cup Season 2: 2638
   '64Quarters Fast Cup ': 2401
@@ -272,6 +277,7 @@ PROFESSIONAL_LEAGUES:
   ACER PREDATOR LEAGUE 2019 | INDIA QUALIFIERS: 10455
   ACER Predator League: 8074
   ACER Predator League Bangladesh 2022: 14451
+  "ACL\xD7ESL Challenger China": 17875
   "ACL\u5143\u65E6\u676F": 12695
   "ACL\u8D3A\u5C81\u676F": 11584
   AD2L Season 1 Playoffs: 157
@@ -300,6 +306,7 @@ PROFESSIONAL_LEAGUES:
   AMD SAPPHIRE OGA DOTA PIT EU/CIS Region: 11974
   AMD SAPPHIRE OGA DOTA PIT NA/LATAM: 12183
   AMD Skyesports Championship 4.0: 14796
+  ANUBISS CUP: 17878
   'ANZ Dota 2021: Season 2: LPL Pro': 13301
   'ANZ Dota 2021: Season 3: LPL Pro': 13540
   'ANZ Dota 2021: Season 4: LPL Pro': 13752
@@ -382,6 +389,8 @@ PROFESSIONAL_LEAGUES:
   Asia Pro League: 10269
   Asia Pro League S2: 10746
   Asia-Pacific Predator League 2020/21 APAC Grand Finals: 13026
+  AsiaPro League: 17458
+  AsiaPro League S2: 17622
   Asian Blood Roded Championship: 12707
   Asian Cyber League: 16721
   'Asian Cyber World Cup ': 14609
@@ -393,6 +402,7 @@ PROFESSIONAL_LEAGUES:
   Asian Dota 2 League - AU Series 2: 10037
   Asian Dota 2 League - AU series 1: 9657
   Asian Dota2 League: 10369
+  'Asian Dragon Series: Continental Collision': 16925
   'Asian Dragon Series: Regional Collision': 16924
   Asian Elite League 2022 Season 1: 13876
   Asian Elite League 2022 Season 2: 13965
@@ -425,6 +435,7 @@ PROFESSIONAL_LEAGUES:
   'BIX Invitationals | Summer Edition - Hosted by Oceanic Esports ': 13330
   BIXIN Series Season 1: 13405
   BLAST Bounty Hunt: 11979
+  BLAST SLAM I: 17414
   BO'BI PRO LEAGUE: 2904
   'BORNEO DOTA 2 LEAGUE ': 5848
   BORNEO LEAGUE by ARBI: 5805
@@ -455,6 +466,7 @@ PROFESSIONAL_LEAGUES:
   Battle Hall Dota 2 Season One: 1834
   Battle Of Bifrost: 13613
   Battle Of Bifrost II: 13997
+  Battle Squawk: 17199
   Battle of America: 1829
   Battle of Central Europe: 1361
   Battle of Central Europe Season 2: 1757
@@ -491,6 +503,8 @@ PROFESSIONAL_LEAGUES:
   BetBoom Streamers Battle 5: 16006
   BetBoom Streamers Battle 6: 16608
   BetBoom Streamers Battle 7: 16940
+  BetBoom Streamers Battle 8: 17430
+  BetBoom Streamers Battle 9: 17712
   'BetBoom Universe: Episode I - Comics Zone': 15021
   BetBoom Xmas Show: 14898
   Betboom Batalla de Streamers LATAM: 16319
@@ -508,6 +522,7 @@ PROFESSIONAL_LEAGUES:
   'Bishkek Stars League #7': 5754
   'Bishkek Stars League #8': 10903
   Bit Gamer Esport PLUS: 11502
+  'Bitel True Fighters #4': 17554
   Bitel True Fighters 2023: 16004
   Bitel True Fighters 2024: 17074
   Bitel True Fighters by Aorus: 13325
@@ -537,6 +552,10 @@ PROFESSIONAL_LEAGUES:
   CCT Dota 2 Series 2: 16953
   CCT Dota 2 Series 3: 16954
   CCT Dota 2 Series 4: 17111
+  CCT Dota 2 Series 5: 17425
+  CCT Dota 2 Series 6: 17637
+  CCT Dota 2 Series 7: 17782
+  CCT Dota 2 Series 8: 17984
   "CDA-FDC\u5BCC\u540D\u6587\u8D3ADOTA2\u804C\u4E1A\u9526\u6807\u8D5B": 12528
   "CDA\u4E2D\u56FDDOTA2\u804C\u4E1A\u8054\u8D5B": 11806
   "CDA\u804C\u4E1A\u8054\u8D5B": 11805
@@ -614,6 +633,7 @@ PROFESSIONAL_LEAGUES:
   CrashGame Pro League: 2403
   Crashgame 2: 1684
   Crashgame League: 1843
+  Cringe Station Ticket: 17522
   Cringe Station Tournament: 16219
   Crystal Wings Dota2 Tournament: 14603
   Culling Blade League: 17021
@@ -650,6 +670,7 @@ PROFESSIONAL_LEAGUES:
   DIGI CUP MONTHLY: 12214
   'DJL Asian Stars ': 14370
   DM League Spring 2015: 2728
+  'DOPECLVBWORLD ': 17543
   DOT.fair Challenge: 2879
   DOTA 2 Cebu League: 1415
   DOTA 2 INDONESIA ONLINE PROFESSIONAL TOURNAMENT 2019: 10773
@@ -683,6 +704,7 @@ PROFESSIONAL_LEAGUES:
   DafaeSports Indonesia Series Presented by Eternal Gaming: 4682
   DeadlyGaming Cup Season 1: 2076
   Defense Of The Arabians: 1243
+  Defense of the Aisa: 17923
   Defense of the Australians Autumn Tournament: 238
   Defense of the Australians Spring 2014: 2084
   Destiny Cup: 11140
@@ -693,6 +715,7 @@ PROFESSIONAL_LEAGUES:
   DireTide League: 12814
   Dobro Cup Season 3: 4775
   DobroCup Season 2: 4361
+  DogeLon Dota League: 17688
   Donbass Cup 2 play off: 222
   Donbass Cup 3: 2384
   'Donbass Cup : Zp Qual': 2979
@@ -792,6 +815,10 @@ PROFESSIONAL_LEAGUES:
   DreamLeague Season 22 powered by Intel: 16201
   DreamLeague Season 23 Qualifiers Powered by Intel: 16390
   DreamLeague Season 23 powered by Intel: 16632
+  DreamLeague Season 24 powered by Intel: 17272
+  DreamLeague Season 25 Qualifiers powered by Intel: 17628
+  DreamLeague Season 25 powered by Intel: 17765
+  DreamLeague Season 26 Qualifiers: 17874
   DreamLeague Season 5: 4507
   DreamLeague Season Qualifiers 24 powered by Intel: 17135
   DreamLeague season 7: 5336
@@ -801,6 +828,7 @@ PROFESSIONAL_LEAGUES:
   E-CONNET DOTA 2 2020 SEASON 1: 12466
   E-SPORT LEAGUE-DICKYGAMING: 10219
   E-Sports Arena Cup: 507
+  E-sport SM 2025: 17876
   E2Max L33T Championship: 38
   EGB Isolation Cup: 11829
   EGB.com Arena of Blood: 11719
@@ -819,8 +847,10 @@ PROFESSIONAL_LEAGUES:
   'EPL World Series: America': 14679
   'EPL World Series: America 2022-2023 Season ': 14783
   'EPL World Series: America 2023-2024 Season ': 15899
+  'EPL World Series: America 2024-2025 Season ': 17367
   'EPL World Series: Southeast Asia 2022-2023 Season ': 14914
   'EPL World Series: Southeast Asia 2023-2024 Season ': 15900
+  'EPL World Series: Southeast Asia 2024-2025 Season ': 17659
   ESL AUNZ Championship Season 3 (2019): 10710
   ESL AUNZ Championship Season 4 (2019): 11102
   ESL Brasil Premier League: 9807
@@ -831,6 +861,8 @@ PROFESSIONAL_LEAGUES:
   ESL India Premiership 2019 - Challenger Cup: 10859
   ESL India Premiership 2019 - Masters League: 10857
   ESL Indonesia Championship Season 1, presented by Indofood: 10768
+  ESL One Bangkok 2024 Qualifiers powered by Intel: 17299
+  ESL One Bangkok 2024 powered by Intel: 17509
   ESL One Birmingham 2019 powered by Intel: 10725
   ESL One Birmingham 2020 Online powered by Intel: 12027
   ESL One Birmingham 2020 powered by Intel: 11753
@@ -853,6 +885,8 @@ PROFESSIONAL_LEAGUES:
   ESL One Manila 2016: 4357
   ESL One Mumbai 2019 powered by Intel: 10646
   ESL One New York: 1886
+  ESL One Raleigh 2025: 17795
+  ESL One Raleigh 2025 Qualifiers: 17629
   ESL One Summer 2021 powered by Intel: 13228
   ESL One Thailand 2020 Online powered by Intel: 12229
   ESL One at New York Super Week: 3798
@@ -864,6 +898,7 @@ PROFESSIONAL_LEAGUES:
   ESL's Brazil Rei da Mesa: 1108
   ESP Dota 2 Cup: 92
   ESPL Season 1: 190
+  ESPORTS TURBO: 17568
   ESportsBattle | DOTA2: 14411
   ESportsBattle | DOTA2 AUC1: 15674
   ESportsBattle | DOTA2 AUC2: 15675
@@ -937,6 +972,7 @@ PROFESSIONAL_LEAGUES:
   Emerge Insomnia54 Dota 2 Cup: 2831
   Eph league season 2: 14967
   Epic Challenger League: 11700
+  Epic Clash: 17319
   Epic League: 12548
   Epic Prime League: 11836
   Esea League: 14812
@@ -948,6 +984,7 @@ PROFESSIONAL_LEAGUES:
   Esports Ukraine Dota 2 League: 11037
   EsportsBattle | Dota2 SpC3: 15227
   Esportsone Pro Series Season 1: 3462
+  Eternal DOTA League Season 1: 17852
   Eternal Dream League: 10093
   Eternally Exiled Cup 5 Reborn: 4764
   Eternally Exiled Cup Season III: 3012
@@ -957,9 +994,11 @@ PROFESSIONAL_LEAGUES:
   Euphoria.bet dota 2 league: 14749
   Eurasian eSports league 2018: 9960
   European Elite League September: 1875
+  European Gaming Arena Season 1: 17640
   European Pro League: 14304
   European Pro League  2022-2023 Season: 14691
   European Pro League  2023-2024 Season: 15898
+  European Pro League  2024-2025 Season: 17381
   European Pro League S3: 14630
   European Pro League Season 2: 14401
   European Pro League Season 3: 14564
@@ -986,8 +1025,22 @@ PROFESSIONAL_LEAGUES:
   FGCL Championship League Season 2: 1042
   'FGCL Fight Club: Promote Season': 1311
   'FGCL: CIS Open Cup': 240
+  FISSURE PLAYGROUND - Closed Qualifiers - Americas: 17525
+  FISSURE PLAYGROUND - Closed Qualifiers - China: 17527
+  FISSURE PLAYGROUND - Closed Qualifiers - EEU: 17523
+  FISSURE PLAYGROUND - Closed Qualifiers - SEA: 17526
+  FISSURE PLAYGROUND - Closed Qualifiers - WEU: 17524
+  FISSURE PLAYGROUND 1 - Dota: 17588
   'FISSURE Tournament ': 16730
+  FISSURE Universe Ep.4 - Closed Qualifiers - China: 17772
+  FISSURE Universe Ep.4 - Closed Qualifiers - EEU: 17767
+  FISSURE Universe Ep.4 - Closed Qualifiers - NA: 17769
+  FISSURE Universe Ep.4 - Closed Qualifiers - SA: 17770
+  FISSURE Universe Ep.4 - Closed Qualifiers - SEA: 17771
+  FISSURE Universe Ep.4 - Closed Qualifiers - WEU: 17768
+  FISSURE Universe Episode 4: 17907
   'FISSURE Universe: Episode 3': 16846
+  FONBET MEDIA ELEAGUE DOTA2 2025: 17962
   FQL: 16535
   FQLAutamn Season 2: 17167
   'FSL #2 - FemaleDotA2 SEA League Season 2': 510
@@ -1004,9 +1057,13 @@ PROFESSIONAL_LEAGUES:
   Federal League: 1337
   Feng Ye Professional Invitational Competition: 10861
   Fight For Glory Season 2: 15878
+  Final Rumble League: 17345
   FirstGameTV DOTA 2 CUP: 3013
   Flag League: 1648
   Flame Cup: 10343
+  'Forge of Legends #1': 17480
+  'Forge of Legends #2': 17481
+  'Forge of Legends #3': 17482
   Forsaken League Season 1: 15536
   Forward To Victory cup 3: 3038
   Forward to victory: 2406
@@ -1033,6 +1090,7 @@ PROFESSIONAL_LEAGUES:
   GAMEFEST 2018: 10331
   'GAMERS GALAXY: Dota 2 Invitational Series HatYai Thailand 2022': 14535
   GDL Season IV: 2056
+  GDUgame Cup: 17792
   'GEMS League Season 1: Asia Oceania by Chompix Gaming': 17160
   GEMS Women Circuit Fall Tour - 2023/2024 by Chompix Gaming: 15749
   GEMSCOOL LEAGUE: 10981
@@ -1046,6 +1104,7 @@ PROFESSIONAL_LEAGUES:
   GG Latin League: 1969
   GG League Season 2: 2019
   GG League Season 3: 2608
+  GG Pro League: 17573
   GG.BET Championship 2: 11773
   GG.bet Dota 2 Invitational: 10349
   GGBET BIRMINGHAM INVITATIONAL: 10899
@@ -1077,6 +1136,7 @@ PROFESSIONAL_LEAGUES:
   'Gaming Hub Pro Series ': 10711
   Gaming Paradise Season 1: 3739
   Garuda Super League: 16946
+  Gemini Cup: 17667
   Gemscool: 10956
   Geo DOTA 2 Season 1: 1921
   Ggbet Tournament: 11480
@@ -1298,8 +1358,10 @@ PROFESSIONAL_LEAGUES:
   MESA Champions - Fall 23: 15774
   MESA Champions - GEG Edition: 14476
   MESA Champions 2023 - GEG Edition: 15684
+  MESA Champions Fall 2024: 17327
   MESA Champions Main: 14234
   'MESA Champions: Winter': 16190
+  MESA Invitational: 17326
   MESA League - International Qualifier: 13614
   MESA League Season 1: 11659
   MESA League Season 2: 15820
@@ -1377,6 +1439,7 @@ PROFESSIONAL_LEAGUES:
   Meister Division Pro 2020: 11196
   Meister Division Rookies 2020: 11194
   Meister Division Semi Pro 2020: 11195
+  Meister Esports Dota 2 Game On, Challenge Accepted: 17266
   Meister Provider Dota 2 Indonesia 2022: 13985
   Meister Series League: 3402
   Mekansm League: 10827
@@ -1450,6 +1513,7 @@ PROFESSIONAL_LEAGUES:
   NFCups Season 5: 5039
   NGT Season 4: 4185
   'NIMA Tournaments ': 10592
+  NITRO FRESH MASTERS: 17793
   NN Dota 2 League Season 3: 2757
   NON STOP Energy League: 9971
   'NQ Dota 2 League Season # 2': 3697
@@ -1489,6 +1553,7 @@ PROFESSIONAL_LEAGUES:
   North American Solo Mid 1v1 Season 3: 3016
   NorthCapital League: 2156
   Northern Arena BEAT Invitational presented by Bell: 4779
+  Norway Christmas Cup: 17572
   Nvidia DOTA2 Vietnam Tournament: 1081
   Nxtgame Eternal Dota League Season 4: 3991
   OB x Moon Studio Asian Arena: 13430
@@ -1540,6 +1605,7 @@ PROFESSIONAL_LEAGUES:
   PGF Summer Assembly: 43
   PGL Wallachia 2024 Season 1: 16669
   PGL Wallachia 2024 Season 2: 17119
+  PGL Wallachia 2025 Season 3: 17891
   'PGL Wallachia Season #1 CN Closed Qualifiers': 16479
   'PGL Wallachia Season #1 EEU Closed Qualifiers': 16480
   'PGL Wallachia Season #1 NA Closed Qualifiers': 16476
@@ -1552,9 +1618,21 @@ PROFESSIONAL_LEAGUES:
   'PGL Wallachia Season #2 SA Closed Qualifiers': 17008
   'PGL Wallachia Season #2 SEA Closed Qualifiers': 17009
   'PGL Wallachia Season #2 WEU Closed Qualifiers': 17012
+  'PGL Wallachia Season #3 CN Closed Qualifiers': 17672
+  'PGL Wallachia Season #3 EEU Closed Qualifiers': 17674
+  'PGL Wallachia Season #3 NA Closed Qualifiers': 17669
+  'PGL Wallachia Season #3 SA Closed Qualifiers': 17670
+  'PGL Wallachia Season #3 SEA Closed Qualifiers': 17671
+  'PGL Wallachia Season #3 WEU Closed Qualifiers': 17673
+  'PGL Wallachia Season #4 AMER Closed Qualifiers': 17778
+  'PGL Wallachia Season #4 CN Closed Qualifiers': 17777
+  'PGL Wallachia Season #4 EEU Closed Qualifiers': 17774
+  'PGL Wallachia Season #4 SEA Closed Qualifiers': 17776
+  'PGL Wallachia Season #4 WEU Closed Qualifiers': 17775
   "PGL\u4F20\u5947\u5927\u5E08\u8D5B\u590F\u5B63\u8D5B": 4700
   POT Spain League: 1117
   POT Spain League 2: 1178
+  PREDATOR LEAGUE APAC FINALS 2025: 17512
   PREDATOR LEAGUE INDIA DOTA 2 LAN FINALS: 14546
   PSE Pro League: 10469
   PUSH DOTA CUP 2018: 10065
@@ -1607,6 +1685,8 @@ PROFESSIONAL_LEAGUES:
   Premier Dota League: 12625
   Premier League: 15
   'Premier League Season 5 ': 45
+  Prime Series by TechHub.bg Season 1: 17703
+  Prime Series by TechHub.bg Season 2: 17942
   "Primer Torneo Cultura Gamer Per\xFA": 2765
   Pro Gaming Tours League April: 1211
   Pro Gaming Tours League March: 501
@@ -1652,6 +1732,7 @@ PROFESSIONAL_LEAGUES:
   'RES - Regional Series EU #1': 16343
   'RES - Regional Series EU #3': 16707
   'RES - Regional Series EU #4': 16710
+  RES - Regional Series LAN: 17186
   'RES - Regional Series LATAM #3': 16706
   'RES - Regional Series LATAM #4': 16709
   RES - Regional Series LATAM 1: 16233
@@ -1762,12 +1843,15 @@ PROFESSIONAL_LEAGUES:
   SIGUL PRO LEAGUE: 11683
   SIGUL SPRING CUP: 12839
   SIVVIT: 9871
+  SIVVIT - milli_koshka Dota 2 Championship: 17344
   SIVVIT League: 4180
   'SIVVIT Tournament ': 3312
   SL i-League Invitational Season 1: 4579
   SL i-League Invitational Season 2: 5364
   SL i-League StarSeries S2: 4646
   SL i-League StarSeries S3: 5077
+  SLAM II: 17417
+  SLAM III: 17418
   SLTV Pro Series Season 10: 1892
   SLTV Pro Series Season 11: 2171
   SLTV Pro Series Season 12: 2988
@@ -1791,6 +1875,7 @@ PROFESSIONAL_LEAGUES:
   Sazka eLEAGUE: 12873
   Sazka eLEAGUE - Split2: 12173
   Scary League: 10285
+  Sea Champions League: 17966
   Sea Dota Invitational Season 2: 13541
   Sea Dota Invitational Season 2 | Hosted by 23 Creative VN: 13552
   Sea MASTERS 2022: 14275
@@ -1813,6 +1898,7 @@ PROFESSIONAL_LEAGUES:
   Sina Cup Supernova Dota 2 Open Season 2: 120
   Singapore Esports League: 10278
   Skillshot League Season 1: 13680
+  Snake Trophy: 17773
   Snegirs Team Cup: 2903
   SngLadder Season One: 2379
   'Snow Sweet Snow #1': 12755
@@ -1869,6 +1955,7 @@ PROFESSIONAL_LEAGUES:
   Sudamerican Master 4: 4272
   Summer Carnival: 17132
   'Summer wave ': 14440
+  "Summoner\u2019s Cup": 17318
   Sun Tzu Battle: 14690
   Sunday Evening Cup Series: 16078
   Sunrise Cup: 10171
@@ -2026,17 +2113,20 @@ PROFESSIONAL_LEAGUES:
   UGC League Dota 2 Premium 2016: 4503
   UIUC League: 4219
   UK Dota 2 Challenge: 1348
+  'ULD Season 2 : Americas': 17969
   URG MESA League: 13826
   URG MESA League Season 1: 13878
   URUDota Cup Season 1: 1937
   Udota online school | Season 1 | Tournament 2: 11902
   Udota online school | Season 2 | Tournament 1: 12217
+  Ultimate League: 17921
   Ultra eSports Cup: 12888
   Ultras Dota Pro: 13268
   'Ultras Dota Pro League ': 14200
   'Ultras Dota Pro League  ': 13442
   Ultras Dota Pro League  2023: 14915
   Ultras Dota Pro League  2023-24: 15901
+  Ultras Dota Pro League  2024-25: 17366
   Ultras Dota Pro League 2: 13690
   UnderCastleLeague Season 1: 2343
   United Series: 16184
@@ -2075,6 +2165,7 @@ PROFESSIONAL_LEAGUES:
   Vulcan Champions League IV: 12066
   Vulkan Fight Series: 12098
   VyrDota League by GUMANTAR: 11027
+  'WBT CYBER CLUB #1': 17909
   WCA Tournament Platform Classic: 5418
   WCA2017 China Qualifiers: 5784
   WCAA Spring Festival cup: 12817
@@ -2087,6 +2178,7 @@ PROFESSIONAL_LEAGUES:
   WEC 2022 | Turkmenistan Qualification: 14346
   WEC 24  | Turkmenistan Qualifications: 16519
   WEC IRAN Qualifiers: 16543
+  WEC Riyadh 2024: 17369
   WECG Korea National Final: 2058
   WESG: 4916
   WESG 2019-2020 Online Qualifiers: 11496
@@ -2158,6 +2250,7 @@ PROFESSIONAL_LEAGUES:
   XMA - SP1 2015: 2821
   XNINE Myanmar Dota2 Online Championship: 12320
   XXL League: 13180
+  Xmas League 2024: 17565
   YRSpace Dota 2 Tournament: 10586
   "Yabo ACL Spring Cup \u4E9A\u535A\u6625\u5B63\u676F": 11666
   Yabo Ninja Championship: 12239
@@ -2221,9 +2314,12 @@ PROFESSIONAL_LEAGUES:
   "\u0414\u043E\u0442\u04302.com  (Mark Toxxter)  League": 10598
   "\u0417\u0430\u043F\u043E\u0440\u043E\u0436\u0441\u043A\u0438\u0439 \u043B\u0435\u0442\u043D\u0438\u0439 \u0442\u0443\u0440\u043D\u0438\u0440": 1714
   "\u041A\u0443\u0431\u043E\u043A TMeSF": 12871
+  "\u041A\u0443\u0431\u043E\u043A \u0444\u0435\u0434\u0435\u0440\u0430\u0446\u0438\u0438 \u0422\u0443\u0440\u043A\u043C\u0435\u043D\u0438\u0441\u0442\u0430\u043D\u0430": 17723
+  "\u041E\u0442\u043A\u0440\u044B\u0442\u044B\u0435 \u041A\u0438\u0431\u0435\u0440\u0441\u043F\u043E\u0440\u0442\u0438\u0432\u043D\u044B\u0435 \u0418\u0433\u0440\u044B 2024": 17513
   "\u0421yber Master League Cup #1": 2791
   "\u0421\u0421 League Division I": 14934
   "\u0421\u043E\u0440\u0435\u0432\u043D\u043E\u0432\u0430\u043D\u0438\u044F \u043F\u043E \u044D\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u043D\u044B\u043C \u0438\u0433\u0440\u0430\u043C \xAB\u0415-\u0434\u0438\u043D\u0441\u0442\u0432\u043E\xBB": 14376
+  "\u0427\u0435\u043C\u043F\u0438\u043E\u043D\u0430\u0442 \u041C\u043E\u0441\u043A\u0432\u044B 2024": 17550
   "\u0427\u0435\u043C\u043F\u0438\u043E\u043D\u0430\u0442 \u0420\u043E\u0441\u0441\u0438\u0438 \u043F\u043E \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440\u043D\u043E\u043C\u0443 \u0441\u043F\u043E\u0440\u0442\u0443 2024": 16835
   "\u062A\u0648\u0631\u0646\u0648\u0645\u0646\u062A \u0633\u0637\u062D \u062D\u0631\u0641\u0647 \u0627\u06CC \u0627\u0650\u0633\u062A\u06CC\u0645 \u0645\u064E\u0646": 12805
   "\u0633\u0627\u06CC\u0628\u0631\u06A9\u0627\u067E": 12899
@@ -2233,6 +2329,7 @@ PROFESSIONAL_LEAGUES:
   "\u4E16\u754C\u7535\u5B50\u7ADE\u6280\u804C\u4E1A\u7CBE\u82F1\u8D5B WPC-DOTA2\u8054\u8D5B": 1014
   "\u4E2D\u56FDDOTA2\u53D1\u5C55\u8054\u8D5B": 11099
   "\u4E2D\u56FDDOTA2\u804C\u4E1A\u8054\u8D5B": 11370
+  "\u4E92\u8054\u7F51\u8054\u8D5B": 17508
   "\u4E9A\u6D32\u51AC\u5B63\u4EA4\u6D41\u8D5B": 11558
   "\u51AC\u5B63\u7CBE\u82F1\u9080\u8BF7\u8D5B": 11507
   "\u590F\u5B63\u72C2\u6B22\u676F": 13173
@@ -2246,6 +2343,7 @@ PROFESSIONAL_LEAGUES:
   "\u6597\u9C7CDOTA2\u793E\u533A\u9080\u8BF7\u8D5B": 11377
   "\u66B4\u98CE\u7ADE\u6280\u6311\u6218\u676F": 11506
   "\u676D\u5DDE\u7B2C19\u5C4A\u4E9A\u8FD0\u4F1A": 15782
+  "\u732B\u732B\u676F": 17334
   "\u795E\u9B54\u7535\u7ADE\u676F": 12325
   "\u79CB\u5B63\u6311\u6218\u8D5B": 11355
   "\u7B2C\u4E94\u5C4A\u65B0\u6D6A\u8D85\u65B0\u661F\u5200\u5854\u516C\u5F00\u8D5B": 1869

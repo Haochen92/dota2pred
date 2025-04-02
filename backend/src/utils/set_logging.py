@@ -3,6 +3,12 @@ from src.config import ROOT_DIR
 import pytz
 from datetime import datetime
 
+'''
+    Todos:
+    1. Rename file to logger.py and update all imports
+    2. Rename function to configure_logger and update all imports
+    3. Implement RotatingFileHandler
+'''
 def get_logger(name):
  
     output_fpath = ROOT_DIR / 'logs' / f'{name}_error.log'

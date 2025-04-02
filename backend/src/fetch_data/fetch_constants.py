@@ -49,10 +49,11 @@ async def fetch_hero_ids():
     with open(hero_constants_fpth, 'w') as file:
         yaml.safe_dump(data, file)
         print("Values updated for HEROES_CONSTANTS")
+        
 @flow       
-async def main():
+async def fetch_constants():
     await fetch_league_ids()
     await fetch_hero_ids() 
         
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(fetch_constants())
