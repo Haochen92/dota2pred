@@ -7,6 +7,10 @@ import psycopg2
 from datetime import datetime 
 from pathlib import Path
 
+'''
+    The following API is deprecated because the API is down.
+'''
+
 # Get the current date in YYYYMMDD format
 current_date = datetime.now().strftime('%Y%m%d')
 

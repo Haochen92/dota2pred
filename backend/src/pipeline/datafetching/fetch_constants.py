@@ -1,5 +1,5 @@
 from prefect import flow, task 
-from src.fetch_data.opendota_api import get_opendota_df
+from .opendota_api import get_opendota_df
 from src.config import ROOT_DIR
 import pandas as pd
 import numpy as np

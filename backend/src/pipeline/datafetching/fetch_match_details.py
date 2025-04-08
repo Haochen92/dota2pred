@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import logging
 import pytz
-from src.fetch_data.opendota_api import fetch_opendota_api
+from .opendota_api import fetch_opendota_api
 from datetime import datetime, timedelta 
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger

@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 from sqlmodel import SQLModel
-from models import ProMatch, ProMatchID
+from database.schemas.models import ProMatch, ProMatchID
+from database.schemas.features import TeamFeatures, HeroFeatures
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
