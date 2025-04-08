@@ -1,9 +1,9 @@
 import redis
 import time
-from typing import Dict, List, Any, Set, Optional
+from typing import Dict, Any, Set, Optional
 from src.utils.set_logging import get_logger
-from src.datafetching.fetch_live_leagues import retrieve_live_league_games
-from src.datafetching.opendota_match_details import get_match_details
+from src.pipeline.datafetching.fetch_live_leagues import retrieve_live_league_games
+from src.pipeline.datafetching.fetch_match_details import get_match_details
 
 logger = get_logger(__name__)
 
