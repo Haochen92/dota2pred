@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from functools import lru_cache
 import logging
 from prefect_sqlalchemy import SqlAlchemyConnector
-from database.schemas.models import ProMatchID
+from database.schemas.matches import ProMatchID
 
 # Set up logging
 logging.basicConfig(filename='lru_info.log', level=logging.ERROR)
