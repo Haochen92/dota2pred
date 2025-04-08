@@ -1,6 +1,6 @@
-from src.fetch_data.fetch_promatch import fetch_promatch_ids
-from src.fetch_data.opendota_match_details import match_details_main
-from src.fetch_data.fetch_constants import fetch_constants
+from src.datafetching.fetch_promatch import fetch_promatch_ids
+from src.datafetching.opendota_match_details import match_details_main
+from src.datafetching.fetch_constants import fetch_constants
 from prefect import flow
 import asyncio
 

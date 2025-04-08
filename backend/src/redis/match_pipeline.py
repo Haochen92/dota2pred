@@ -2,8 +2,8 @@ import redis
 import time
 from typing import Dict, List, Any, Set, Optional
 from src.utils.set_logging import get_logger
-from src.fetch_data.fetch_live_leagues import retrieve_live_league_games
-from src.fetch_data.opendota_match_details import get_match_details
+from src.datafetching.fetch_live_leagues import retrieve_live_league_games
+from src.datafetching.opendota_match_details import get_match_details
 
 logger = get_logger(__name__)
 
@@ -158,6 +158,7 @@ class MatchPipeline:
                 
                 if game_duration > 0:
                     # Here you would call your prediction logic
+                    
                     # For now we're just logging
                     logger.info(f"Making predictions for match {match_id}")
                     
