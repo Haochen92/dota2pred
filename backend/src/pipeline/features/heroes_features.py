@@ -1,7 +1,6 @@
 import pandas as pd
 from sqlmodel import Session
 from database.schemas.features import HeroFeatures
-from constants.constants import HERO_DICT
 from src.postgresql import get_engine
 
 DRAFT_COLS = [
@@ -9,13 +8,10 @@ DRAFT_COLS = [
     '128_hero_id', '129_hero_id', '130_hero_id', '131_hero_id', '132_hero_id'
 ]
 
-
 def create_hero_features(input_df):
     
     df = input_df.copy()
-    
-    df[DRAFT_COLS] = df[DRAFT_COLS].map(lambda x: HERO_DICT.get(x, "unknown_hero"))
-    hero_features = input_df[[*DRAFT_COLS, 'match_id']]
+    hero_features = df[[*DRAFT_COLS, 'match_id']]
     
     return hero_features
 

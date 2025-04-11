@@ -1,4 +1,5 @@
 import pandas as pd
+from constants.constants import HERO_DICT
 
 # Constants
 DRAFT_COLS = [
@@ -51,12 +52,16 @@ def preprocess_df(input_df):
     duplicate_count = df.duplicated(subset=UUID_COL).sum()
     if duplicate_count > 0:
         print(f"Removing {duplicate_count} duplicate matches")
+        
+    # Convert hero_ids into hero_names
+    df[DRAFT_COLS] = df[DRAFT_COLS].map(lambda x: HERO_DICT.get(x, "unknown_hero"))
     
     # Drop duplicate matches
     df = df.drop_duplicates(subset=UUID_COL)
     
     # Sort dataframe, starting with oldest match
     df = df.sort_values(by=TIME_COL).reset_index(drop=True)
+    
     
     return df
 
