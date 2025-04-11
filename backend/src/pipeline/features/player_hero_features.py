@@ -1,128 +1,155 @@
-import pandas as pd
-from sqlmodel import Session
+from sqlmodel import Session, select
 from database.schemas.features import PlayerHeroFeature
-from src.postgresql import get_engine
+from database.schemas.histories import PlayerHeroHistories
+from collections import deque
 
-# Constants
-DRAFT_COLS = [
-    '0_hero_id', '1_hero_id', '2_hero_id', '3_hero_id', '4_hero_id',
-    '128_hero_id', '129_hero_id', '130_hero_id', '131_hero_id', '132_hero_id'
-]
-PLAYER_COLS = [
-    '0_account_id', '1_account_id', '2_account_id', '3_account_id','4_account_id', 
-    '128_account_id', '129_account_id', '130_account_id','131_account_id', '132_account_id'
-]
-LABEL_COL = 'radiant_win'
-TIME_COL = 'start_time'
-UUID_COL = 'match_id'
+# create a cron job for syncing from redis to postgresql database
 
-def create_player_hero_features(df):
-    
-    df_melted_players = df_melted_players = pd.melt(df.copy(), id_vars=['start_time','radiant_win','match_id'],
-                            value_vars=PLAYER_COLS, 
-                            var_name='player_position',
-                            value_name='account_id')
-
-    df_melted_heroes = pd.melt(df.copy(), id_vars=['start_time','radiant_win','match_id'],
-                            value_vars=DRAFT_COLS,
-                            var_name='hero_position',
-                            value_name='hero_name')
-    
-    df_melted_players['player_num'] = df_melted_players['player_position'].apply(lambda x: x.split('_')[0])
-    df_melted_heroes['hero_num'] = df_melted_heroes['hero_position'].apply(lambda x: x.split('_')[0])
-
-    df_combined = pd.merge(df_melted_players, df_melted_heroes, 
-                       left_on=['start_time', 'radiant_win','match_id', 'player_num'], 
-                       right_on=['start_time', 'radiant_win','match_id', 'hero_num'])
-
-    df_combined = df_combined.sort_values(by='start_time', ascending=False)
-    
-    # 2. Determine if a player won based on their position and match outcome
-    df_combined['player_won'] = ((df_combined['player_num'].astype(int) < 5) & df_combined['radiant_win']) | \
-                           ((df_combined['player_num'].astype(int) >= 5) & ~df_combined['radiant_win'])
-                           
-    # 2. Create a key for each account_id and hero combination
-    # Use hero_name to identify unique heroes
-    df_combined['account_hero_key'] = df_combined['account_id'].astype(str) + '_' + df_combined['hero_name'].astype(str)
-    
-    # 3. Sort data chronologically
-    df_sorted = df_combined.sort_values(by=TIME_COL)
-    
-    win_rates = {}
-    for key, group in df_sorted.groupby('account_hero_key'):
-        for i, row in group.iterrows():
-            match_id = row['match_id']
-            player_num = row['player_num']
-            current_time = row[TIME_COL]
+class PlayerHeroFeatures:
+    def __init__(self, redis_client= None, db_client=None, max_history_length=20):
+        self.redis = redis_client
+        self.db = db_client
+        self.max_history_length = max_history_length
+        self.max_matchups = 1000
+        self.cache_expiry = 86400 * 30
+        
+        # if not using redis
+        self.player_hero_histories = {}
+        
+    def create_player_hero_features(self, df):
+        
+        features = []
+        
+        for _, match in df.iterrows():
+            match_id = match['match_id']
+            match_result = {}
+            match_result['match_id'] = match_id
             
-            # Find previous matches for this player-hero combo
-            previous_matches = group[group[TIME_COL] < current_time]
+            radiant_num = range(0, 5)
+            dire_num = range(128, 133)
+            radiant_win = match['radiant_win']
             
-            # Calculate win rate from previous matches
-            if len(previous_matches) > 0:
-                previous_10 = previous_matches.sort_values(by=TIME_COL, ascending=False).head(10)
-                win_rate = previous_10['player_won'].mean()
-            else:
-                win_rate = 0.5
+            for i in radiant_num:
+                account_id = match[f'{i}_account_id']
+                hero_id = match[f'{i}_hero_id']
+                # Calculate win rate based on previous matches
+                win_rate = self.calculate_win_rate(account_id, hero_id)
+                # Add win rate to results for this match
+                match_result[f'player_hero_{i}_win_rate'] = win_rate
+                # Update history after calculating
+                self.update_player_hero_histories(account_id, hero_id, radiant_win)
+            
+            for j in dire_num:
+                account_id = match[f'{j}_account_id']
+                hero_id = match[f'{j}_hero_id']
+                dire_win = not radiant_win
+                win_rate = self.calculate_win_rate(account_id, hero_id)
+                match_result[f'player_hero_{j}_win_rate'] = win_rate
+                self.update_player_hero_histories(account_id, hero_id, dire_win)
+            
+            # Append complete match result with all player win rates
+            features.append(match_result)
+
+        return features
+
+    def calculate_win_rate(self, account_id, hero_name):
+        history = self.get_player_hero_history(account_id, hero_name)
+        if not history:
+            return 0.5
+        
+        return sum(history) / len(history)
+    
+    def get_player_hero_history(self, account_id, hero_name):
+        if self.redis:
+            cache_key = f'histories:player_hero:{account_id}:{hero_name}'
+            try:
+                history = self.redis.lrange(cache_key, 0, -1)
+                if history:
+                    self.redis.expire(cache_key, self.cache_expiry)
+                    return [int(x) for x in history] 
                 
-            win_rates[(match_id, player_num)] = win_rate
-        
-    # 5. Apply calculated win rates to dataframe
-    df_combined['win_rate'] = df_combined.apply(
-        lambda row: win_rates.get((row['match_id'], row['player_num']), 0.5),
-        axis=1
-    )
+                elif self.db:
+                    history = self.fetch_history_from_db(account_id, hero_name)
+                    if history:
+                        pipeline = self.redis.pipeline()
+                        pipeline.rpush(cache_key, *[int(val) for val in history])
+                        pipeline.expire(cache_key, self.cache_expiry)
+                        pipeline.execute()
+                        return history
+            except Exception as e:
+                print(f"Redis error: {e}")
+                
+        return self.player_hero_histories.get((account_id, hero_name), [])
     
-    # 6. Create column names based on player and hero positions
-    df_combined['player_hero_win_rate_col'] = (
-        'player_hero_' + df_combined['player_num'].astype(str) + '_win_rate'
-    )
-    
-    # 7. Create final pivot table with position-based columns
-    player_hero_features = df_combined.pivot(
-        index='match_id', 
-        columns='player_hero_win_rate_col', 
-        values='win_rate'
-    ).reset_index()
-    
-    return player_hero_features
-    
+    def fetch_history_from_db(self, account_id, hero_name):
+        table = PlayerHeroHistories
+        try:
+            with Session(self.db) as session:
+                stmt = select(table).where(
+                    (table.account_id == account_id) &
+                    (table.hero_name == hero_name)
+                )
+                results = session.exec(stmt)
+                results_list = results.all()
+                if not results_list:
+                    return []
+                
+                matches = results.matches
+                return matches
+        except Exception as e:
+            print(f'Unable to read database: {e}')
+            raise(e)
             
-def store_to_db(player_hero_feature):
     
-    engine = get_engine()
-    records = player_hero_feature.to_dict(orient="records")
-    
-    with Session(engine) as session:
-        # For each match record
-        for record in records:
-            # Create a new PlayerHeroFeature instance
-            player_hero_feature_obj = PlayerHeroFeature(
-                match_id=record["match_id"],
-                player_hero_0_win_rate=record["player_hero_0_win_rate"],
-                player_hero_1_win_rate=record["player_hero_1_win_rate"],
-                player_hero_2_win_rate=record["player_hero_2_win_rate"], 
-                player_hero_3_win_rate=record["player_hero_3_win_rate"],
-                player_hero_4_win_rate=record["player_hero_4_win_rate"],
-                player_hero_128_win_rate=record["player_hero_128_win_rate"],
-                player_hero_129_win_rate=record["player_hero_129_win_rate"],
-                player_hero_130_win_rate=record["player_hero_130_win_rate"],
-                player_hero_131_win_rate=record["player_hero_131_win_rate"],
-                player_hero_132_win_rate=record["player_hero_132_win_rate"]
-            )
+    def update_player_hero_histories(self, account_id, hero_name, win: bool):
+        if self.redis:
+            cache_key = f'histories:player_hero:{account_id}:{hero_name}'
+            pipeline = self.redis.pipeline()
+            pipeline.rpush(cache_key, int(win))
+            pipeline.ltrim(cache_key, -self.max_history_length, - 1)
+            pipeline.expire(cache_key, self.cache_expiry)
+            pipeline.execute()
+        else:
             
-            # Use merge instead of add
-            session.merge(player_hero_feature_obj)
+            key = (account_id, hero_name)
+            if (account_id, hero_name) not in self.player_hero_histories:
+                self.player_hero_histories[key] = deque(maxlen=self.max_history_length)
+            
+            self.player_hero_histories[key].append(win)
+                
+    
+    def store_to_db(self, player_hero_features):
         
+        with Session(self.db) as session:
+            # For each match record
+            for match in player_hero_features:
+                # Create a new PlayerHeroFeature instance
+                player_hero_feature_obj = PlayerHeroFeature(
+                    match_id=match["match_id"],
+                    player_hero_0_win_rate=match["player_hero_0_win_rate"],
+                    player_hero_1_win_rate=match["player_hero_1_win_rate"],
+                    player_hero_2_win_rate=match["player_hero_2_win_rate"], 
+                    player_hero_3_win_rate=match["player_hero_3_win_rate"],
+                    player_hero_4_win_rate=match["player_hero_4_win_rate"],
+                    player_hero_128_win_rate=match["player_hero_128_win_rate"],
+                    player_hero_129_win_rate=match["player_hero_129_win_rate"],
+                    player_hero_130_win_rate=match["player_hero_130_win_rate"],
+                    player_hero_131_win_rate=match["player_hero_131_win_rate"],
+                    player_hero_132_win_rate=match["player_hero_132_win_rate"]
+                )
+                
+                # Use merge instead of add
+                session.merge(player_hero_feature_obj)
+            
             # Commit all records at once
             try:
                 session.commit()
-                print(f"Successfully stored {len(records)} player-hero feature records")
+                print(f"Successfully stored {len(player_hero_features)} player-hero feature records")
             except Exception as e:
                 session.rollback()
                 print(f"Error storing player-hero features: {str(e)}")
 
-    
-    def create_and_store_player_hero_features(df):
-        features = create_player_hero_features(df)
-        store_to_db(features)
+        
+    def create_and_store_player_hero_features(self, df):
+        features = self.create_player_hero_features(df)
+        self.store_to_db(features)
