@@ -153,3 +153,14 @@ class PlayerHeroFeatures:
     def create_and_store_player_hero_features(self, df):
         features = self.create_player_hero_features(df)
         self.store_to_db(features)
+        
+    def clear_history_cache(self):
+        if self.redis:
+            try:
+                pattern = "histories:player_hero:*"
+                keys = self.redis.keys(pattern)
+                if keys:
+                    self.redis.delete(*keys)
+                    print(f"Cleared {len(keys)} player hero histories from redis")
+            except Exception as e:
+                print(f"Error clearing redis key: {e}")
