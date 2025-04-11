@@ -1,8 +1,9 @@
 import json
 from sqlmodel import Session, select
 from collections import deque
-from database.schemas.team_histories import TeamHistories, TeamMatchupHistories
+from database.schemas.histories import TeamHistories, TeamMatchupHistories
 from database.schemas.features import TeamFeatures
+import pandas as pd
 
 class TeamFeatureProcessor:
     def __init__(self, redis_client= None, db_client=None, max_history_length=10):
@@ -10,6 +11,7 @@ class TeamFeatureProcessor:
         self.db = db_client
         self.max_history_length = max_history_length
         self.max_matchups = 1000
+        self.cache_expiry = 86400 * 30
         
         # if not using redis
         self.team_histories = {}
@@ -20,7 +22,7 @@ class TeamFeatureProcessor:
             team_histories = self.get_team_history(team_name)
         else:
             team_histories = self.team_histories.get(team_name, [])
-            
+        
         if not team_histories:
             return 0.5
         
@@ -40,8 +42,7 @@ class TeamFeatureProcessor:
             matches = self.redis.lrange(cache_key, 0, -1)
             
             if matches:
-                # Set expiration (fixing the missing argument)
-                self.redis.expire(cache_key, 86400 * 30)
+                self.redis.expire(cache_key, self.cache_expiry)
                 return [json.loads(match) for match in matches]
             
             elif self.db:
@@ -50,14 +51,16 @@ class TeamFeatureProcessor:
                 if history:
                     pipeline = self.redis.pipeline()
                     for match in history:
-                        pipeline.lpush(cache_key, json.dumps(match))
+                        pipeline.rpush(cache_key, json.dumps(match))
+                    pipeline.expire(cache_key, self.cache_expiry)
                     pipeline.execute()
                     
                     return history
+                
+                return []
         except Exception as e:
-            print(f"Redis error: {e}")
+            print(f"Redis error at get_team_history: {e}")
             
-        return []
             
     def fetch_team_history_from_db(self, team_name) -> list:
         with Session(self.db) as session:
@@ -65,26 +68,21 @@ class TeamFeatureProcessor:
                 TeamHistories.team_name == team_name
             )
             
-            results = session.exec(stmt)
+            results = session.exec(stmt).first()
             if not results:
                 return []
-            
             matches = results.matches
-            sorted_matches = sorted(
-                matches,
-                key=lambda match: match['match_date'],
-                reverse=True
-            )
-            
-            return sorted_matches[:self.max_history_length]
+            return matches
         
     def update_team_history(self, team_name: str, match):
         if self.redis:
             cache_key = f"history:team:{team_name}"
             pipeline = self.redis.pipeline()
             # Add current match and trim off earliest match
-            pipeline.lpush(cache_key, json.dumps(match))
-            pipeline.ltrim(cache_key, 0, self.max_history_length - 1)
+            pipeline.rpush(cache_key, json.dumps(match))
+            # Start counting from right till the max_length, ends at last index. 
+            pipeline.ltrim(cache_key, -self.max_history_length, -1)
+            pipeline.expire(cache_key, self.cache_expiry)
             pipeline.execute()
         else:
             if team_name not in self.team_histories:
@@ -118,7 +116,7 @@ class TeamFeatureProcessor:
             # check redis and fetch all the matches
             matches = self.redis.lrange(cache_key, 0, -1)
             if matches:
-                self.redis.expire(cache_key, 86400 * 30)
+                self.redis.expire(cache_key, self.cache_expiry)
                 return [json.loads(match) for match in matches]
             
             elif self.db:
@@ -128,11 +126,12 @@ class TeamFeatureProcessor:
                 if history:
                     pipeline = self.redis.pipeline()
                     for match in history:
-                        pipeline.lpush(cache_key, json.dumps(match))
-                    pipeline.expire(cache_key, 86400 * 30)
+                        pipeline.rpush(cache_key, json.dumps(match))
+                    pipeline.expire(cache_key, self.cache_expiry)
                     pipeline.execute()
                     
                     return history
+                return []
         except Exception as e:
             print(f"Redis error: {e}")
         
@@ -146,8 +145,9 @@ class TeamFeatureProcessor:
             pipeline = self.redis.pipeline()
             
             # Add current match and trim off earliest match
-            pipeline.lpush(cache_key, json.dumps(match))
-            pipeline.ltrim(cache_key, 0, self.max_history_length - 1)
+            pipeline.rpush(cache_key, json.dumps(match))
+            pipeline.ltrim(cache_key, -self.max_history_length, - 1)
+            pipeline.expire(cache_key, self.cache_expiry)
             pipeline.execute()
         else:
             if (team_ids[0], team_ids[1]) not in self.matchup_histories:
@@ -161,25 +161,24 @@ class TeamFeatureProcessor:
                 (TeamMatchupHistories.team2_name == team2)
             )
             
-            results = session.exec(stmt)
+            results = session.exec(stmt).first()
             if not results:
                 return []
             
             matches = results.matches
-            sorted_matches = sorted(
-                matches,
-                key=lambda match: match['match_date'],
-                reverse=True
-            )
             
-            return sorted_matches[:self.max_history_length]
+            return matches
             
 
     def create_team_features(self, df):
         
         team_level_features = []
-
-        for _, match in df.iterrows():
+        match_records = df.to_dict('records')
+        
+        for match in match_records:
+            for key, value in match.items():
+                if isinstance(value, pd.Timestamp):
+                    match[key] = value.isoformat()
             radiant_team = match['radiant_name']
             dire_team = match['dire_name']
             
@@ -204,26 +203,53 @@ class TeamFeatureProcessor:
         return team_level_features
 
     def store_to_db(self, features):
-        model_fields = {
-            name for name, field in TeamFeatures.__fields__.items()
-            if not name.startswith('_')
-        }
-        
-        with Session(self.db) as session:
-            for row in features:
-                # Filter data to match model fields
-                filtered_data = {
-                    field: row[field]
-                    for field in model_fields
-                    if field in row
-                }
-                
-                # Create the model instance with the filtered data
-                team_features = TeamFeatures(**filtered_data)
-                session.merge(team_features)
-        
-            session.commit()
+        try:
+            with Session(self.db) as session:
+                for row in features:
+                    team_features = TeamFeatures(
+                        match_id=row['match_id'],
+                        radiant_win_rate=row['radiant_win_rate'],
+                        dire_win_rate=row['dire_win_rate'],
+                        radiant_dire_matchup=row['radiant_dire_matchup']
+                    )
+                    session.merge(team_features)
             
+                try:
+                    session.commit()
+                    print(f"Successfully stored {len(features)} team feature records")
+                except Exception as e:
+                    session.rollback()
+                    print(f"Error storing team features: {str(e)}")
+                    
+        except Exception as e:
+            print(f"Database session error: {e}")
+    
+    def clear_history_cache(self):
+        """Clear all history-related keys from Redis cache"""
+        if self.redis:
+            try:
+                # Clear team history keys
+                team_pattern = "history:team:*"
+                team_keys = self.redis.keys(team_pattern)
+                if team_keys:
+                    self.redis.delete(*team_keys)
+                    print(f"Cleared {len(team_keys)} team history keys from Redis")
+                
+                # Clear matchup history keys
+                matchup_pattern = "history:matchup:*"
+                matchup_keys = self.redis.keys(matchup_pattern)
+                if matchup_keys:
+                    self.redis.delete(*matchup_keys)
+                    print(f"Cleared {len(matchup_keys)} matchup history keys from Redis")
+                    
+                total_cleared = len(team_keys) + len(matchup_keys)
+                if total_cleared == 0:
+                    print("No history keys found in Redis")
+                else:
+                    print(f"Total keys cleared: {total_cleared}")
+            except Exception as e:
+                print(f"Error clearing Redis cache: {e}")
+                
     def create_and_store_team_features(self, df):
         features = self.create_team_features(df)
         self.store_to_db(features)
