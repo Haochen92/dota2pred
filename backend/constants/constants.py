@@ -2,6 +2,7 @@ import yaml
 import os
 from src.config import ROOT_DIR
 
+
 CONSTANTS_PATH = os.path.join(ROOT_DIR, 'constants', 'constants.yml')
 
 try:

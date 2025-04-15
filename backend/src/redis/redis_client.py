@@ -10,7 +10,7 @@ class RedisClient:
             cls._instance = redis.Redis(
                 host='localhost',
                 port=6379,
-                decode_response=True
+                decode_responses=True
             )
         
         return cls._instance
