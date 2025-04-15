@@ -12,25 +12,38 @@ services:
       - psql:/var/lib/postgresql/data
     networks:
       - dota-pred
-
-  app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: my-app
-    environment:
-      - PYTHONPATH=/app
-      - PREFECT_API_KEY=pnu_840CPoLQS29FPKDOKdzmpG8qeltPlj2GPTvp
-      - PREFECT_API_URL=https://api.prefect.cloud/api/accounts/0e59c550-4bb3-4bf2-9d0d-af300c4e4428/workspaces/0d5682bd-eb2d-4b4b-9192-ba58ba741461
-      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    volumes:
-      - ./backend:/app  # Local code is mapped for development purposes
+  
+  bentoml:
+    container_name: model-server
+    image: match_prediction:latest
+    ports: 
+      - "3333:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - dota-pred
+  # app:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: my-app
+  #   environment:
+  #     - PYTHONPATH=/app
+  #     - PREFECT_API_KEY=pnu_840CPoLQS29FPKDOKdzmpG8qeltPlj2GPTvp
+  #     - PREFECT_API_URL=https://api.prefect.cloud/api/accounts/0e59c550-4bb3-4bf2-9d0d-af300c4e4428/workspaces/0d5682bd-eb2d-4b4b-9192-ba58ba741461
+  #     - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - db
+  #   volumes:
+  #     - ./backend:/app  # Local code is mapped for development purposes
+  #   networks:
+  #     - dota-pred
 
 networks:
   dota-pred:

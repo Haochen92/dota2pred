@@ -1,4 +1,4 @@
-backend/models/random_forest_model.joblib
+backend/models/
 projects.git
 data
 logs
