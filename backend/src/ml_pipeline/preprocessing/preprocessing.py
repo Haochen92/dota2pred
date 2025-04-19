@@ -3,12 +3,12 @@ from constants.constants import HERO_DICT
 
 # Constants
 DRAFT_COLS = [
-    '0_hero_id', '1_hero_id', '2_hero_id', '3_hero_id', '4_hero_id',
-    '128_hero_id', '129_hero_id', '130_hero_id', '131_hero_id', '132_hero_id'
+    'slot_0_hero_id', 'slot_1_hero_id', 'slot_2_hero_id', 'slot_3_hero_id', 'slot_4_hero_id',
+    'slot_128_hero_id', 'slot_129_hero_id', 'slot_130_hero_id', 'slot_131_hero_id', 'slot_132_hero_id'
 ]
 PLAYER_COLS = [
-    '0_account_id', '1_account_id', '2_account_id', '3_account_id', '4_account_id',
-    '128_account_id', '129_account_id', '130_account_id', '131_account_id', '132_account_id'
+    'slot_0_account_id', 'slot_1_account_id', 'slot_2_account_id', 'slot_3_account_id', 'slot_4_account_id',
+    'slot_128_account_id', 'slot_129_account_id', 'slot_130_account_id', 'slot_131_account_id', 'slot_132_account_id'
 ]
 TEAM_COL = ['radiant_name','dire_name']
 LABEL_COL = 'radiant_win'
@@ -28,14 +28,21 @@ def preprocess_df(input_df):
         Preprocessed DataFrame with selected columns, duplicates removed, 
         and time converted to datetime
     """
+    
+    required_cols = DRAFT_COLS + PLAYER_COLS + TEAM_COL + [LABEL_COL , TIME_COL , UUID_COL]
+    
+    if isinstance(input_df, pd.DataFrame):
+           # Create a smaller copy 
+        df = input_df[required_cols].copy()
+    else:
+        raise TypeError("Input must be pandas DataFrame")
+    
     # Check if all required columns exist
     required_cols = DRAFT_COLS + PLAYER_COLS + TEAM_COL + [LABEL_COL, TIME_COL, UUID_COL]
     missing_cols = [col for col in required_cols if col not in input_df.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
     
-    # Create a smaller copy 
-    df = input_df[required_cols].copy()
     
     # Count and log number of rows with NaN values
     nan_count = df.isna().any(axis=1).sum()

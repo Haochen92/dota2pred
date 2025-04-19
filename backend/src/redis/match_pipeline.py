@@ -1,9 +1,16 @@
 import redis
 import time
+import pandas as pd
 from typing import Dict, Any, Set, Optional
+from .redis_client import RedisClient
 from src.utils.set_logging import get_logger
+from src.postgresql import get_engine
 from src.pipeline.datafetching.fetch_live_leagues import retrieve_live_league_games
 from src.pipeline.datafetching.fetch_match_details import get_match_details
+from src.pipeline.preprocessing.preprocessing import preprocess_df
+from src.pipeline.features import create_and_store_hero_features, TeamFeatureProcessor, PlayerHeroFeatures
+from src.pipeline.features.feature_transformation import get_transformed_features
+from src.pipeline.inference.model_inference import get_prediction
 
 logger = get_logger(__name__)
 
@@ -17,8 +24,9 @@ COMPLETION_GROUP = 'completion_group'
 class MatchPipeline:
     """Pipeline for processing live matches, making predictions, and tracking outcomes."""
     
-    def __init__(self, redis_client: redis.Redis):
-        self.redis = redis_client
+    def __init__(self):
+        self.redis = RedisClient.get_instance()
+        self.db = get_engine()
         self._ensure_consumer_groups()
         
     def _ensure_consumer_groups(self) -> None:
@@ -37,7 +45,7 @@ class MatchPipeline:
                 raise 
     
     async def poll_live_matches(self) -> int:
-        # Add statics of total operations performed. 
+        # Statistics of total matches performed
         try:
             # get current live matches
             curr_matches = self._get_current_matches()
@@ -157,13 +165,21 @@ class MatchPipeline:
                 game_duration = match_details.get('game_duration', 0)
                 
                 if game_duration > 0:
-                    # Here you would call your prediction logic
+                    # Feature Engineering
+                    self._create_features(match_details)
                     
-                    # For now we're just logging
-                    logger.info(f"Making predictions for match {match_id}")
+                    # Match Prediction
+                    predicted_outcome = self._get_match_prediction(match_id)
+                    
+                    # Append Prediction
                     
                     # Update match status
-                    pipe.hset(f'match_details:{match_id}', 'status', 'predicted')
+                    pipe.hset(f'match_details:{match_id}',
+                              mapping={
+                                'status': 'predicted',
+                                'predicted_radiant_win': predicted_outcome
+                              }
+                            )
                     
                     # Add to predicted matches stream
                     pipe.xadd(
@@ -178,6 +194,19 @@ class MatchPipeline:
         
         pipe.execute()
         return events_processed
+    
+    async def _create_and_store_features(self, match_details: Dict[str]):
+        input_df = pd.DataFrame([match_details])
+        df = preprocess_df(input_df)
+        create_and_store_hero_features(df)
+        TeamFeatureProcessor.create_and_store_team_features(df)
+        PlayerHeroFeatures.create_and_store_player_hero_features(df)
+        
+    async def _get_match_prediction(match_id: str) -> int:
+        df_features = get_transformed_features(match_id)
+        prediction = get_prediction(df_features)
+        return prediction
+        
     
     async def _process_predicted_matches(self, curr_matches: Dict[str, Dict[str, Any]]) -> int:
         """Process predicted matches for completion.
@@ -221,6 +250,9 @@ class MatchPipeline:
                         
                         # Execute to get the updated match details
                         results = pipe.execute()
+                        
+                        # Returns a list containing results of all commands in the order added.
+                        # Get second outcome
                         match_details = results[1] 
                         
                         db_operation = await self._store_to_database(match_details)
@@ -249,7 +281,8 @@ class MatchPipeline:
     async def _store_to_database(self, match_details: Dict) -> bool:
         '''Store result to database'''
         try:
-            # Store to database
+            # store pro_match
+            # store model_prediction
             return True
         except Exception as e:
             return False
