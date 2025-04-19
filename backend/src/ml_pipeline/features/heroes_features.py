@@ -1,5 +1,5 @@
-import pandas as pd
 from sqlmodel import Session
+import pandas as pd
 from database.schemas.features import HeroFeatures
 from src.postgresql import get_engine
 
@@ -8,7 +8,7 @@ DRAFT_COLS = [
     '128_hero_id', '129_hero_id', '130_hero_id', '131_hero_id', '132_hero_id'
 ]
 
-def create_hero_features(input_df):
+def create_hero_features(input_df: pd.DataFrame) -> pd.DataFrame:
     
     df = input_df.copy()
     hero_features = df[[*DRAFT_COLS, 'match_id']]
@@ -41,5 +41,7 @@ def store_to_db(hero_features):
 def create_and_store_hero_features(input_df):
     features = create_hero_features(input_df)
     store_to_db(features)
+    
+    return features
     
     

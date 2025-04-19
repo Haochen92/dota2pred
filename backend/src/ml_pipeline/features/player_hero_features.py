@@ -1,4 +1,5 @@
 from sqlmodel import Session, select
+import pandas as pd
 from database.schemas.features import PlayerHeroFeature
 from database.schemas.histories import PlayerHeroHistories
 from collections import deque
@@ -153,6 +154,7 @@ class PlayerHeroFeatures:
     def create_and_store_player_hero_features(self, df):
         features = self.create_player_hero_features(df)
         self.store_to_db(features)
+        return pd.DataFrame(features)
         
     def clear_history_cache(self):
         if self.redis:

@@ -253,3 +253,4 @@ class TeamFeatureProcessor:
     def create_and_store_team_features(self, df):
         features = self.create_team_features(df)
         self.store_to_db(features)
+        return pd.DataFrame(features)
