@@ -13,6 +13,44 @@ services:
     networks:
       - dota-pred
   
+  test-db:
+    image: postgres:14
+    container_name: db-test
+    environment:
+      - POSTGRES_USER=liuhaochen
+      - POSTGRES_PASSWORD=110799
+      - POSTGRES_DB=dota2
+    ports:
+      - "6006:5432"
+    volumes:
+      - psql-test:/var/lib/postgresql/data
+    networks:
+      - dota-pred
+    profiles:
+      - dev
+  
+  redis:
+    image: redis:latest
+    container_name: my-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data
+    network:
+      - dota-pred
+    
+  test-redis:
+    image: redis:latest
+    container_name: redis-test
+    ports:
+      - "6400:6379"
+    volumes:
+      - test-redis:/data
+    network:
+      - dota-pred
+    profiles:
+      - dev
+
   bentoml:
     container_name: model-server
     image: match_prediction:latest
@@ -51,4 +89,7 @@ networks:
 
 volumes:
   psql:
+  psql-test:
+  redis:
+  redis-test:
   backend:    # Unused for now, but can be used later
