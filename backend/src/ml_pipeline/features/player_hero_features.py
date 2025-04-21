@@ -1,13 +1,16 @@
-from sqlmodel import Session, select
+from sqlmodel import select
+import redis
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 import pandas as pd
 from database.schemas.features import PlayerHeroFeature
 from database.schemas.histories import PlayerHeroHistories
 from collections import deque
+from typing import List, Dict, Union, Optional, Any, Deque, Tuple
 
 # create a cron job for syncing from redis to postgresql database
 
 class PlayerHeroFeatures:
-    def __init__(self, redis_client= None, db_client=None, max_history_length=20):
+    def __init__(self, redis_client: redis.Redis = None, db_client: AsyncEngine=None, max_history_length: int=20):
         self.redis = redis_client
         self.db = db_client
         self.max_history_length = max_history_length
@@ -15,15 +18,15 @@ class PlayerHeroFeatures:
         self.cache_expiry = 86400 * 30
         
         # if not using redis
-        self.player_hero_histories = {}
+        self.player_hero_histories: Dict[Tuple[Any, Any], Deque[bool]] = {}
         
-    def create_player_hero_features(self, df):
+    async def create_player_hero_features(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         
         features = []
         
         for _, match in df.iterrows():
             match_id = match['match_id']
-            match_result = {}
+            match_result: Dict[str, Any] = {}
             match_result['match_id'] = match_id
             
             radiant_num = range(0, 5)
@@ -34,33 +37,33 @@ class PlayerHeroFeatures:
                 account_id = match[f'{i}_account_id']
                 hero_id = match[f'{i}_hero_id']
                 # Calculate win rate based on previous matches
-                win_rate = self.calculate_win_rate(account_id, hero_id)
+                win_rate = await self.calculate_win_rate(account_id, hero_id)
                 # Add win rate to results for this match
                 match_result[f'player_hero_{i}_win_rate'] = win_rate
                 # Update history after calculating
-                self.update_player_hero_histories(account_id, hero_id, radiant_win)
+                await self.update_player_hero_histories(account_id, hero_id, radiant_win)
             
             for j in dire_num:
                 account_id = match[f'{j}_account_id']
                 hero_id = match[f'{j}_hero_id']
                 dire_win = not radiant_win
-                win_rate = self.calculate_win_rate(account_id, hero_id)
+                win_rate = await self.calculate_win_rate(account_id, hero_id)
                 match_result[f'player_hero_{j}_win_rate'] = win_rate
-                self.update_player_hero_histories(account_id, hero_id, dire_win)
+                await self.update_player_hero_histories(account_id, hero_id, dire_win)
             
             # Append complete match result with all player win rates
             features.append(match_result)
 
         return features
 
-    def calculate_win_rate(self, account_id, hero_name):
-        history = self.get_player_hero_history(account_id, hero_name)
+    async def calculate_win_rate(self, account_id: Any, hero_name: Any) -> float:
+        history = await self.get_player_hero_history(account_id, hero_name)
         if not history:
             return 0.5
         
         return sum(history) / len(history)
     
-    def get_player_hero_history(self, account_id, hero_name):
+    async def get_player_hero_history(self, account_id: Any, hero_name: Any) -> List[Any]:
         if self.redis:
             cache_key = f'histories:player_hero:{account_id}:{hero_name}'
             try:
@@ -70,7 +73,7 @@ class PlayerHeroFeatures:
                     return [int(x) for x in history] 
                 
                 elif self.db:
-                    history = self.fetch_history_from_db(account_id, hero_name)
+                    history = await self.fetch_history_from_db(account_id, hero_name)
                     if history:
                         pipeline = self.redis.pipeline()
                         pipeline.rpush(cache_key, *[int(val) for val in history])
@@ -80,18 +83,18 @@ class PlayerHeroFeatures:
             except Exception as e:
                 print(f"Redis error: {e}")
                 
-        return self.player_hero_histories.get((account_id, hero_name), [])
+        return list(self.player_hero_histories.get((account_id, hero_name), []))
     
-    def fetch_history_from_db(self, account_id, hero_name):
+    async def fetch_history_from_db(self, account_id, hero_name):
         table = PlayerHeroHistories
         try:
-            with Session(self.db) as session:
+            async with AsyncSession(self.db) as session:
                 stmt = select(table).where(
                     (table.account_id == account_id) &
                     (table.hero_name == hero_name)
                 )
-                results = session.exec(stmt)
-                results_list = results.all()
+                results = await session.execute(stmt)
+                results_list = results.scalars().first()
                 if not results_list:
                     return []
                 
@@ -102,7 +105,7 @@ class PlayerHeroFeatures:
             raise(e)
             
     
-    def update_player_hero_histories(self, account_id, hero_name, win: bool):
+    async def update_player_hero_histories(self, account_id: Any, hero_name: Any, win: bool) -> None:
         if self.redis:
             cache_key = f'histories:player_hero:{account_id}:{hero_name}'
             pipeline = self.redis.pipeline()
@@ -111,17 +114,18 @@ class PlayerHeroFeatures:
             pipeline.expire(cache_key, self.cache_expiry)
             pipeline.execute()
         else:
-            
             key = (account_id, hero_name)
-            if (account_id, hero_name) not in self.player_hero_histories:
+            if key not in self.player_hero_histories:
                 self.player_hero_histories[key] = deque(maxlen=self.max_history_length)
             
             self.player_hero_histories[key].append(win)
                 
     
-    def store_to_db(self, player_hero_features):
-        
-        with Session(self.db) as session:
+    async def store_to_db(self, player_hero_features:List[Dict[str, Any]]) -> None:
+        if not self.db:
+            print("No database connection available")
+            return
+        async with AsyncSession(self.db) as session:
             # For each match record
             for match in player_hero_features:
                 # Create a new PlayerHeroFeature instance
@@ -139,24 +143,35 @@ class PlayerHeroFeatures:
                     player_hero_132_win_rate=match["player_hero_132_win_rate"]
                 )
                 
-                # Use merge instead of add
-                session.merge(player_hero_feature_obj)
+                stmt = select(PlayerHeroFeature).where(PlayerHeroFeature.match_id == match["match_id"])
+                result = await session.execute(stmt)
+                existing = result.scalars().first()
+                
+                if existing:
+                    # Update existing record
+                    for key, value in match.items():
+                        if key != "match_id" and hasattr(existing, key):
+                            setattr(existing, key, value)
+                    session.add(existing)
+                else:
+                    # Add new record
+                    session.add(player_hero_feature_obj)
             
             # Commit all records at once
             try:
-                session.commit()
+                await session.commit()
                 print(f"Successfully stored {len(player_hero_features)} player-hero feature records")
             except Exception as e:
-                session.rollback()
+                await session.rollback()
                 print(f"Error storing player-hero features: {str(e)}")
 
         
-    def create_and_store_player_hero_features(self, df):
-        features = self.create_player_hero_features(df)
-        self.store_to_db(features)
+    async def create_and_store_player_hero_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        features = await self.create_player_hero_features(df)
+        await self.store_to_db(features)
         return pd.DataFrame(features)
         
-    def clear_history_cache(self):
+    async def clear_history_cache(self) -> None:
         if self.redis:
             try:
                 pattern = "histories:player_hero:*"
