@@ -1,7 +1,6 @@
 from data_pipeline.fetching.api.steam_api import fetch_steam_data
 from datetime import datetime as dt
-from typing import List, Optional, Set, Any
-import numpy as np 
+from typing import List, Optional, Set, Any 
 import yaml
 import asyncio
 from src.config import ROOT_DIR
@@ -15,7 +14,7 @@ LEAGUE_IDS_FP = ROOT_DIR / 'constants' /'league_ids.yml'
 # output file suffix
 current_datetime = dt.now().strftime('%Y%m%d')
 
-async def fetch_live_league_games() -> List[Optional[int]]:
+async def fetch_live_league_games() -> List[Optional[Match]]:
     game_data = await fetch_steam_data(endpoint=LIVE_LEAGUE_GAMES)
     games = game_data['result']['games']
     league_ids = get_league_ids(LEAGUE_IDS_FP)
@@ -28,7 +27,7 @@ async def fetch_live_league_games() -> List[Optional[int]]:
     else: 
         return live_league_games    
          
-def get_league_ids(file_path: str) -> Set[Any]:
+def get_league_ids(file_path: str) -> Set[int]:
     with open(file_path, 'r') as file:
         content = yaml.safe_load(file) or {}
         premium_leagues = content.get('PREMIUM_LEAGUES', {})
@@ -37,7 +36,7 @@ def get_league_ids(file_path: str) -> Set[Any]:
     return set(premium_leagues.values()) | set(professional_leagues.values())
 
 
-def populate_live_matches(games: List[Any] = None, league_ids_set: Set[Any] = None):
+def populate_live_matches(games: List[Any] = None, league_ids_set: Set[int] = None) -> Optional[List[Match]]:
     live_league_games = []
 
     for row in games:
@@ -69,7 +68,7 @@ def populate_live_matches(games: List[Any] = None, league_ids_set: Set[Any] = No
                     
             live_league_games.append(Match(**match_data))
 
-        return live_league_games
+    return live_league_games
 
 if __name__ == '__main__':
     asyncio.run(fetch_live_league_games())
