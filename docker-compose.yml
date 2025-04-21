@@ -27,29 +27,29 @@ services:
     networks:
       - dota-pred
     profiles:
-      - dev
+      - test
   
   redis:
     image: redis:latest
     container_name: my-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis:/data
-    network:
+    networks:
       - dota-pred
     
   test-redis:
     image: redis:latest
     container_name: redis-test
     ports:
-      - "6400:6379"
+      - "6390:6379"
     volumes:
-      - test-redis:/data
-    network:
+      - redis-test:/data
+    networks:
       - dota-pred
     profiles:
-      - dev
+      - test
 
   bentoml:
     container_name: model-server
