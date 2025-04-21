@@ -6,6 +6,7 @@ from datetime import timedelta
 from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
 from prefect.cache_policies import INPUTS, TASK_SOURCE
+from typing import Optional
 
 # Set up logger
 logger = get_logger(__name__)
@@ -16,7 +17,7 @@ match_info_handler.addFilter(lambda record: record.levelno == logging.INFO)
 logger.addHandler(match_info_handler)
 
 @task(retries=3, retry_delay_seconds=2, cache_policy=INPUTS + TASK_SOURCE, cache_expiration=timedelta(days=10))
-async def get_match_details(match_id):
+async def get_match_details(match_id: str) -> Optional[Match]:
     url = f'http://api.opendota.com/api/matches/{match_id}'
     status, res = await fetch_opendota_api(url)
     

@@ -1,7 +1,6 @@
-from sqlmodel import Session
 import pandas as pd
 from database.schemas.features import HeroFeatures
-from src.postgresql import get_engine
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 
 DRAFT_COLS = [
     '0_hero_id', '1_hero_id', '2_hero_id', '3_hero_id', '4_hero_id',
@@ -15,10 +14,9 @@ def create_hero_features(input_df: pd.DataFrame) -> pd.DataFrame:
     
     return hero_features
 
-def store_to_db(hero_features):
-    engine = get_engine()
-    with Session(engine) as session:
-        for _, row in hero_features.iterrows():
+async def store_to_db(hero_features_df: pd.DataFrame, engine: AsyncEngine):
+    async with AsyncSession(engine) as session:
+        for _, row in hero_features_df.iterrows():
             # Filter the row data to only include fields in the model
             # Convert to dict first to make it easier to filter
             row_dict = dict(row)
@@ -29,18 +27,18 @@ def store_to_db(hero_features):
                 if column in DRAFT_COLS:
                     hero_picks.append(value)
                     
-            hero_features = HeroFeatures(
+            hero_feature = HeroFeatures(
                 match_id=match_id,
                 hero_picks=hero_picks
             )
             
-            session.merge(hero_features)
+            await session.merge(hero_feature)
         
-        session.commit()
+        await session.commit()
         
-def create_and_store_hero_features(input_df):
+async def create_and_store_hero_features(input_df: pd.DataFrame, engine: AsyncEngine):
     features = create_hero_features(input_df)
-    store_to_db(features)
+    await store_to_db(features, engine)
     
     return features
     
