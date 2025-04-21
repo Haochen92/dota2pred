@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Singleton pattern for engine instance
 _async_engine_instance = None
 
-def get_async_engine():
+def get_async_engine(env: str = 'prod'):
     global _async_engine_instance
     if _async_engine_instance is None:
         db_url = os.environ.get("DATABASE_URL")
@@ -21,12 +21,13 @@ def get_async_engine():
                 db_url = db_url.replace('postgresql:', 'postgresql+asyncpg:', 1)
             _async_engine_instance = create_async_engine(db_url)
         else:
+            port = '6006' if env == 'test' else '6000'
             # Create URL for local development
             url_object = URL.create(
                 "postgresql+asyncpg",
                 username='liuhaochen',
                 host='localhost',
-                port='6000',
+                port=port,
                 password='110799',
                 database='dota2'
             )
@@ -34,8 +35,8 @@ def get_async_engine():
     return _async_engine_instance
 
 @asynccontextmanager
-async def get_async_session():
-    engine = get_async_engine()
+async def get_async_session(env: str = 'prod'):
+    engine = get_async_engine(env)
     async with AsyncSession(engine) as session:
         try:
             yield session
