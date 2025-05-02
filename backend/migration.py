@@ -20,9 +20,11 @@ def run_migrations(db_url, description):
         # Run the migration
         command.upgrade(alembic_cfg, "head")
         logger.info(f"Successfully migrated {description}")
+        print(f"Successfully migrated {description}")
         return True
     except Exception as e:
         logger.error(f"Error migrating {description}: {e}")
+        print(f"Error migrating {description}: {e}")
         return False
 
 def main():

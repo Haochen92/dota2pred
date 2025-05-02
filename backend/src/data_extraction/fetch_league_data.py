@@ -1,14 +1,11 @@
 from .api_clients.opendota_api import fetch_opendota
 from pydantic_models.leagues import LeaguesAPIResponse, LeagueItem
-from src.config import ROOT_DIR
 import asyncio
 from typing import List
 from pydantic import ValidationError
 from utils.set_logging import get_logger
 
 logger = get_logger(__name__)
-
-league_constants_fpth = ROOT_DIR / "constants"/ "league_ids.yml"
 
 async def fetch_league_data() -> List[LeagueItem]:
     
@@ -26,8 +23,6 @@ async def fetch_league_data() -> List[LeagueItem]:
         logger.error(f'Error fetching leagues data:')
         raise e
     
-    
-        
-        
+            
 if __name__ == "__main__":
     asyncio.run(fetch_league_data())
