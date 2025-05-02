@@ -8,14 +8,18 @@ class PerformanceMetrics(BaseModel):
     precision: float = 0.0
     recall: float = 0.0
     
-class VersionChanges(BaseModel):
+class VersionMetaData(BaseModel):
     changes: List[str] = []
     performance_metrics: PerformanceMetrics = Field(default_factory=PerformanceMetrics)
-    training_data: str = ""
+    feature_columns: List[str] = []
     
 class ModelMetaData(BaseModel):
-    model_name: str
+    name: str
     version: str
     trained_date: datetime
     previous_version : str = ""
-    changes: VersionChanges = Field(default_factory=VersionChanges)
+    version_metadata: VersionMetaData = Field(default_factory=VersionMetaData)
+    
+class ModelInferenceAPIResponse(BaseModel):
+    metadata: ModelMetaData
+    prediction: List[int]
