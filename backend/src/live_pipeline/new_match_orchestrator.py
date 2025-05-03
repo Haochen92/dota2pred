@@ -4,16 +4,16 @@ from typing import Set, Dict, Any
 from src.utils.set_logging import get_logger
 from .redis_constants import MATCH_STATUS, ONGOING_STREAM
 from utils.set_logging import get_logger
-from live_pipeline import MatchStorage
+from .match_pipeline_orchestrator import MatchRepository
 
 logger = get_logger(__name__)
 
 class NewMatchProcessor:
-    def __init__(self, redis_client: redis.Redis, storage: MatchStorage):
+    def __init__(self, redis_client: redis.Redis, storage: MatchRepository):
         self.redis = redis_client 
         self.storage = storage
         
-    async def process_new_matches(self, new_match_ids: Set[int], match_details: Dict[int, Dict[str, Any]]) -> int:   
+    async def process_new_matches(self, new_match_ids: Set[int], curr_matches: Dict[int, Dict[str, Any]]) -> int:   
         
         if not new_match_ids:
             return 0
@@ -25,8 +25,10 @@ class NewMatchProcessor:
         for match_id in new_match_ids:
             # Store match to database
             try:
-                match_data = match_details.get(match_id, {})
-                await self.storage.store_new_match(match_data)
+                match_data = curr_matches.get(match_id, {})
+                if not match_data:
+                    raise ValueError(f"{match_id} not found in current_matches")
+                await self.storage.insert_match_details(match_data)
                 await self._update_redis_stream(pipe, match_id)
                 matches_processed += 1
             except Exception as e:
