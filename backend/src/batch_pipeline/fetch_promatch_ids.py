@@ -6,7 +6,7 @@ from src.config import ROOT_DIR
 from src.utils.set_logging import get_logger
 from ..data_extraction.api_clients.opendota_api import fetch_opendota
 import pytz
-from redis_client import RedisClient
+from redis_component.redis_factory import RedisClientFactory
 
 '''
 Rewrite this entire function.
