@@ -28,7 +28,7 @@ class PredictionOrchestrator:
         logger.info(f"Initialized PredictionOrchestrator for consumer '{self.consumer_name}' on stream '{STREAM_PENDING_PREDICTION}'")
 
 
-    async def run_cycle(self) -> int:
+    async def run_prediction_cycle(self) -> int:
         """
         Processes one batch of matches pending prediction.
 
