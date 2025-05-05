@@ -1,11 +1,11 @@
-import redis
+import redis.asyncio as redis
 from typing import Dict
 
-class RedisClient:
+class RedisClientFactory:
     _instances: Dict[str, redis.Redis] = {}
     
     @classmethod
-    def get_instance(cls, env: str = 'prod') -> redis.Redis:
+    def create_instance(cls, env: str = 'prod') -> redis.Redis:
         if env not in cls._instances or cls._instances[env] is None:
             port = 6390 if env == 'test' else 6380
             cls._instances[env] = redis.Redis(

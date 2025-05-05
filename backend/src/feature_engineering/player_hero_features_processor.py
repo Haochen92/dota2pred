@@ -6,7 +6,7 @@ import asyncio
 
 logger = get_logger(__name__)
 
-class PlayerHeroFeatures:
+class PlayerHeroFeaturesProcessor:
     def __init__(self, history_repo: HistoryRepository, max_history_length: int=20):
         self.max_history_length = max_history_length
         self.history_repo = history_repo
