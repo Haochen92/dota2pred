@@ -45,39 +45,75 @@ class BaseRepository:
             except Exception as e:
                 logger.error(f"Error retrieving all records for {model_class.__name__}: {e}", exc_info=True)
                 return [] 
+            
+    async def _get_primary_key_attribute(self, model_class: Type[T]):
+        """Helper to get the single primary key attribute of a model."""
+        mapper = inspect(model_class)
+        pk_columns = mapper.primary_key
+
+        if len(pk_columns) != 1:
+            raise ValueError(f'Model {model_class.__name__} must have exactly one primary key column.')
+
+        pk_col_name = pk_columns[0].name
+
+        if not hasattr(model_class, pk_col_name):
+            raise AttributeError(f'Model {model_class.__name__} missing inspected primary key attribute {pk_col_name}')
+
+        pk_attribute = getattr(model_class, pk_col_name)
+        return pk_attribute
 
     async def _get_instance_by_id(self, model_class: Type[T], pk_value: Any) -> Optional[T]:
         """
-        Retrieves a single record by id
+        Retrieves a single record by its primary key value.
+        Assumes a single primary key column.
         """
+        try:
+            pk_attribute = await self._get_primary_key_attribute(model_class)
 
-        mapper = inspect(model_class)
-        pk_columns = mapper.primary_key
-        
-        if len(pk_columns) > 1:
-            raise ValueError('model has more than 1 primary key')
-
-        pk_col_name = pk_columns[0].name
-        
-        if not hasattr(model_class, pk_col_name):
-            raise AttributeError(f'Missing Attribute for {pk_col_name} in {model_class.__name__}' )
-        pk_attribute = getattr(model_class, pk_col_name)
-            
-            
-        async with AsyncSession(self.engine) as session:
-             try:
+            async with AsyncSession(self.engine) as session:
                 stmt = select(model_class).where(pk_attribute == pk_value)
                 result = await session.execute(stmt)
                 instance = result.scalars().first()
+
                 if instance:
-                    logger.debug(f"Retrieved record for {model_class.__name__} with id {id}")
+                    logger.debug(f"Retrieved record for {model_class.__name__} with pk {pk_value}")
                 else:
-                    logger.debug(f"No record found for {model_class.__name__} with id {id}")
-                    return None
-                return instance
-             except AttributeError:
-                  logger.error(f"Missing id attribute from Model {model_class.__name__}", exc_info=True)
-                  raise 
-             except Exception as e:
-                  logger.error(f"Error retrieving {model_class.__name__} by id {id}: {e}", exc_info=True)
-                  return None
+                    logger.debug(f"No record found for {model_class.__name__} with pk {pk_value}")
+                return instance 
+
+        except (AttributeError, ValueError) as e: 
+             logger.error(f"Error determining primary key for {model_class.__name__}: {e}", exc_info=True)
+             raise 
+        except Exception as e:
+             logger.error(f"Error retrieving {model_class.__name__} by pk {pk_value}: {e}", exc_info=True)
+             raise e
+
+
+    async def _get_instances_by_batch_ids(self, model_class: Type[T], batch_ids: List[Any]) -> List[T]:
+        """
+        Retrieves multiple records by a list of primary key values.
+        Assumes a single primary key column. Returns an empty list if no matches or on error.
+        """
+        # Handle empty input list efficiently
+        if not batch_ids:
+            logger.debug(f"Received empty batch ID list for {model_class.__name__}. Returning empty list.")
+            return []
+
+        try:
+            pk_attribute = await self._get_primary_key_attribute(model_class)
+
+            async with AsyncSession(self.engine) as session:
+                # Use the .in_() operator for the WHERE clause
+                stmt = select(model_class).where(pk_attribute.in_(batch_ids))
+                result = await session.execute(stmt)
+                instances = result.scalars().all()
+
+                logger.debug(f"Retrieved {len(instances)} records for {model_class.__name__} matching batch IDs.")
+                return list(instances)
+
+        except (AttributeError, ValueError) as e: # Catch PK detection errors
+             logger.error(f"Error determining primary key for {model_class.__name__}: {e}", exc_info=True)
+             return []
+        except Exception as e:
+             logger.error(f"Error retrieving {model_class.__name__} by batch IDs: {e}", exc_info=True)
+             raise e
