@@ -6,7 +6,6 @@ from feature_transformation.encoding import encode_hero_features
 from data_repository.features_repository import FeaturesRepository
 from data_repository.heroes_repository import HeroesRepository
 from utils.set_logging import get_logger
-from inference.model_inference import ModelInferenceService
 
 logger = get_logger(__name__)
 
@@ -15,14 +14,13 @@ class FeaturePreparationService:
         self,
         features_repository: FeaturesRepository,
         heroes_repository: HeroesRepository,
-        model_inference_service: ModelInferenceService
+        model_feature_names: List[str]
     ):
         self.feature_repo = features_repository
-        self.model_inference_service = model_inference_service
+        self.model_feature_names = model_feature_names
         self.heros_repository = heroes_repository
-        self.model_feature_names: List[str] = model_inference_service.model_metadata.feature_columns
         if not self.model_feature_names:
-            raise ValueError(f"Empty column feature names when initialising service")
+            raise ValueError("Model feature names list cannot be empty")
 
     async def get_transformed_features_from_id(self, match_id: int) -> Optional[np.ndarray]:
         """Fetches features by ID, prepares them, and returns a NumPy array."""

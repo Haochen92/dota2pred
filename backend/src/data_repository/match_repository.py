@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional
 from .schemas.matches import MatchTable, MatchOutcomeTable
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
@@ -17,10 +17,11 @@ class MatchRepository(BaseRepository):
         self.match_table_cols = set(c.name for c in MatchTable.__table__.columns)
         self.outcome_table_cols = set(c.name for c in MatchOutcomeTable.__table__.columns)
 
-    async def insert_match_details(self, match: Dict[str, any]):
+    async def insert_match_details(self, match: MatchPydantic):
         async with AsyncSession(self.engine) as session:
             try:
-                match_db =  {k : v for k, v in match.items() if k in self.match_table_cols}
+                match_dict = match.model_dump()
+                match_db =  {k : v for k, v in match_dict.items() if k in self.match_table_cols}
                 stmt = insert(MatchTable).values(match_db).on_conflict_do_nothing(index_elements=['match_id'])
                 await session.execute(stmt)
                 await session.commit()
@@ -108,16 +109,6 @@ class MatchRepository(BaseRepository):
             logger.error(f"Error fetching match_details for match {match_id}: {e}", exc_info=True)
             raise e
         
-    async def get_match_details_batch(self, list_match_ids: List[int]) -> List[MatchTable]:
-        try:
-            match_instances: List[MatchTable] = await self._get_instances_by_batch_ids(MatchTable, list_match_ids)
-            if not match_instances:
-                return []
-            return match_instances
-        except Exception as e:
-            logger.error(f"Error while fetching match details by batch: {e}", exc_info=True)
-            raise e
-            
     async def get_match_outcome(self, match_id:int) -> pd.DataFrame:
         try:
             match_outcome_instance: Optional[MatchOutcomeTable] = await self._get_instance_by_id(MatchOutcomeTable, match_id)
@@ -126,16 +117,6 @@ class MatchRepository(BaseRepository):
             return pd.DataFrame([match_outcome_instance.model_dump()])
         except Exception as e:
             logger.error(f"Error fetching match outcome for match {match_id}: {e}", exc_info=True)
-            raise e
-        
-    async def get_match_outcome_batch(self, list_match_id:List[int]) -> List[MatchOutcomeTable]:
-        try:
-            match_outcome_instances: List[MatchOutcomeTable] = await self._get_instances_by_batch_ids(MatchOutcomeTable, list_match_id)
-            if not match_outcome_instances:
-                return []
-            return match_outcome_instances
-        except Exception as e:
-            logger.error(f"Error fetching match outcome by batch {e}", exc_info=True)
             raise e
     
     async def get_all_match_details(self) -> pd.DataFrame:

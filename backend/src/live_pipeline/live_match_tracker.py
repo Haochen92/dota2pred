@@ -3,10 +3,6 @@ from typing import List, Set, Dict, Any
 from src.utils.set_logging import get_logger
 from .redis_constants import MATCH_SET, MATCH_STATUS
 
-'''
-API service for frontend UI polling 
-'''
-
 logger = get_logger(__name__)
 
 TMP_KEY = f'{MATCH_SET}:temp'
