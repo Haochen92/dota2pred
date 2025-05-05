@@ -36,10 +36,10 @@ class MatchPipelineOrchestrator:
             count_features_engineered: int = await self.feature_engineering_orchestrator.run_feature_engineering_cycle()
 
             # 3. Process matches pending prediction
-            count_predicted: int = await self.prediction_orchestrator.run_prediction_cycle() # May or may not need curr_match_dict
+            count_predicted: int = await self.prediction_orchestrator.run_prediction_cycle() 
 
             # 4. Process predicted matches to check for completion
-            count_completed: int = await self.completion_orchestrator.process_predicted_matches(curr_match_dict) # Renamed class
+            count_completed: int = await self.completion_orchestrator.process_predicted_matches() 
 
             logger.info(
                 f"Pipeline cycle stats: "
