@@ -1,59 +1,50 @@
-from typing import Set, Dict, Any, Optional, List
+import redis
+import time
+from typing import Set, Dict, Any
 from src.utils.set_logging import get_logger
+from .redis_constants import MATCH_STATUS, ONGOING_STREAM
 from utils.set_logging import get_logger
-from data_repository.match_repository import MatchRepository
-from .redis_service import RedisService
-
-# data extraction
-from data_extraction.fetch_live_leagues import fetch_live_league_games, LiveLeagueGame
+from .match_pipeline_orchestrator import MatchRepository
 
 logger = get_logger(__name__)
 
-class NewMatchOrchestrator:
-    def __init__(self, redis_service: RedisService, storage: MatchRepository):
-        self.redis = redis_service
+class NewMatchProcessor:
+    def __init__(self, redis_client: redis.Redis, storage: MatchRepository):
+        self.redis = redis_client 
         self.storage = storage
         
-    async def run_new_match_cycle(self) -> int:   
+    async def process_new_matches(self, new_match_ids: Set[int], curr_matches: Dict[int, Dict[str, Any]]) -> int:   
         
-        curr_matches = await self._fetch_current_matches()
-        if not curr_matches:
+        if not new_match_ids:
             return 0
-        logger.info(f"found {len(curr_matches)} new matches...")
-        
-        new_match_set: Set[int] = await self.redis.update_live_match_set_and_get_new(curr_matches.keys())
-        if not new_match_set:
-            logger.info("No new matches found")
-            return 0
-        
-        logger.info(f"Found {len(new_match_set)} new matches...")
+        logger.info("processing new matches...")
         
         matches_processed = 0
+        pipe = self.redis.pipeline()
         
-        for match_id in new_match_set:
+        for match_id in new_match_ids:
             # Store match to database
             try:
                 match_data = curr_matches.get(match_id, {})
                 if not match_data:
                     raise ValueError(f"{match_id} not found in current_matches")
                 await self.storage.insert_match_details(match_data)
-                await self.redis.add_match_for_processing(match_id)
+                await self._update_redis_stream(pipe, match_id)
                 matches_processed += 1
             except Exception as e:
                 logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
-                continue
+                raise e
+            
+        pipe.execute()
         
         logger.info(f"processed {matches_processed} new matches")
         return matches_processed
     
-    
-    async def _fetch_current_matches(self) -> Optional[Dict[int, Dict[str, Any]]]:
-        try:
-            curr_games: List[LiveLeagueGame] = await fetch_live_league_games()
-            curr_match_dict: Dict[int, Dict[str, Any]] = {item.match_id : item.model_dump() for item in curr_games}
-            
-            logger.info(f"Fetched {len(curr_match_dict)} live matches.")
-            return curr_match_dict
-        except Exception as e:
-            logger.warning(f"Error fetching matches from API, {e}", exc_info=True)
-            return {}
+    async def _update_redis_stream(self, pipe: redis.pipeline, match_id):
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        # update current match_status
+        pipe.hset(f'{MATCH_STATUS}:{match_id}', 'status','ongoing')
+        pipe.xadd(
+            ONGOING_STREAM, 
+            {'match_id': match_id, 'timestamp': timestamp}
+        )

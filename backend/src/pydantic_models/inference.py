@@ -11,15 +11,15 @@ class PerformanceMetrics(BaseModel):
 class VersionMetaData(BaseModel):
     changes: List[str] = []
     performance_metrics: PerformanceMetrics = Field(default_factory=PerformanceMetrics)
+    feature_columns: List[str] = []
     
 class ModelMetaData(BaseModel):
     name: str
     version: str
     trained_date: datetime
-    feature_columns = List[str]
     previous_version : str = ""
     version_metadata: VersionMetaData = Field(default_factory=VersionMetaData)
     
-class ModelPrediction(BaseModel):
+class ModelInferenceAPIResponse(BaseModel):
+    metadata: ModelMetaData
     prediction: List[int]
-    probability: Optional[List[float]]
