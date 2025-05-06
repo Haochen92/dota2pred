@@ -3,7 +3,7 @@ from dependency_injector import providers, containers
 from dependency_injector.wiring import inject, Provide
 
 # Redis client 
-from redis_component.redis_factory import RedisClientFactory
+from redis_component.redis_client_factory import RedisClientFactory
 
 # database
 from postgresql import DatabaseEngineFactory
