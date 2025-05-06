@@ -1,1 +1,1 @@
-from .redis_factory import RedisClientFactory
+from .redis_client_factory import RedisClientFactory
