@@ -2,7 +2,6 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from data_repository.heroes_repository import HeroesRepository
 import pandas as pd
 
-
 async def encode_hero_features(hero_features: pd.DataFrame, heros_repo: HeroesRepository) -> pd.DataFrame:
     
     if hero_features.empty:
