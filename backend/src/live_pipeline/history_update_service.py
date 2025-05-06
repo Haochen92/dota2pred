@@ -11,13 +11,13 @@ class HistoryUpdateService:
     async def update_histories(self, match_details: MatchesAPIResponse) -> None:
         try:
             # team histories
-            await self.history_repository.add_team_match_outcome(
+            await self.storage.add_team_match_outcome(
                 team_name=match_details.radiant_name,
                 match_id=match_details.match_id,
                 win=match_details.radiant_win,
                 match_start_time=match_details.start_time
             )
-            await self.history_repository.add_team_match_outcome(
+            await self.storage.add_team_match_outcome(
                 team_name=match_details.dire_name,
                 match_id=match_details.match_id,
                 win= not match_details.radiant_win,
@@ -25,7 +25,7 @@ class HistoryUpdateService:
             )
             
             # team match_up histories
-            await self.history_repository.add_team_match_up_outcome(
+            await self.storage.add_team_match_up_outcome(
                 team_one=match_details.radiant_name,
                 team_two=match_details.dire_name,
                 match_id=match_details.match_id,
@@ -48,7 +48,7 @@ class HistoryUpdateService:
                 else:
                     win = not match_details.radiant_win
                     
-                await self.history_repository.add_player_hero_match_outcome(
+                await self.storage.add_player_hero_match_outcome(
                     account_id=account_id,
                     hero_id=hero_id,
                     match_id=match_details.match_id,
