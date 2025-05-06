@@ -18,7 +18,7 @@ class MatchPredictionService:
         self.storage = prediction_repository
         
     async def predict_and_store(self, match_id: int) -> bool:
-        input_array: np.ndarry = self.feature_preparation_service.get_transformed_features_from_id(match_id)
+        input_array: np.ndarry = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
         
         if not input_array:
             logger.warning(f"input array empty after feature preparation for match: {match_id}")
