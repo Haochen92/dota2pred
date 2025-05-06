@@ -51,7 +51,7 @@ class CompletionOrchestrator:
                 
                 await self.history_updater.update_histories(completed_match_details)
                 
-                await self.redis.update_completed_matches(match_id, event_id)
+                await self.redis.mark_match_as_completed(match_id, event_id)
                 
                 events_processed += 1
             except Exception as e:
