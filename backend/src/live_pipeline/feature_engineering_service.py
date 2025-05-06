@@ -17,7 +17,7 @@ class FeatureEngineeringService:
         self.storage = features_repository
         
     async def create_and_store_features(self, match_dataframe: pd.DataFrame) -> bool:
-        if not match_dataframe.empty:
+        if match_dataframe.empty:
             logger.warning(f'Empty dataframe found')
             return False
         
@@ -26,7 +26,7 @@ class FeatureEngineeringService:
             logger.warning(f'dataframe is empty after preprocessing')
             return False
         
-        # can wrap in coroutine
+        # to consider? wrap in coroutine?
         try:
             hero_features: pd.DataFrame = create_hero_features(processed_dataframe)
             team_features: pd.DataFrame = await self.team_feature_processor.create_team_features(processed_dataframe)
@@ -35,7 +35,7 @@ class FeatureEngineeringService:
             logger.error(f"Error creating features {e}", exc_info=True)
             return False
         
-        # can wrap in coroutine too
+        # to consider? wrap in coroutine too?
         try:
             await self.storage.store_features(hero_features)
             await self.storage.store_features(team_features)
