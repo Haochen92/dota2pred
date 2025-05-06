@@ -1,14 +1,23 @@
 import pandas as pd
 import numpy as np
 import asyncio
-from typing import Optional, List
+from sqlmodel import SQLModel
+from typing import Optional, Union, List, Dict
 from feature_transformation.encoding import encode_hero_features
+from data_repository.schemas.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
 from data_repository.features_repository import FeaturesRepository
 from data_repository.heroes_repository import HeroesRepository
 from utils.set_logging import get_logger
 from inference.model_inference import ModelInferenceService
 
 logger = get_logger(__name__)
+
+# Feature keys:
+HERO_KEY = 'hero'
+TEAM_KEY = 'team'
+PLAYER_HERO_KEY = 'player_hero'
+
+FetchResult = Union[Optional[SQLModel], Exception]
 
 class FeaturePreparationService:
     def __init__(
@@ -23,64 +32,66 @@ class FeaturePreparationService:
         self.model_feature_names: List[str] = model_inference_service.model_metadata.feature_columns
         if not self.model_feature_names:
             raise ValueError(f"Empty column feature names when initialising service")
-
+        
     async def get_transformed_features_from_id(self, match_id: int) -> Optional[np.ndarray]:
-        """Fetches features by ID, prepares them, and returns a NumPy array."""
-        try:
-            # Fetch concurrently 
-            tasks = [
-                self.feature_repo.get_hero_features(match_id),
-                self.feature_repo.get_team_features(match_id),
-                self.feature_repo.get_player_hero_features(match_id),
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+        """
+        Fetches raw features, processes, encodes, merges, and returns a NumPy array.
+        """
+        logger.info(f"Starting feature preparation for match {match_id}")
 
-            # Check results (handles None and exceptions)
-            hero_features, team_features, player_hero_features = results
-
-            # Handle exceptions during fetch
-            for i, res in enumerate(results):
-                 if isinstance(res, Exception):
-                      logger.error(f"Failed to fetch feature set {i} for match {match_id}: {res}")
-                      return None
-
-            # Check for None results (valid fetch but no data)
-            if hero_features is None or team_features is None or player_hero_features is None:
-                logger.warning(f"One or more feature sets not found in DB for match_id: {match_id}")
+        tasks = {
+            HERO_KEY: self.feature_repo.get_feature_by_id(match_id, HeroFeaturesTable),
+            TEAM_KEY: self.feature_repo.get_feature_by_id(match_id, TeamFeaturesTable),
+            PLAYER_HERO_KEY: self.feature_repo.get_feature_by_id(match_id, PlayerHeroFeatureTable)
+        }
+        
+        task_coroutines = list(tasks.values())
+        task_keys = list(tasks.keys())
+        results_list = await asyncio.gather(*task_coroutines, return_exceptions=True)
+        
+        raw_features_dict: Dict[str, SQLModel] = {}
+        for i, res in enumerate(results_list):
+            key = task_keys[i]
+            if isinstance(res, Exception):
+                logger.error(f"Exception fetching raw feature '{key}' for match {match_id}: {res}", exc_info=False)
+                return None 
+            elif res is None:
+                logger.warning(f"Raw feature '{key}' not found in DB for match_id {match_id}. Cannot proceed.")
                 return None
-            
-            # Check for empty dataframes (valid fetch, data exists, but is empty)
-            if hero_features.empty or team_features.empty or player_hero_features.empty:
-                logger.warning(f"One or more feature sets are empty for match_id: {match_id}")
-                return None # Or handle differently if empty frames are valid input for merge/encode
-
-        except Exception as e:
-            # Catch any other unexpected error during setup/gather
-            logger.error(f"Unexpected error fetching features for match {match_id}: {e}", exc_info=True)
-            return None # Or re-raise
+            else:
+                # Store the valid model instance
+                raw_features_dict[key] = res
 
         try:
-             hero_features_encoded = await encode_hero_features(hero_features, self.heros_repository)
-             if hero_features_encoded is None or hero_features_encoded.empty:
-                  logger.error(f"Hero feature encoding failed or returned empty for match {match_id}")
-                  return None
+            logger.info(f"Successfully retrieved all raw feature sets for match {match_id}. Proceeding with processing.")
 
+            hero_df = pd.DataFrame([raw_features_dict[HERO_KEY].model_dump()])
+            team_df = pd.DataFrame([raw_features_dict[TEAM_KEY].model_dump()])
+            player_hero_df = pd.DataFrame([raw_features_dict[PLAYER_HERO_KEY].model_dump()])
 
-             final_features_df = self._merge_and_filter_dataframe(
-                 hero_features=hero_features_encoded, 
-                 team_features=team_features,
-                 player_hero_features=player_hero_features
-             )
+            encoded_hero_df = await encode_hero_features(hero_df, self.heros_repository)
+            
+            final_features_df = self._merge_and_filter_dataframe(
+                hero_features_df=encoded_hero_df,
+                team_features_df=team_df,
+                player_hero_features_df=player_hero_df
+            )
 
-             if final_features_df is None: # Check if merge/filter failed
-                 return None
+            if final_features_df is None or final_features_df.empty:
+                logger.warning(f"Feature merging/filtering resulted in None or empty DataFrame for match {match_id}")
+                return None
 
-             return final_features_df.to_numpy()
+            # Convert final DataFrame to NumPy array
+            numpy_array = final_features_df.to_numpy()
+            logger.info(f"Successfully prepared features for match {match_id}, final shape: {numpy_array.shape}")
+            return numpy_array
 
+        except KeyError as e:
+            logger.error(f"Internal processing error (missing key {e}?) for match {match_id}", exc_info=True)
+            return None
         except Exception as e:
-             logger.error(f"Failed to prepare features after fetching for match {match_id}: {e}", exc_info=True)
-             return None
-
+            logger.error(f"Failed during feature processing/merging stage for match {match_id}: {e}", exc_info=True)
+            return None
 
     async def get_transformed_features_from_df(
         self,
@@ -127,7 +138,7 @@ class FeaturePreparationService:
         hero_features: pd.DataFrame,
         team_features: pd.DataFrame,
         player_hero_features: pd.DataFrame
-    ) -> Optional[pd.DataFrame]: # Return Optional DataFrame
+    ) -> Optional[pd.DataFrame]: 
         """Merges feature DataFrames and filters columns based on model requirements."""
         try:
             # Check required merge column exists
