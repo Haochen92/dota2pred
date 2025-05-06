@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict, Any, List
 from utils.set_logging import get_logger
-from data_repository.histories_repository import HistoryRepository
+from data_repository.history_repository import HistoryRepository
 import asyncio
 
 logger = get_logger(__name__)
