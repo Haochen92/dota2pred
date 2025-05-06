@@ -27,7 +27,7 @@ class FeaturePreparationService:
     async def get_transformed_features_from_id(self, match_id: int) -> Optional[np.ndarray]:
         """Fetches features by ID, prepares them, and returns a NumPy array."""
         try:
-            # Fetch concurrently for potential speedup
+            # Fetch concurrently 
             tasks = [
                 self.feature_repo.get_hero_features(match_id),
                 self.feature_repo.get_team_features(match_id),
