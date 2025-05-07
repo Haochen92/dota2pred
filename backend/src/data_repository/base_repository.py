@@ -8,7 +8,7 @@ class SQLModelTable(Protocol):
     __table__: Table
     __name__: str
     
-T = TypeVar("T", bound=SQLModel)
+T = TypeVar("T", bound=SQLModel) # Bind to SQLModel or a subclass 
 
 logger = get_logger(__name__)
 
