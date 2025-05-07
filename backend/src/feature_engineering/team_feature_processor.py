@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict, List, Any, Optional, Coroutine
 from data_repository.history_repository import HistoryRepository 
-from utils import get_logger, run_tasks_as_group
+from utils import get_logger, get_outcome_as_group
 
 logger = get_logger(__name__) 
 
@@ -47,7 +47,7 @@ class TeamFeatureProcessor:
             }
 
             try:
-                outcome_dict: Dict[str, float] = await run_tasks_as_group(tasks_dict)
+                outcome_dict: Dict[str, float] = await get_outcome_as_group(tasks_dict)
                 row_features = {'match_id': match_id, **outcome_dict}
                 all_match_features.append(row_features)
             except Exception as e:

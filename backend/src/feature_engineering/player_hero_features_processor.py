@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Dict, Any, List, Coroutine
-from utils import get_logger, run_tasks_as_group
+from utils import get_logger, get_outcome_as_group
 from data_repository.history_repository import HistoryRepository
 
 logger = get_logger(__name__)
@@ -34,7 +34,7 @@ class PlayerHeroFeaturesProcessor:
                         
                     tasks_dict[feature_key] = self._calculate_win_rate(account_id, hero_id)
                 
-                outcome_dict: Dict[str, float] = run_tasks_as_group(tasks_dict)
+                outcome_dict: Dict[str, float] = get_outcome_as_group(tasks_dict)
                 feature_row_with_id = {'match_id': match_id, **outcome_dict}
                 all_match_features.append(feature_row_with_id)
             
