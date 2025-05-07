@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import TypeVar, Coroutine, Dict, Any
+from typing import TypeVar, Coroutine, Dict, Any, List
 from utils.set_logging import get_logger
 
 logger = get_logger(__name__)
@@ -9,7 +9,7 @@ T = TypeVar('T')
 
 ASYNC_TASK = Coroutine[Any, Any, T]
 
-async def run_tasks_concurrently(
+async def get_outcome_concurrently(
     keyed_coroutines: Dict[str, ASYNC_TASK]
 ) -> Dict[str, T|Exception]:
     
@@ -43,7 +43,7 @@ async def run_tasks_concurrently(
     return outcome_dict
     
 
-async def run_tasks_as_group(
+async def get_outcome_as_group(
     keyed_coroutines: Dict[str, ASYNC_TASK]
 ) -> Dict[str, T]| Exception:
     
@@ -65,5 +65,61 @@ async def run_tasks_as_group(
     return results_dict
 
     
+async def run_updates_concurrently(
+    update_coroutines: List[Coroutine[Any, Any, Any]],
+) -> None:
+    """
+    Runs a list of update coroutines concurrently.
+    All coroutines are attempted. Errors are logged.
+    Does not return any values.
+    """
+    if not update_coroutines:
+        return
+
+    results_or_exceptions = await asyncio.gather(
+        *update_coroutines, 
+        return_exceptions=True
+    )
     
+    error_count = 0
+    success_count = 0
+    
+    for i, outcome in enumerate(results_or_exceptions):
+        if isinstance(outcome, Exception):
+            logger.warning(f"Update task at index {i} failed: {type(outcome).__name__} - {outcome}") # Placeholder for logger
+            error_count += 1
+        else:
+            success_count += 1
+        
+    logger.info(f"Update tasks completed. Successful: {success_count}, Failed: {error_count}.")
+
+async def run_updates_as_group(
+    update_coroutines: List[Coroutine[Any, Any, Any]]
+) -> None:
+    """
+    Runs a list of update coroutines using asyncio.TaskGroup.
+    If ANY task fails, TaskGroup will raise that task's exception (or an ExceptionGroup),
+    and other tasks in the group will be cancelled. This function allows that exception
+    to propagate.
+    If all succeed, the function completes silently.
+    Requires Python 3.11+.
+    """
+    if sys.version_info < (3, 11):
+        raise RuntimeError("asyncio.TaskGroup requires Python 3.11 or newer.")
+    
+    if not update_coroutines:
+        return
+
+    try:
+        async with asyncio.TaskGroup() as tg:
+            logger.info(f"TaskGroup active for updates. Creating {len(update_coroutines)} tasks...") # Placeholder
+            for i, coro in enumerate(update_coroutines):
+                tg.create_task(coro) 
+            logger.info("All update tasks created in TaskGroup. Waiting for completion...")
+           
+        logger.info("TaskGroup for updates completed successfully. All updates presumed successful.")
+    except Exception as e:
+        print(f"TaskGroup for updates encountered an error: {type(e).__name__} - {e}")
+        raise 
+
     
