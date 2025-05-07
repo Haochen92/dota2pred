@@ -1,8 +1,7 @@
 import pandas as pd
-from typing import Dict, Any, List
-from utils.set_logging import get_logger
+from typing import Dict, Any, List, Coroutine
+from utils import get_logger, run_tasks_as_group
 from data_repository.history_repository import HistoryRepository
-import asyncio
 
 logger = get_logger(__name__)
 
@@ -13,41 +12,44 @@ class PlayerHeroFeaturesProcessor:
         
     async def create_player_hero_features(self, df: pd.DataFrame) -> pd.DataFrame:
         
-        features = []
+        all_match_features: List[Dict[str, Any]] = []
+        player_slots = list(range(5)) + list(range(128, 133))
+        match_records = df.to_dict('records')
         
-        for _, match in df.iterrows():
-            match_id = match['match_id']
-            match_result: Dict[str, Any] = {'match_id':match_id}
-            
-            tasks: Dict[str, asyncio.Task] = {}
-            
-            for i in list(range(5)) + list(range(128, 133)):
-                account_id = match[f'slot_{i}_account_id']
-                hero_id = match[f'slot_{i}_hero_id']
-                feature_key = f'player_hero_{i}_win_rate'
+        for match in match_records:
+            match_id = match.get('match_id')
+            try:                
+                tasks_dict: Dict[str, Coroutine[Any, Any, float]] = {}
                 
-                co_routine = self._calculate_win_rate(account_id, hero_id)
-                tasks[feature_key] = asyncio.create_task(co_routine)
-            
-            if tasks:
-                task_values = list(tasks.values())
-                results = await asyncio.gather(*task_values, return_exceptions=True)
-                task_keys = list(tasks.keys())
+                for i in player_slots:
+                    account_id = match[f'slot_{i}_account_id']
+                    hero_id = match[f'slot_{i}_hero_id']
+                    feature_key = f'player_hero_{i}_win_rate'
+                    
+                    if pd.isna(account_id) or pd.isna(hero_id):
+                        raise ValueError(
+                            f"Match {match_id}, Slot {i}: Missing account_id ({account_id})"
+                            f"or hero_id ({hero_id}). Failing this match."
+                        )
+                        
+                    tasks_dict[feature_key] = self._calculate_win_rate(account_id, hero_id)
                 
-                for i, result in enumerate(results):
-                    feature_key = task_keys[i]
-                    match_result[feature_key] = result
-            # Append complete match result with all player win rates
-            features.append(match_result)
+                outcome_dict: Dict[str, float] = run_tasks_as_group(tasks_dict)
+                feature_row_with_id = {'match_id': match_id, **outcome_dict}
+                all_match_features.append(feature_row_with_id)
+            
+            except ValueError as ve:
+                print(f"Skipping match {match_id} due to missing player data: {ve}")
+                continue
+            except Exception as e:
+                logger.error(f"Error for match {match_id}: {e}")
+                continue
 
-        return pd.DataFrame(features)
+        return pd.DataFrame(all_match_features)
 
     async def _calculate_win_rate(self, account_id: int, hero_id: int) -> float:
-        if not account_id or not hero_id:
-            logger.debug(f"Invalid account_id ({account_id}) or hero_id ({hero_id}) received. Returning default win rate.")
-            return 0.5 
         
-        history: List[bool] = await self.history_repo.fetch_player_hero_history(account_id, hero_id)
+        history: List[bool] = await self.history_repo.get_player_hero_win_history(account_id, hero_id)
         if not history:
             return 0.5
         
