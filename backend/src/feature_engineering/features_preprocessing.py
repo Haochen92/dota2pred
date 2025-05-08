@@ -15,7 +15,6 @@ def preprocess_live_match_data(input_df: pd.DataFrame) -> pd.DataFrame:
     else:
         raise TypeError("Input must be pandas DataFrame")
     # Convert Unix time to datetime format
-    df = convert_time_col(df, TIME_COL)
     df = map_hero_ids_to_names(df, DRAFT_COLS, HERO_MAP)
     
     return df
@@ -57,7 +56,6 @@ def preprocess_batch_match_data(input_df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     # 4. Apply Common Transformations
-    df = convert_time_col(df, TIME_COL)
     df = map_hero_ids_to_names(df, DRAFT_COLS, HERO_MAP)
 
     # 5. Handle Missing Values (after potential coercion/mapping)
@@ -77,21 +75,6 @@ def preprocess_batch_match_data(input_df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Finished batch preprocessing. {len(df)} rows remaining.")
     return df
 
-
-def convert_time_col(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
-    if time_col in df.columns:
-        before_nulls = df[time_col].isnull().sum()
-        df[time_col] = pd.to_datetime(df[time_col], unit='s', errors='coerce') 
-        after_nulls = df[time_col].isnull().sum()
-        
-        if after_nulls > before_nulls:
-            new_nulls = after_nulls - before_nulls
-            logger.warning(f"{len(new_nulls)} rows failed to convert")
-            
-    else:
-        logger.warning('no time col found')
-    
-    return df
 
 def map_hero_ids_to_names(
     df: pd.DataFrame,
