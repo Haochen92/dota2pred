@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import select, desc
 from utils.set_logging import get_logger
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -22,8 +23,8 @@ class HistoryRepository:
         self,
         account_id: int,
         hero_id: int,
-        before: Optional[int] = None,
-        after: Optional[int] = 0,
+        before: Optional[datetime] = None, 
+        after: Optional[datetime] = None, # Optional field for after a patch 
         limit: Optional[int] = None
     ) -> List[bool]:
         """
@@ -56,9 +57,9 @@ class HistoryRepository:
                     .where(PlayerHeroHistoryTable.hero_id == hero_id)
                 )
 
-                if isinstance(after, (int, float)) and after >= 0: 
+                if after: 
                     stmt = stmt.where(PlayerHeroHistoryTable.match_start_time > after)
-                if isinstance(before, (int, float)):
+                if before:
                     stmt = stmt.where(PlayerHeroHistoryTable.match_start_time < before)
 
                 stmt = (
@@ -83,7 +84,7 @@ class HistoryRepository:
         hero_id: int,
         match_id: int,
         win: bool,
-        match_start_time: float 
+        match_start_time: datetime 
     ) -> None:
         """
         Persists a single player-hero match outcome using INSERT ... ON CONFLICT DO NOTHING.
@@ -113,8 +114,8 @@ class HistoryRepository:
     async def get_team_history(
         self,
         team_name: str,
-        before: Optional[int] = None,
-        after: Optional[int] = 0,
+        before: Optional[datetime] = None,
+        after: Optional[datetime] = None,
         limit: Optional[int] = None
     ) -> List[bool]:
         """
@@ -134,9 +135,9 @@ class HistoryRepository:
                     TeamHistoryTable.team_name == team_name
                 )
 
-                if isinstance(after, (int, float)) and after >= 0:
+                if after:
                     stmt = stmt.where(TeamHistoryTable.match_start_time > after)
-                if isinstance(before, (int, float)):
+                if before:
                     stmt = stmt.where(TeamHistoryTable.match_start_time < before)
 
                 stmt = (
@@ -159,8 +160,8 @@ class HistoryRepository:
         self,
         team_one: str,
         team_two: str,
-        before: Optional[int] = None,
-        after: Optional[int] = 0,
+        before: Optional[datetime] = None,
+        after: Optional[datetime] = None,
         limit: Optional[int] = None
     ) -> List[bool]:
         """
@@ -182,9 +183,9 @@ class HistoryRepository:
                    TeamMatchupHistoryTable.team2_name == sorted_teams[1]
                 )
 
-                if isinstance(after, (int, float)) and after >= 0:
+                if after:
                     stmt = stmt.where(TeamMatchupHistoryTable.match_start_time > after)
-                if isinstance(before, (int, float)):
+                if before:
                     stmt = stmt.where(TeamMatchupHistoryTable.match_start_time < before)
 
                 stmt = (
@@ -207,7 +208,7 @@ class HistoryRepository:
         team_name: str,
         match_id: int,
         win: bool,
-        match_start_time: float
+        match_start_time: datetime
     ) -> None:
         """
         Persists a single team match outcome.
@@ -239,7 +240,7 @@ class HistoryRepository:
         team_two: str,
         match_id: int,
         win: bool, # Assumes win is from team_one's perspective
-        match_start_time: float
+        match_start_time: datetime
     ) -> None:
         """
         Persists a single team matchup outcome.
