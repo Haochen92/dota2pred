@@ -2,13 +2,14 @@ import pandas as pd
 import numpy as np
 import asyncio
 from sqlmodel import SQLModel
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Coroutine, Any
 from feature_transformation.encoding import encode_hero_features
 from data_repository.schemas.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
 from data_repository.features_repository import FeaturesRepository
 from data_repository.heroes_repository import HeroesRepository
 from utils.set_logging import get_logger
 from inference.model_inference import ModelInferenceService
+from utils.async_utils import get_outcome_as_group
 
 logger = get_logger(__name__)
 
@@ -39,35 +40,20 @@ class FeaturePreparationService:
         """
         logger.info(f"Starting feature preparation for match {match_id}")
 
-        tasks = {
+        tasks_group: Dict[str, Coroutine[Any, Any, SQLModel]] = {
             HERO_KEY: self.feature_repo.get_feature_by_id(match_id, HeroFeaturesTable),
             TEAM_KEY: self.feature_repo.get_feature_by_id(match_id, TeamFeaturesTable),
             PLAYER_HERO_KEY: self.feature_repo.get_feature_by_id(match_id, PlayerHeroFeatureTable)
         }
         
-        task_coroutines = list(tasks.values())
-        task_keys = list(tasks.keys())
-        results_list = await asyncio.gather(*task_coroutines, return_exceptions=True)
-        
-        raw_features_dict: Dict[str, SQLModel] = {}
-        for i, res in enumerate(results_list):
-            key = task_keys[i]
-            if isinstance(res, Exception):
-                logger.error(f"Exception fetching raw feature '{key}' for match {match_id}: {res}", exc_info=False)
-                return None 
-            elif res is None:
-                logger.warning(f"Raw feature '{key}' not found in DB for match_id {match_id}. Cannot proceed.")
-                return None
-            else:
-                # Store the valid model instance
-                raw_features_dict[key] = res
 
         try:
+            outcome_dict: Dict[str, SQLModel] = await get_outcome_as_group(tasks_group)
             logger.info(f"Successfully retrieved all raw feature sets for match {match_id}. Proceeding with processing.")
 
-            hero_df = pd.DataFrame([raw_features_dict[HERO_KEY].model_dump()])
-            team_df = pd.DataFrame([raw_features_dict[TEAM_KEY].model_dump()])
-            player_hero_df = pd.DataFrame([raw_features_dict[PLAYER_HERO_KEY].model_dump()])
+            hero_df = pd.DataFrame([outcome_dict[HERO_KEY].model_dump()])
+            team_df = pd.DataFrame([outcome_dict[TEAM_KEY].model_dump()])
+            player_hero_df = pd.DataFrame([outcome_dict[PLAYER_HERO_KEY].model_dump()])
 
             encoded_hero_df = await encode_hero_features(hero_df, self.heros_repository)
             
