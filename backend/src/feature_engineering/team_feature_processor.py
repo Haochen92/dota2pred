@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Coroutine
 from data_repository.history_repository import HistoryRepository 
 from utils import get_logger, get_outcome_as_group
+from datetime import datetime
 
 logger = get_logger(__name__) 
 
@@ -18,8 +19,8 @@ class TeamFeatureProcessor:
     async def create_team_features(
             self,
             df: pd.DataFrame,
-            before_timestamp: Optional[int] = None,
-            after_timestamp: Optional[int] = 0,
+            before_timestamp: Optional[datetime] = None,
+            after_timestamp: Optional[datetime] = None,
             history_limit: Optional[int] = None
         ) -> pd.DataFrame:
         
@@ -62,8 +63,8 @@ class TeamFeatureProcessor:
 
     async def _calculate_team_win_rate(self,
                                        team_name: Optional[str],
-                                       before: int,
-                                       after: Optional[int] = 0,
+                                       before: datetime,
+                                       after: Optional[datetime] = None,
                                        limit: Optional[int] = None
                                     ) -> float:
         """Calculates win rate for a single team using the history repository."""
@@ -91,8 +92,8 @@ class TeamFeatureProcessor:
     async def _calculate_matchup_win_rate(self,
                                         team_name: str, 
                                         opponent_name: str,
-                                        before: Optional[int] = None,
-                                        after: Optional[int] = 0,
+                                        before: datetime ,
+                                        after: Optional[datetime] = None,
                                         limit: Optional[int] = None
                                         ) -> float:
         """Calculates the head-to-head win rate for team_name against opponent_name."""
