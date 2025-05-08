@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 from sqlmodel import SQLModel
-from data_repository import schemas
+from src.data_repository import schemas
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
