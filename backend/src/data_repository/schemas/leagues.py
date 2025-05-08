@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from pydantic_models.leagues import LeagueItem
+from src.pydantic_models.leagues import LeagueItem
 
 class LeagueTable(SQLModel, LeagueItem, table=True):
     # overrides LeagueItem
