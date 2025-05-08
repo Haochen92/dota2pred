@@ -2,6 +2,7 @@ from src.pydantic_models.match import MatchesAPIResponse, Match
 from pydantic import ValidationError
 from src.pydantic_models.match import Match
 from utils.set_logging import get_logger
+from utils.time_utils import to_utc_datetime_object
 
 logger = get_logger(__name__)
 
@@ -9,6 +10,8 @@ def parse_completed_matches(raw_match_data: MatchesAPIResponse) -> Match:
     # Initialize player slots dictionaries
     try:
         # Create match data dictionary with required fields
+        
+        
         match_data = {
             'match_id': raw_match_data.match_id,
             'league_id': raw_match_data.league.leagueid if raw_match_data.league else None,
@@ -16,7 +19,7 @@ def parse_completed_matches(raw_match_data: MatchesAPIResponse) -> Match:
             'radiant_team_id': raw_match_data.radiant_team_id if raw_match_data.radiant_team_id is not None else 0,
             'dire_name': raw_match_data.dire_name,
             'dire_team_id': raw_match_data.dire_team_id if raw_match_data.dire_team_id is not None else 0,
-            'start_time': raw_match_data.start_time,
+            'start_time': to_utc_datetime_object(raw_match_data.start_time),
             'duration': raw_match_data.duration,
             'radiant_win': raw_match_data.radiant_win,
         }
