@@ -1,11 +1,12 @@
 from data_extraction.fetch_match_details import fetch_match_details, MatchesAPIResponse
 from pydantic_models.match import MatchesAPIResponse
 from utils.set_logging import get_logger
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Coroutine, List
 from .history_update_service import HistoryUpdateService
 from .redis_service import RedisService
 from data_repository.match_repository import MatchRepository
 from constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
+from utils.async_utils import get_outcome_concurrently, run_updates_as_group
 
 logger = get_logger(__name__)
 
@@ -34,37 +35,57 @@ class CompletionOrchestrator:
 
         curr_match_set = set(curr_matches.keys())
         
-        completed_matches = self._filter_completed_matches(events=events, curr_match_set=curr_match_set)
+        # Filter those match that were previously from event stream but is no longer live
+        completed_matches = await self._filter_completed_matches(events=events, curr_match_set=curr_match_set)
+        
+        fetch_match_details_task_group: Dict[int, Coroutine[Any, Any, MatchesAPIResponse]] = {}
+        
+        for event_id , data in completed_matches.items():
+            match_id = data.get('match_id')
+            fetch_match_details_task_group[event_id] = fetch_match_details(match_id)
+        
+        # Fetch API responses
+        outcome_dict: Dict[str, MatchesAPIResponse| Exception ] = await get_outcome_concurrently(
+            fetch_match_details_task_group
+        )
         
         events_processed = 0
-        for event_id, data in completed_matches.items():
-            match_id = int(data.get('match_id'))
+        
+        for event_id, match_model in outcome_dict.items():
             try:
-                completed_match_details: MatchesAPIResponse = await fetch_match_details(match_id)
+                if match_model is None:
+                    # Match result is not out yet, to wait for it in next event loop. 
+                    logger.warning(f"Match {match_id} is completed but data not available from source")
+                    continue
                 
-                if not completed_match_details:
-                    raise ValueError(f"Match {match_id} is completed but data not available from source")
+                if isinstance(match_model, Exception):
+                    # Exception happened, to raise exception and log
+                    raise match_model
                 
-                match_outcome = completed_match_details.radiant_win
+                match_id = match_model.match_id
+                match_outcome = match_model.radiant_win
                 
-                await self.storage.insert_match_outcome(match_id, match_outcome)
+                task_group: List[Coroutine[Any, Any, None]] = [
+                    self.storage.insert_match_outcome(match_id, match_outcome),
+                    self.history_updater.update_histories(match_model),
+                    self.redis.mark_match_as_completed(match_id, event_id)
+                ]
                 
-                await self.history_updater.update_histories(completed_match_details)
-                
-                await self.redis.mark_match_as_completed(match_id, event_id)
-                
+                await run_updates_as_group(task_group)
                 events_processed += 1
             except Exception as e:
-                logger.error(f"Failed to process predicted matches for event:{event_id}, match: {match_id}")
+                original_data = completed_matches.get(event_id, None)
+                logger.error(f"Failed to process predicted matches for event:{event_id}, data: {original_data} ")
                 await self.redis.record_failure_and_ack(
                     original_stream=STREAM_PENDING_COMPLETION,
                     group=COMPLETION_GROUP,
                     event_id=event_id,
-                    event_data=data,
+                    event_data=original_data,
                     error=e
                 )
                 continue
-        
+            
+
         return events_processed
     
     async def _filter_completed_matches(self, events: Dict[str, dict], curr_match_set: Set[int]) -> Dict[str, Dict[str, Any]]:
@@ -83,3 +104,5 @@ class CompletionOrchestrator:
                 completed_matches_dict[event_id] = data
             
         return completed_matches_dict
+    
+        
