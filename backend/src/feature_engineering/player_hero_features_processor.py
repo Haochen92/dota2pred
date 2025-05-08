@@ -1,7 +1,8 @@
 import pandas as pd
-from typing import Dict, Any, List, Coroutine
+from typing import Dict, Any, List, Coroutine, Optional
 from utils import get_logger, get_outcome_as_group
 from data_repository.history_repository import HistoryRepository
+from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -10,7 +11,13 @@ class PlayerHeroFeaturesProcessor:
         self.max_history_length = max_history_length
         self.history_repo = history_repo
         
-    async def create_player_hero_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    async def create_player_hero_features(
+        self, 
+        df: pd.DataFrame,
+        before_timestamp: Optional[datetime] = None,
+        after_timestamp: Optional[datetime] = None,
+        history_limit: Optional[int] = None
+    ) -> pd.DataFrame:
         
         all_match_features: List[Dict[str, Any]] = []
         player_slots = list(range(5)) + list(range(128, 133))
@@ -25,14 +32,18 @@ class PlayerHeroFeaturesProcessor:
                     account_id = match[f'slot_{i}_account_id']
                     hero_id = match[f'slot_{i}_hero_id']
                     feature_key = f'player_hero_{i}_win_rate'
+                    start_time = match['start_time']
                     
-                    if pd.isna(account_id) or pd.isna(hero_id):
+                    if pd.isna(account_id) or pd.isna(hero_id) or pd.isna(start_time):
                         raise ValueError(
                             f"Match {match_id}, Slot {i}: Missing account_id ({account_id})"
-                            f"or hero_id ({hero_id}). Failing this match."
+                            f"or hero_id ({hero_id})."
+                            f"or start_time ({start_time})" 
+                            f"Failing this match."
                         )
+                    effective_before = before_timestamp if before_timestamp is not None else start_time
                         
-                    tasks_dict[feature_key] = self._calculate_win_rate(account_id, hero_id)
+                    tasks_dict[feature_key] = self._calculate_win_rate(account_id, hero_id, effective_before)
                 
                 outcome_dict: Dict[str, float] = get_outcome_as_group(tasks_dict)
                 feature_row_with_id = {'match_id': match_id, **outcome_dict}
@@ -47,9 +58,9 @@ class PlayerHeroFeaturesProcessor:
 
         return pd.DataFrame(all_match_features)
 
-    async def _calculate_win_rate(self, account_id: int, hero_id: int) -> float:
+    async def _calculate_win_rate(self, account_id: int, hero_id: int, before: datetime) -> float:
         
-        history: List[bool] = await self.history_repo.get_player_hero_win_history(account_id, hero_id)
+        history: List[bool] = await self.history_repo.get_player_hero_win_history(account_id, hero_id, before)
         if not history:
             return 0.5
         
