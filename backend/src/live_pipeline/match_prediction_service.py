@@ -17,12 +17,11 @@ class MatchPredictionService:
         self.model_inference_service = model_inference_service
         self.storage = prediction_repository
         
-    async def predict_and_store(self, match_id: int) -> bool:
+    async def predict_and_store(self, match_id: int) -> None:
         input_array: np.ndarry = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
         
         if not input_array:
-            logger.warning(f"input array empty after feature preparation for match: {match_id}")
-            return False
+            raise ValueError(f"input array empty after feature preparation for match: {match_id}")
         try:
             prediction_instance: ModelPrediction = await self.model_inference_service.get_prediction(input_array)
             prediction_list = prediction_instance.prediction
@@ -30,7 +29,7 @@ class MatchPredictionService:
             logger.info(f"Successfully fetched prediction for match: {match_id}, value: {prediction}")
         except Exception as e:
             logger.error(f"Error when making prediction for {match_id}: {e}", exc_info=True)
-            return False
+            raise e
         
         try:
             metadata = self.model_inference_service.model_metadata
@@ -42,6 +41,5 @@ class MatchPredictionService:
             )
         except Exception as e:
             logger.error(f"Failed to store predictions for match {match_id}: {e}", exc_info=True)
-            return False
+            raise e
         
-        return True

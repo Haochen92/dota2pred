@@ -11,7 +11,7 @@ from postgresql import DatabaseEngineFactory
 # --- Low-level Repositories ---
 from data_repository.features_repository import FeaturesRepository
 from data_repository.heroes_repository import HeroesRepository
-from data_repository.histories_repository import HistoryRepository
+from data_repository.history_repository import HistoryRepository
 from data_repository.match_repository import MatchRepository
 from data_repository.prediction_repository import PredictionRepository
 

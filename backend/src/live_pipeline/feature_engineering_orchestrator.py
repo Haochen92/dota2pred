@@ -1,10 +1,11 @@
 import pandas as pd
-from typing import Dict
+from typing import Dict, Coroutine, Any
 from utils.set_logging import get_logger
 from .feature_engineering_service import FeatureEngineeringService
 from .redis_service import RedisService
 from constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
 from data_repository.match_repository import MatchRepository
+from utils.async_utils import run_updates_as_group, get_outcome_concurrently
 
 logger = get_logger(__name__)
 
@@ -44,48 +45,56 @@ class FeatureEngineeringOrchestrator:
             return 0
         else:
             logger.info(f"FeatureEngineeringOrchestrator: Found {len(events)} new events from {STREAM_NEW_MATCHES}")
-
-        events_processed = 0
         
         match_details_dict = await self._fetch_matches_from_db(events)
         if not match_details_dict:
             logger.warning(f"no match details found in the database")
             return 0
         
+        events_task_dict : Dict[str, Coroutine[Any, Any, Any]] = {}
         for event_id, data in events.items():
             match_id = data['match_id']
-            try:
-                match_details = match_details_dict.get(match_id)
-
-                if not match_details:
-                    raise ValueError(f"FeatureEngineeringOrchestrator: Match details missing in curr_matches for completed/ended match? Match ID: {match_id}, Event ID: {event_id}")
-
-                # Create DataFrame for the service
-                input_dataframe = pd.DataFrame([match_details])
-
-                # Call the feature engineering service
-                success = await self.feature_engineering_service.create_and_store_features(input_dataframe)
-
-                if not success:
-                    raise ValueError(f"FeatureEngineeringOrchestrator: Feature engineering service failed for match: {match_id}, Event ID: {event_id}")
-
-                await self.redis.advance_match_to_pending_prediction(match_id, event_id)
-                events_processed += 1
-                logger.debug(f"FeatureEngineeringOrchestrator: Successfully processed match {match_id}, Event ID: {event_id}")
-
-            except Exception as e:
-                logger.error(f"FeatureEngineeringOrchestrator: Unhandled error processing match_id: {match_id}, event_id: {event_id}", exc_info=True)
-                await self.redis.record_failure_and_ack(
+            match_details = match_details_dict.get(match_id)
+            input_dataframe = pd.DataFrame([match_details])
+            
+            events_task_dict[event_id] = self._engineer_and_update_redis(
+                input_dataframe, 
+                match_id,
+                event_id
+            )
+        
+        output_dict = await get_outcome_concurrently(events_task_dict)
+        
+        successful_events = 0
+        failed_events = 0
+        
+        for event, outcome in output_dict.items():
+            if outcome and not isinstance(outcome, Exception):
+                successful_events += 1
+            else:
+                failed_events += 1
+        
+        logger.info(f"Feature engineering orchestrator orchestrated {successful_events} successful events, and {failed_events} failed events")
+        return successful_events
+    
+    async def _engineer_and_update_redis(self, input_dataframe: pd.DataFrame, match_id: int, event_id: str, data: Dict[str, Any]) -> bool:
+        task_group = [
+            self.feature_engineering_service.create_and_store_features(input_dataframe),
+            self.redis.advance_match_to_pending_prediction(match_id, event_id)
+        ]
+        try:
+            await run_updates_as_group(task_group)
+            return True
+        except Exception as e:
+            await self.redis.record_failure_and_ack(
                     original_stream=STREAM_NEW_MATCHES,
                     group=FEATURE_ENGINEER_GROUP,
                     event_id=event_id,
                     event_data=data,
                     error=e
                 )
-                continue
-
-        logger.info(f"FeatureEngineeringOrchestrator: Finished cycle, processed {events_processed} events.")
-        return events_processed
+            return False
+        
     
     
     async def _fetch_matches_from_db(self, events: Dict[str, dict]) -> Dict[str, Dict[str, any]]:

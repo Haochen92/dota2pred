@@ -1,6 +1,6 @@
-from typing import Set, Dict, Any, Optional, List
-from src.utils.set_logging import get_logger
+from typing import Set, Dict, Any, Optional, List, Coroutine
 from utils.set_logging import get_logger
+from utils.async_utils import run_updates_concurrently, run_updates_as_group
 from data_repository.match_repository import MatchRepository
 from .redis_service import RedisService
 
@@ -30,21 +30,35 @@ class NewMatchOrchestrator:
         
         matches_processed = 0
         
+        task_lists: List[Coroutine[Any, Any, None]] = []
         for match_id in new_match_set:
-            # Store match to database
             try:
                 match_data = curr_matches.get(match_id, {})
                 if not match_data:
                     raise ValueError(f"{match_id} not found in current_matches")
-                await self.storage.insert_match_details(match_data)
-                await self.redis.add_match_for_processing(match_id)
-                matches_processed += 1
+                task_lists.append(self._store_and_update_redis(match_data, match_id))
             except Exception as e:
-                logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
+                logger.error(f"Errored encounted while adding match {match_id} to task group")
                 continue
+        try:
+            await run_updates_concurrently(task_lists)
+        except Exception as e:
+            logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
         
         logger.info(f"processed {matches_processed} new matches")
         return matches_processed
+    
+    async def _store_and_update_redis(self, match_data: Dict[str, Any], match_id: int):
+        task_group = [
+            self.storage.insert_match_details(match_data),
+            self.redis.add_match_for_processing(match_id)
+        ]
+        try:
+            await run_updates_as_group(task_group)
+        except ExceptionGroup as eg:
+            for i, exc in enumerate(eg.exceptions):
+                logger.error(f"Exception {i+1}: {type(exc).__name__} - {exc}")
+            raise 
     
     
     async def _fetch_current_matches(self) -> Optional[Dict[int, Dict[str, Any]]]:
