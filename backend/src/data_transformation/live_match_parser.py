@@ -2,6 +2,7 @@ from typing import List
 from src.pydantic_models.live_league_games import LiveLeagueGame
 from src.pydantic_models.match import Match
 from utils.set_logging import get_logger
+from utils.time_utils import to_utc_datetime_object
 
 logger = get_logger(__name__)
 
@@ -18,7 +19,7 @@ def parse_live_league_games(live_games: List[LiveLeagueGame]) -> List[Match]:
                 'dire_team_id': row.dire_team.team_id,
                 'dire_name': row.dire_team.team_name,
                 'duration': row.scoreboard.duration,
-                'start_time': row.start_time
+                'start_time': to_utc_datetime_object(row.start_time)
             }
             
             # Populate player data
@@ -34,7 +35,6 @@ def parse_live_league_games(live_games: List[LiveLeagueGame]) -> List[Match]:
                     
             live_league_games.append(Match(**match_data))
         except Exception as e:
-            # This catches all validation errors, attribute errors, etc
             logger.info(f"Skipping match {row['match_id']} due to error: {str(e)}")
             continue
 
