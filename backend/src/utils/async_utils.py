@@ -81,17 +81,21 @@ async def run_updates_concurrently(
         return_exceptions=True
     )
     
-    error_count = 0
     success_count = 0
     
+    exceptions_encountered: List[BaseException] = []
     for i, outcome in enumerate(results_or_exceptions):
         if isinstance(outcome, Exception):
-            logger.warning(f"Update task at index {i} failed: {type(outcome).__name__} - {outcome}") # Placeholder for logger
-            error_count += 1
+            logger.warning(f"Update task at index {i} failed: {type(outcome).__name__} - {outcome}")
+            exceptions_encountered.append(outcome)
         else:
             success_count += 1
+    
+    error_count = len(exceptions_encountered)
         
     logger.info(f"Update tasks completed. Successful: {success_count}, Failed: {error_count}.")
+    if exceptions_encountered:
+        raise ExceptionGroup(f"{error_count} update tasks failed")
 
 async def run_updates_as_group(
     update_coroutines: List[Coroutine[Any, Any, Any]]
