@@ -1,16 +1,18 @@
 from sqlmodel import SQLModel, Field
-from sqlalchemy import BigInteger
+from sqlalchemy import BigInteger, Column, TIMESTAMP
 from datetime import datetime
+from typing import Optional
 
 class MatchPredictionTable(SQLModel, table=True):
     __tablename__ = 'match_predictions'
     
     # Composite Primary Key
-    match_id: int = Field(sa_type=BigInteger, primary_key=True, 
-                          foreign_key="matches.match_id")
+    match_id: int = Field(sa_type=BigInteger, primary_key=True)
     predictor_name: str = Field(primary_key=True, index=True)
     
-    prediction: bool
+    prediction: Optional[bool]
     predictor_version: str = Field(default=None)
-    prediction_date: datetime 
+    prediction_date: Optional[datetime] = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), index=True, nullable=True)
+    ) 
     prediction_probability: float = Field(default=None)
