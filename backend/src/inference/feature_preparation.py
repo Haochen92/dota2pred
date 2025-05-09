@@ -58,9 +58,9 @@ class FeaturePreparationService:
             encoded_hero_df = await encode_hero_features(hero_df, self.heros_repository)
             
             final_features_df = self._merge_and_filter_dataframe(
-                hero_features_df=encoded_hero_df,
-                team_features_df=team_df,
-                player_hero_features_df=player_hero_df
+                hero_features=encoded_hero_df,
+                team_features=team_df,
+                player_hero_features=player_hero_df
             )
 
             if final_features_df is None or final_features_df.empty:
