@@ -28,8 +28,6 @@ class NewMatchOrchestrator:
         
         logger.info(f"Found {len(new_match_set)} new matches...")
         
-        matches_processed = 0
-        
         task_lists: List[Coroutine[Any, Any, None]] = []
         for match_id in new_match_set:
             try:
@@ -38,27 +36,34 @@ class NewMatchOrchestrator:
                     raise ValueError(f"{match_id} not found in current_matches")
                 task_lists.append(self._store_and_update_redis(match_data, match_id))
             except Exception as e:
-                logger.error(f"Errored encounted while adding match {match_id} to task group")
+                logger.error(f"Error encounted while adding match {match_id} to task group")
                 continue
-        try:
-            await run_updates_concurrently(task_lists)
-        except Exception as e:
-            logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
+            
+        outcomes = await run_updates_concurrently(task_lists)
         
-        logger.info(f"processed {matches_processed} new matches")
-        return matches_processed
+        success_count = 0
+        failure_count = 0
+        for outcome in outcomes:
+            if outcome:
+                success_count += 1
+            else:
+                failure_count += 1
+        
+        logger.info(f"Successfully processed {success_count} new matches, with {failure_count} failures")
+        return success_count
     
-    async def _store_and_update_redis(self, match_data: Dict[str, Any], match_id: int):
+    async def _store_and_update_redis(self, match_data: Dict[str, Any], match_id: int) -> bool:
         task_group = [
             self.storage.insert_match_details(match_data),
             self.redis.add_match_for_processing(match_id)
         ]
         try:
             await run_updates_as_group(task_group)
+            return True
         except ExceptionGroup as eg:
             for i, exc in enumerate(eg.exceptions):
                 logger.error(f"Exception {i+1}: {type(exc).__name__} - {exc}")
-            raise 
+            return False 
     
     
     async def _fetch_current_matches(self) -> Optional[Dict[int, Dict[str, Any]]]:
