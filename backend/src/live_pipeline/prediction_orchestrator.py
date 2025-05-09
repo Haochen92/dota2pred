@@ -92,5 +92,5 @@ class PredictionOrchestrator:
                 error_message=e,
                 failure_timestamp=get_current_utc_iso_timestamp()
             )
-            await self.redis.record_failure_and_ack(failure_record.model_dump())
+            await self.redis.record_failure_and_ack(failure_record)
             return False
