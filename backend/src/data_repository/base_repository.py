@@ -46,7 +46,7 @@ class BaseRepository:
                 logger.error(f"Error retrieving all records for {model_class.__name__}: {e}", exc_info=True)
                 return [] 
             
-    async def _get_primary_key_attribute(self, model_class: Type[T]):
+    def _get_primary_key_attribute(self, model_class: Type[T]):
         """Helper to get the single primary key attribute of a model."""
         mapper = inspect(model_class)
         pk_columns = mapper.primary_key
@@ -68,7 +68,7 @@ class BaseRepository:
         Assumes a single primary key column.
         """
         try:
-            pk_attribute = await self._get_primary_key_attribute(model_class)
+            pk_attribute = self._get_primary_key_attribute(model_class)
 
             async with AsyncSession(self.engine) as session:
                 stmt = select(model_class).where(pk_attribute == pk_value)
@@ -100,7 +100,7 @@ class BaseRepository:
             return []
 
         try:
-            pk_attribute = await self._get_primary_key_attribute(model_class)
+            pk_attribute = self._get_primary_key_attribute(model_class)
 
             async with AsyncSession(self.engine) as session:
                 # Use the .in_() operator for the WHERE clause
