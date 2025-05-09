@@ -33,7 +33,7 @@ class ModelInferenceService:
                     validated_result = ModelPrediction.model_validate(result)
                     return validated_result
         except aiohttp.ClientResponseError as ce:
-            logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {e.message}", exc_info=True)           
+            logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {ce.message}", exc_info=True)           
         except ValidationError as ve:
             logger.error(f"Validation error for returned data {ve}", exc_info=True)
         except Exception as e:
