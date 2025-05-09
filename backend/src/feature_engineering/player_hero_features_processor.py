@@ -45,7 +45,7 @@ class PlayerHeroFeaturesProcessor:
                         
                     tasks_dict[feature_key] = self._calculate_win_rate(account_id, hero_id, effective_before)
                 
-                outcome_dict: Dict[str, float] = get_outcome_as_group(tasks_dict)
+                outcome_dict: Dict[str, float] = await get_outcome_as_group(tasks_dict)
                 feature_row_with_id = {'match_id': match_id, **outcome_dict}
                 all_match_features.append(feature_row_with_id)
             
