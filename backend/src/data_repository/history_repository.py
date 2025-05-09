@@ -26,7 +26,7 @@ class HistoryRepository:
         before: Optional[datetime] = None, 
         after: Optional[datetime] = None, # Optional field for after a patch 
         limit: Optional[int] = None
-    ) -> List[bool]:
+    ) -> List[bool] | Exception:
         """
         Fetches win history (list of booleans) for a specific player/hero combination.
         Optionally filters by time (Unix timestamp) and limits count.
@@ -72,10 +72,10 @@ class HistoryRepository:
                 return win_history
             except SQLAlchemyError as e: 
                 logger.error(f"DB error fetching player-hero history for acc={account_id}, hero={hero_id}: {e}", exc_info=True)
-                return []
+                raise e
             except Exception as e: 
                 logger.error(f"Unexpected error fetching player-hero history for acc={account_id}, hero={hero_id}: {e}", exc_info=True)
-                return [] 
+                raise e 
 
 
     async def add_player_hero_match_outcome(
@@ -150,10 +150,10 @@ class HistoryRepository:
                 return team_history
             except SQLAlchemyError as e:
                 logger.error(f"DB error fetching team history for team='{team_name}': {e}", exc_info=True)
-                return []
+                raise e
             except Exception as e:
                 logger.error(f"Unexpected error fetching team history for team='{team_name}': {e}", exc_info=True)
-                return []
+                raise e
 
 
     async def get_team_matchup_history(
@@ -198,10 +198,10 @@ class HistoryRepository:
                 return matchup_history
             except SQLAlchemyError as e:
                 logger.error(f"DB error fetching matchup history for {team_one} vs {team_two}: {e}", exc_info=True)
-                return []
+                raise e
             except Exception as e:
                 logger.error(f"Unexpected error fetching matchup history for {team_one} vs {team_two}: {e}", exc_info=True)
-                return []
+                raise e
 
     async def add_team_match_outcome(
         self,
