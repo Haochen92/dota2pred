@@ -49,7 +49,7 @@ class PredictionOrchestrator:
         else:
             logger.info(f"PredictionOrchestrator: Found {len(events)} new events from {STREAM_PENDING_PREDICTION}")
 
-        event_task_group: Dict[str, Coroutine[Any, Any, None]] = {}
+        event_task_group: Dict[str, Coroutine[Any, Any, bool]] = {}
         
         for event_id, data in events.items():
             event_task_group[event_id] = self._run_single_prediction_cycle(event_id, data)
@@ -73,13 +73,13 @@ class PredictionOrchestrator:
         try:
             input_array: np.ndarray | None = await self.feature_preparation_service.get_transformed_features_from_id(data.match_id)
 
-            if input_array is None or input_array.size == 0:
+            if input_array is None or input_array.size == 0: # Correct way of checking empty or uninitalised numpy array
                 raise ValueError(f"PredictionOrchestrator: Feature preparation failed or returned empty features for match {data.match_id}. Event ID: {event_id}")
 
             prediction_result = await self.match_prediction_service.predict_and_store(data.match_id)
 
-            if prediction_result is None:
-                raise ValueError(f"No prediction result, inference failed... at prediction Orchestrator")
+            if isinstance(prediction_result, Exception):
+                raise prediction_result
             await self.redis.advance_match_to_pending_completion(data.match_id, event_id)
             return True
         except Exception as e:
