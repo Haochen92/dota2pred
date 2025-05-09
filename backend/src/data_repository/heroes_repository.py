@@ -15,26 +15,25 @@ class HeroesRepository(BaseRepository):
         
     async def store_hero_data(self, heroes_input: Dict[str, HeroData]):
         async with AsyncSession(self.engine) as session:
-            try:
-                heroes_data = [hero.model_dump() for hero in heroes_input.values()]
-                stmt = insert(HeroDataTable).values(heroes_data)
-                update_dict = {
-                    col.name: getattr(stmt.excluded, col.name)
-                    for col in HeroDataTable.__table__.columns # Returns a collection of Column objects
-                    if col.name != 'id'
-                }
+            async with session.begin(): 
+                try:
+                    heroes_data = [hero.model_dump() for hero in heroes_input.values()]
+                    stmt = insert(HeroDataTable).values(heroes_data)
+                    update_dict = {
+                        col.name: getattr(stmt.excluded, col.name)
+                        for col in HeroDataTable.__table__.columns
+                        if col.name != 'id' 
+                    }
+                        
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["id"],
+                        set_=update_dict
+                    )
                     
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["id"],
-                    set_=update_dict
-                )
-                
-                await session.execute(stmt)
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"Error inserting hero data: {e}", exc_info=True)
-                raise e
+                    await session.execute(stmt)
+                except Exception as e:
+                    logger.error(f"Error inserting hero data: {e}", exc_info=True)
+                    raise e 
             
     async def get_hero_data_by_id(self, hero_id: int) -> Optional[HeroData]:
         try:
