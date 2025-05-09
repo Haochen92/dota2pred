@@ -96,10 +96,7 @@ class MatchRepository(BaseRepository):
         for match in matches:
             match_full_dict = match.model_dump()
             match_data = {k: v for k, v in match_full_dict.items() if k in self.match_table_cols}
-            outcome_data = {
-                 k: v for k, v in match_full_dict.items()
-                 if k in self.outcome_table_cols or k == 'match_id'
-            }
+            outcome_data = { k: v for k, v in match_full_dict.items() if k in self.outcome_table_cols }
             
             if 'match_id' in match_data:
                  match_db_dicts.append(match_data)
