@@ -6,6 +6,8 @@ from .redis_service import RedisService
 from constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
 from utils.async_utils import get_outcome_concurrently
 from typing import Coroutine, Any, Dict
+from pydantic_models.redis_models import StreamMatchEventData, FailureRecord
+from utils.time_utils import get_current_utc_iso_timestamp
 
 logger = get_logger(__name__)
 
@@ -39,7 +41,7 @@ class PredictionOrchestrator:
         """
         logger.info(f"PredictionOrchestrator: Fetching from {STREAM_PENDING_PREDICTION} for consumer {self.consumer_name}...")
 
-        events = await self.redis.fetch_matches_pending_prediction(self.consumer_name)
+        events: Dict[str, StreamMatchEventData] = await self.redis.fetch_matches_pending_prediction(self.consumer_name)
 
         if not events:
             logger.debug(f"PredictionOrchestrator: No new events in {STREAM_PENDING_PREDICTION}")
@@ -50,8 +52,7 @@ class PredictionOrchestrator:
         event_task_group: Dict[str, Coroutine[Any, Any, None]] = {}
         
         for event_id, data in events.items():
-            match_id = int(data.get('match_id'))
-            event_task_group[event_id] = self._run_single_prediction_cycle(match_id, event_id, data)
+            event_task_group[event_id] = self._run_single_prediction_cycle(event_id, data)
 
         res = await get_outcome_concurrently(event_task_group)
             
@@ -68,26 +69,28 @@ class PredictionOrchestrator:
         return successful_events
     
     
-    async def _run_single_prediction_cycle(self, match_id: int, event_id:str, data: Dict[str, Any]) -> bool:
+    async def _run_single_prediction_cycle(self, event_id:str, data: StreamMatchEventData) -> bool:
         try:
-            input_array: np.ndarray | None = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
+            input_array: np.ndarray | None = await self.feature_preparation_service.get_transformed_features_from_id(data.match_id)
 
             if input_array is None or input_array.size == 0:
-                raise ValueError(f"PredictionOrchestrator: Feature preparation failed or returned empty features for match {match_id}. Event ID: {event_id}")
+                raise ValueError(f"PredictionOrchestrator: Feature preparation failed or returned empty features for match {data.match_id}. Event ID: {event_id}")
 
-            prediction_result = await self.match_prediction_service.predict_and_store(match_id)
+            prediction_result = await self.match_prediction_service.predict_and_store(data.match_id)
 
             if prediction_result is None:
                 raise ValueError(f"No prediction result, inference failed... at prediction Orchestrator")
-            await self.redis.advance_match_to_pending_completion(match_id, event_id)
+            await self.redis.advance_match_to_pending_completion(data.match_id, event_id)
             return True
         except Exception as e:
-            logger.error(f"PredictionOrchestrator: Unhandled error processing prediction for match_id: {match_id}, event_id: {event_id}", exc_info=True)
-            await self.redis.record_failure_and_ack(
+            logger.error(f"PredictionOrchestrator: Unhandled error processing prediction for match_id: {data.match_id}, event_id: {event_id}", exc_info=True)
+            failure_record = FailureRecord(
+                original_group=PREDICTION_GROUP,
+                original_event_id=event_id,
+                original_data=data,
                 original_stream=STREAM_PENDING_PREDICTION,
-                group=PREDICTION_GROUP,
-                event_id=event_id,
-                event_data=data,
-                error=e
+                error_message=e,
+                failure_timestamp=get_current_utc_iso_timestamp()
             )
+            await self.redis.record_failure_and_ack(failure_record.model_dump())
             return False

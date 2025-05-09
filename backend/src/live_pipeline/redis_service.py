@@ -4,7 +4,7 @@ from utils.set_logging import get_logger
 from utils.time_utils import get_current_utc_iso_timestamp
 from typing import List, Dict, Set, Any
 from pydantic import ValidationError
-from pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData
+from pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
 import json
 
 # Constants
@@ -173,7 +173,7 @@ class RedisService:
             return False
 
     # --- PENDING COMPLETION STAGE ---
-    async def fetch_matches_pending_completion(self, consumer: str, count: int=10) -> Dict[str, StreamMatchEventData]: # MODIFIED RETURN TYPE
+    async def fetch_matches_pending_completion(self, consumer: str, count: int=20) -> Dict[str, StreamMatchEventData]: # MODIFIED RETURN TYPE
         """Fetches events from the pending completion stream, parsed into Pydantic models."""
         return await self._fetch_events(COMPLETION_GROUP, consumer, STREAM_PENDING_COMPLETION, count)
 
@@ -190,34 +190,19 @@ class RedisService:
             logger.error(f"Redis failure marking match {match_id} as completed (ACK ID: {event_id_to_ack}): {e}", exc_info=True)
             return False
 
-    async def record_failure_and_ack(
-        self,
-        original_stream: str,
-        group: str,
-        event_id: str,
-        event_data: StreamMatchEventData, # Explicitly a Pydantic model instance
-        error: Exception
-    ) -> bool:
+    async def record_failure_and_ack(failure_record: FailureRecord) -> bool:
         """
         Records failure details to DLQ Hash and ACKs original message.
         Simplifies serialization error handling.
         """
-        target_hash = FAILED_EVENTS_MAPPING.get(original_stream)
+        target_hash = FAILED_EVENTS_MAPPING.get(failure_record.original_stream)
         if not target_hash:
-            logger.error(f"Unknown stream '{original_stream}' in FAILED_EVENTS_MAPPING. Cannot record failure or ACK event {event_id}.")
+            logger.error(f"Unknown stream '{failure_record.original_stream}' in FAILED_EVENTS_MAPPING." 
+                         f"Cannot record failure or ACK event {failure_record.original_event_id}.")
             return False
 
-        failure_info = {
-            "original_event_id": event_id,
-            "original_stream": original_stream,
-            "original_data": event_data.model_dump(),
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "failure_timestamp": get_current_utc_iso_timestamp()
-        }
-
         try:
-            failure_json = json.dumps(failure_info)
+            failure_json = failure_record.model_dump_json()
         except Exception as e:
             # If serialization fails for any reason, log it and create a minimal JSON payload
             logger.error(
