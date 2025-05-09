@@ -39,6 +39,7 @@ class FailureRecord(BaseModel):
     Data model for the information stored in DLQ hashes when an event fails.
     This is serialized to JSON before being stored in the hash.
     """
+    original_group: str
     original_event_id: str
     original_stream: str
     original_data: StreamMatchEventData
