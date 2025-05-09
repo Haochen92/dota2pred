@@ -94,11 +94,11 @@ class FeatureEngineeringOrchestrator:
                 original_event_id=event_id,
                 original_stream=STREAM_NEW_MATCHES,
                 original_group=FEATURE_ENGINEER_GROUP,
-                original_data=data.model_dump(),
+                original_data=data,
                 error_message=e,
                 failure_timestamp=get_current_utc_iso_timestamp()
             )
-            await self.redis.record_failure_and_ack(failure_record.model_dump())
+            await self.redis.record_failure_and_ack(failure_record)
             return False
         
     

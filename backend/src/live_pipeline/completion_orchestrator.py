@@ -6,7 +6,7 @@ from typing import Dict, Any, Set, Coroutine, List
 from .history_update_service import HistoryUpdateService
 from .redis_service import RedisService
 from data_repository.match_repository import MatchRepository
-from constants.redis_constants import STREAM_PENDING_COMPLETION
+from constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from utils.time_utils import get_current_utc_iso_timestamp
 from utils.async_utils import get_outcome_concurrently, run_updates_as_group
 
@@ -78,13 +78,14 @@ class CompletionOrchestrator:
                 logger.error(f"Failed to process predicted matches for event:{event_id}, data: {data_dict}")
                 
                 failure_record = FailureRecord(
-                    original_data=data_dict,
+                    original_data=original_data,
+                    original_group=COMPLETION_GROUP,
                     original_event_id=event_id,
                     original_stream=STREAM_PENDING_COMPLETION,
                     error_message=e,
                     failure_timestamp=get_current_utc_iso_timestamp()
                 )
-                await self.redis.record_failure_and_ack(failure_record.model_dump())
+                await self.redis.record_failure_and_ack(failure_record)
                 continue
             
 

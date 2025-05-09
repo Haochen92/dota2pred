@@ -88,7 +88,7 @@ class RedisService:
             logger.error(f"Error reading and parsing stream {stream} for group {group}: {e}", exc_info=True)
             return {}
 
-    '''New Matches Orchestrator'''
+    # New match orchestrator
     async def update_live_match_set_and_get_new(self, curr_ids: List[int]) -> Set[int]:
         """Updates tracked set atomically using RENAME, returns new IDs."""
         new_match_ids: Set[int] = set()
@@ -126,7 +126,7 @@ class RedisService:
             logger.error(f"Failed adding match {match_id} to stream {STREAM_NEW_MATCHES}: {e}", exc_info=True)
             return False
 
-    # --- FEATURE ENGINEERING STAGE ---
+    # Feature engineering stage
     async def fetch_new_matches_for_feature_eng(self, consumer: str, count: int=10) -> Dict[str, StreamMatchEventData]: 
         """Fetches events from the new matches stream, parsed into Pydantic models."""
         return await self._fetch_events(FEATURE_ENGINEER_GROUP, consumer, STREAM_NEW_MATCHES, count)
@@ -149,7 +149,7 @@ class RedisService:
             logger.error(f"Redis failure advancing match {match_id} to pending prediction (ACK ID: {event_id_to_ack}): {e}", exc_info=True)
             return False
 
-    # --- PREDICTION STAGE ---
+    # Prediction stage
     async def fetch_matches_pending_prediction(self, consumer: str, count: int=10) -> Dict[str, StreamMatchEventData]:
         """Fetches events from the pending prediction stream, parsed into Pydantic models."""
         return await self._fetch_events(PREDICTION_GROUP, consumer, STREAM_PENDING_PREDICTION, count)
@@ -190,7 +190,8 @@ class RedisService:
             logger.error(f"Redis failure marking match {match_id} as completed (ACK ID: {event_id_to_ack}): {e}", exc_info=True)
             return False
 
-    async def record_failure_and_ack(failure_record: FailureRecord) -> bool:
+    # Failed Events management
+    async def record_failure_and_ack(self, failure_record: FailureRecord) -> bool:
         """
         Records failure details to DLQ Hash and ACKs original message.
         Simplifies serialization error handling.
@@ -204,44 +205,52 @@ class RedisService:
         try:
             failure_json = failure_record.model_dump_json()
         except Exception as e:
-            # If serialization fails for any reason, log it and create a minimal JSON payload
+        # If serialization fails for any reason, log it and create a minimal JSON payload
             logger.error(
-                f"Failed to serialize failure data for event {event_id} from stream '{original_stream}'. "
+                f"Failed to serialize failure data for event {failure_record.original_event_id} "
+                f"from stream '{failure_record.original_stream}'. "
                 f"Storing minimal failure info. Serialization error: {e}",
                 exc_info=True 
             )
-            # Create a minimal JSON payload with essential info
+            # Create a minimal JSON payload with essential info from the failure_record
             failure_json = json.dumps({
                 "error": "DLQ data serialization failed",
-                "original_event_id": event_id,
-                "original_stream": original_stream,
+                "original_event_id": failure_record.original_event_id,
+                "original_stream": failure_record.original_stream,
                 "error_type": type(e).__name__,
                 "error_message": f"Original serialization failed: {e}",
-                "failure_timestamp": get_current_utc_iso_timestamp()
+                "failure_timestamp": failure_record.failure_timestamp
             })
 
         # Attempt to record failure in Redis and ACK the original message
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
-                pipe.hset(target_hash, event_id, failure_json)
-                pipe.xack(original_stream, group, event_id)
+                # Store the JSON string in the DLQ hash
+                pipe.hset(target_hash, failure_record.original_event_id, failure_json)
+                # ACK the original message in the stream
+                pipe.xack(
+                    failure_record.original_stream,
+                    failure_record.original_group,
+                    failure_record.original_event_id
+                )
                 await pipe.execute()
 
             logger.warning(
-                f"Recorded failure for event {event_id} from stream '{original_stream}' "
+                f"Recorded failure for event {failure_record.original_event_id} "
+                f"from stream '{failure_record.original_stream}' "
                 f"to hash '{target_hash}' and ACKed original message."
             )
             return True
 
         except Exception as e:
+            # This is a critical error: we failed to record the failure AND ACK
             logger.critical(
-                f"CRITICAL: Failed to record failure AND ACK original event {event_id} "
-                f"from stream '{original_stream}'. Message may remain pending/cause blocking. "
+                f"CRITICAL: Failed to record failure AND ACK original event {failure_record.original_event_id} "
+                f"from stream '{failure_record.original_stream}'. Message may remain pending/cause blocking. "
                 f"Hash target: '{target_hash}'. Redis error: {e}",
                 exc_info=True 
             )
             return False
-
 
     # --- Live Tracking / Dashboard Features ---
     async def get_live_match_ids(self) -> Set[int]:
