@@ -18,7 +18,7 @@ class MatchPredictionService:
         self.storage = prediction_repository
         
     async def predict_and_store(self, match_id: int) -> None|Exception:
-        input_array: np.ndarry = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
+        input_array: np.ndarray = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
         
         if input_array is None or input_array.size == 0:
             raise ValueError(f"input array empty after feature preparation for match: {match_id}")
