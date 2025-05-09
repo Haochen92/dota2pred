@@ -63,7 +63,10 @@ class NewMatchOrchestrator:
         except ExceptionGroup as eg:
             for i, exc in enumerate(eg.exceptions):
                 logger.error(f"Exception {i+1}: {type(exc).__name__} - {exc}")
-            return False 
+            return False
+        except Exception as e: # Catch any other exceptions
+            logger.error(f"Unexpected error processing match {match_id}: {e}", exc_info=True)
+        return False
     
     
     async def _fetch_current_matches(self) -> Optional[Dict[int, Dict[str, Any]]]:
