@@ -1,32 +1,16 @@
 import pandas as pd
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.data_repository.heroes_repository import HeroesRepository
+from dota_oracle.data_repository.schemas import MatchTable
 from typing import List, Dict
 from dota_oracle.constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, UUID_COL
 
 logger = get_logger(__name__)
 
-class FeaturesPreprocessor:
-    def __init__(self, hero_repository: HeroesRepository):
-        self.hero_repo = hero_repository
-    
+def preprocess_live_match_data(match_instance: MatchTable):
+    # No additional logic for now
+    return match_instance
 
-    async def preprocess_live_match_data(self, input_df: pd.DataFrame) -> pd.DataFrame:
-        '''
-            Preprocess dataframe of a single live match game
-        '''
-        if isinstance(input_df, pd.DataFrame):
-            # Create a smaller copy 
-            df = input_df.copy()
-        else:
-            raise TypeError("Input must be pandas DataFrame")
-        hero_map = await self.hero_repo.get_hero_id_map()
-        # Convert Unix time to datetime format
-        df = self.map_hero_ids_to_names(df, DRAFT_COLS, hero_map)
-        
-        return df
-        
-    async def preprocess_batch_match_data(self, input_df: pd.DataFrame) -> pd.DataFrame:
+def preprocess_batch_match_data(input_df: pd.DataFrame) -> pd.DataFrame:
         """
         Preprocesses a batch DataFrame: selects columns, handles NaNs,
         removes duplicates, converts time, maps hero IDs, and sorts.
@@ -63,8 +47,6 @@ class FeaturesPreprocessor:
             return df
 
         # 4. Apply Common Transformations
-        hero_map = await self.hero_repo.get_hero_id_map()
-        df = self.map_hero_ids_to_names(df, DRAFT_COLS, hero_map)
 
         # 5. Handle Missing Values (after potential coercion/mapping)
         initial_rows = len(df)
@@ -84,16 +66,8 @@ class FeaturesPreprocessor:
         return df
 
 
-    def map_hero_ids_to_names(self, 
-        df: pd.DataFrame,
-        draft_cols: List[str],
-        hero_map: Dict[int, str]
-    ):
-        for col in draft_cols:
-            numeric_col = pd.to_numeric(df[col], errors='coerce')
-            df[col] = numeric_col.map(hero_map).fillna("unknown_hero")
-            
-        return df
+                
+
 
 
 
