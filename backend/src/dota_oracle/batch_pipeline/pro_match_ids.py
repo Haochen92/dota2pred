@@ -1,4 +1,4 @@
-from database.schemas.matches import ProMatchID
+# to do, migrating to redis or Prefect to manage intermediate promatch_ids
 
 async def insert_promatch_ids(data_json):
     '''

@@ -1,7 +1,6 @@
 import pandas as pd
-from utils.set_logging import get_logger
-
-from constants import DRAFT_COLS
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.constants import DRAFT_COLS
 
 logger = get_logger(__name__)
 

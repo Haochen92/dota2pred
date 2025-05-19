@@ -1,4 +1,4 @@
 from .team_feature_processor import TeamFeatureProcessor
 from .player_hero_features_processor import PlayerHeroFeaturesProcessor
-from .features_preprocessing import preprocess_live_match_data
+from .features_preprocessor import FeaturesPreprocessor
 from .heroes_features import create_hero_features

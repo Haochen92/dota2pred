@@ -2,11 +2,10 @@ import asyncio
 import time 
 import yaml
 from datetime import datetime
-from src.config import ROOT_DIR
-from src.utils.set_logging import get_logger
-from ..data_extraction.api_clients.opendota_api import fetch_opendota
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.data_extraction.api_clients.opendota_api import fetch_opendota
 import pytz
-from redis_component.redis_client_factory import RedisClientFactory
+from dota_oracle.redis_component import RedisClientFactory
 
 '''
 Rewrite this entire function.
