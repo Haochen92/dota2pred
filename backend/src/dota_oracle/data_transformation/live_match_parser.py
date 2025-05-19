@@ -1,8 +1,8 @@
 from typing import List
-from src.pydantic_models.live_league_games import LiveLeagueGame
-from src.pydantic_models.match import Match
-from utils.set_logging import get_logger
-from utils.time_utils import to_utc_datetime_object
+from dota_oracle.pydantic_models.live_league_games import LiveLeagueGame
+from dota_oracle.pydantic_models.match import Match
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.utils.time_utils import to_utc_datetime_object
 
 logger = get_logger(__name__)
 
@@ -35,7 +35,7 @@ def parse_live_league_games(live_games: List[LiveLeagueGame]) -> List[Match]:
                     
             live_league_games.append(Match(**match_data))
         except Exception as e:
-            logger.info(f"Skipping match {row['match_id']} due to error: {str(e)}")
+            logger.info(f"Skipping match {row.match_id} due to error: {str(e)}")
             continue
 
     return live_league_games
