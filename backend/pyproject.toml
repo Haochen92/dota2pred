@@ -1,0 +1,43 @@
+[build-system] 
+requires = ["poetry-core>=1.0.0"] 
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "dota_oracle"
+version = "0.1.0"
+description = "A fullstack app for live Dota 2 match predictions and user-input based predictions."
+authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+packages = [{include = "dota_oracle", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "3.11.12" 
+
+# Main dependencies
+sqlmodel = "*" 
+sqlalchemy = ">=2.0"
+alembic = "*"
+scikit-learn = "*"
+numpy = "*"
+pandas = "*"
+bentoml = "*"
+prefect = ">=3.0"
+prefect-aws = "*"
+prefect-sqlalchemy = "*"
+prefect-github = "*"
+pydantic = ">=2.0"
+requests = "*"
+aiohttp = "*"
+dependency-injector = "*"
+redis = "*"
+python-dotenv = "*"
+
+[tool.poetry.group.dev.dependencies]
+# Development dependencies
+polyfactory = "2.21.0"
+pytest = "*"
+pytest-mock = "*"
+mypy = "*"
+ruff = "*"
+black = "*"
+ipykernel = "*"
+pre-commit = "*"

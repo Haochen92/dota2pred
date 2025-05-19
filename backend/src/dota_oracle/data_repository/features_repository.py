@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from .base_repository import BaseRepository, SQLModelTable, T
-from utils.set_logging import get_logger
+from src.utils.set_logging import get_logger
 from typing import Optional, List, Dict, Any, Type
 
 logger = get_logger(__name__)

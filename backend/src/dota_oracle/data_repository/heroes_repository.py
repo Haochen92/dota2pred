@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from typing import Dict, Optional
 from sqlmodel import select
 from sqlalchemy.dialects.postgresql import insert
-from utils.set_logging import get_logger
+from src.utils.set_logging import get_logger
 from .base_repository import BaseRepository
 
 logger = get_logger(__name__)

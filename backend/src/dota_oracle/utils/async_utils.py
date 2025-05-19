@@ -1,7 +1,7 @@
 import asyncio
 import sys
 from typing import TypeVar, Coroutine, Dict, Any, List
-from utils.set_logging import get_logger
+from .set_logging import get_logger
 
 logger = get_logger(__name__)
 

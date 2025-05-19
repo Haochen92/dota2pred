@@ -1,7 +1,7 @@
 from typing import Type, TypeVar, List, Optional, Any, Protocol
 from sqlmodel import SQLModel, select, Table, inspect, desc
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from utils.set_logging import get_logger
+from src.utils.set_logging import get_logger
 
 # helper class for type
 class SQLModelTable(Protocol):
