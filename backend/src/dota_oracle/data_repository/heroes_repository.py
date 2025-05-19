@@ -47,15 +47,14 @@ class HeroesRepository(BaseRepository):
             logger.error(f"Error fetching data from hero_id {hero_id}")
             raise e
     
-    async def get_hero_id_map(self)-> Optional[dict]:
+    async def get_hero_id_map(self)-> Dict[int, str]:
         async with AsyncSession(self.engine) as session:
             try:
                 stmt = select(HeroDataTable.id, HeroDataTable.localized_name)
                 res = await session.execute(stmt)
                 rows = res.mappings().all()
                 if not rows:
-                    logger.warning("No hero data found")
-                    return None
+                    raise AttributeError("No hero data found")
                 
                 hero_map: Dict[int, str] = {row['id']: row['localized_name'] for row in rows}
                 return hero_map
