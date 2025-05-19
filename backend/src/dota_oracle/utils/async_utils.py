@@ -31,11 +31,16 @@ async def get_outcome_concurrently(
     success_count = 0
     
     for task_name, task_outcome in zip(task_keys, res_list):
-        outcome_dict[task_name] = task_outcome
+
         if isinstance(task_outcome, Exception):
             logger.error(f"task {task_name} has failed with exception {task_outcome}")
+            outcome_dict[task_name] = task_outcome
             error_count += 1
+        elif isinstance(task_outcome, BaseException): # other exceptions like keyboard interrupt, system exit
+            logger.critical(f"Task: {task_name} was interrupted by a critical BaseException: {task_outcome}")
+            raise task_outcome
         else:
+            outcome_dict[task_name] = task_outcome 
             success_count += 1
         
     logger.info(f"tasks run completed with {success_count} completed and {error_count} failed")
@@ -45,7 +50,7 @@ async def get_outcome_concurrently(
 
 async def get_outcome_as_group(
     keyed_coroutines: Dict[str, ASYNC_TASK]
-) -> Dict[str, T]| Exception:
+) -> Dict[str, T]:
     
     if sys.version_info < (3, 11):
         raise RuntimeError("asyncio.TaskGroup requires Python 3.11 or newer.")
@@ -83,11 +88,14 @@ async def run_updates_concurrently(
     
     success_count = 0
     
-    exceptions_encountered: List[BaseException] = []
+    exceptions_encountered: List[Exception] = []
     for i, outcome in enumerate(results_or_exceptions):
         if isinstance(outcome, Exception):
             logger.warning(f"Update task at index {i} failed: {type(outcome).__name__} - {outcome}")
             exceptions_encountered.append(outcome)
+        elif isinstance(outcome, BaseException):
+            logger.critical(f"Task: {i} was interrupted by a critical BaseException: {outcome}")
+            raise outcome
         else:
             success_count += 1
     
@@ -95,7 +103,7 @@ async def run_updates_concurrently(
         
     logger.info(f"Update tasks completed. Successful: {success_count}, Failed: {error_count}.")
     if exceptions_encountered:
-        raise ExceptionGroup(f"{error_count} update tasks failed")
+        raise ExceptionGroup(f"{error_count} update tasks failed", exceptions_encountered)
 
 async def run_updates_as_group(
     update_coroutines: List[Coroutine[Any, Any, Any]]
