@@ -2,8 +2,8 @@ import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from .base_repository import BaseRepository, SQLModelTable, T
-from src.utils.set_logging import get_logger
-from typing import Optional, List, Dict, Any, Type
+from dota_oracle.utils.set_logging import get_logger
+from typing import Optional, List, Dict, Any, Type, cast
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ class FeaturesRepository(BaseRepository):
         table_class: Type[SQLModelTable],
         records: List[Dict[str, Any]],
         session: AsyncSession
-    ) -> None:
+    ) -> int:
         """
         Performs a batch upsert operation for the given records into the specified table.
         Returns the number of records attempted to upsert.
@@ -72,8 +72,8 @@ class FeaturesRepository(BaseRepository):
         if feature_dataframe.empty:
             logger.warning(f"Received empty DataFrame for storing features in {table_class.__name__}. Skipping.")
             return
-
-        feature_records = feature_dataframe.to_dict(orient='records')
+        feature_records_from_df = feature_dataframe.to_dict(orient='records')
+        feature_records = cast(List[Dict[str, Any]], feature_records_from_df)
 
         async with AsyncSession(self.engine, expire_on_commit=False) as session: 
             async with session.begin(): 

@@ -3,7 +3,7 @@ from .schemas.histories import PlayerHeroHistoryTable, TeamHistoryTable, TeamMat
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import select, desc
-from utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 
@@ -24,7 +24,7 @@ class HistoryRepository:
         account_id: int,
         hero_id: int,
         before: Optional[datetime] = None, 
-        after: Optional[datetime] = None, # Optional field for after a patch 
+        after: Optional[datetime] = None, 
         limit: Optional[int] = None
     ) -> List[bool] | Exception:
         """
@@ -58,16 +58,16 @@ class HistoryRepository:
                 )
 
                 if after: 
-                    stmt = stmt.where(PlayerHeroHistoryTable.match_start_time > after)
+                    stmt = stmt.where(PlayerHeroHistoryTable.start_time > after)
                 if before:
-                    stmt = stmt.where(PlayerHeroHistoryTable.match_start_time < before)
+                    stmt = stmt.where(PlayerHeroHistoryTable.start_time < before)
 
                 stmt = (
-                    stmt.order_by(desc(PlayerHeroHistoryTable.match_start_time))
+                    stmt.order_by(desc(PlayerHeroHistoryTable.start_time))
                     .limit(effective_limit)
                 )
                 result = await session.execute(stmt)
-                win_history: List[bool] = result.scalars().all()
+                win_history: List[bool] = list(result.scalars().all())
                 logger.debug(f"Found {len(win_history)} player-hero history entries for acc={account_id}, hero={hero_id}.")
                 return win_history
             except SQLAlchemyError as e: 
@@ -136,16 +136,16 @@ class HistoryRepository:
                 )
 
                 if after:
-                    stmt = stmt.where(TeamHistoryTable.match_start_time > after)
+                    stmt = stmt.where(TeamHistoryTable.start_time > after)
                 if before:
-                    stmt = stmt.where(TeamHistoryTable.match_start_time < before)
+                    stmt = stmt.where(TeamHistoryTable.start_time < before)
 
                 stmt = (
-                    stmt.order_by(desc(TeamHistoryTable.match_start_time))
+                    stmt.order_by(desc(TeamHistoryTable.start_time))
                     .limit(effective_limit)
                 )
                 result = await session.execute(stmt)
-                team_history: List[bool] = result.scalars().all()
+                team_history: List[bool] = list(result.scalars().all())
                 logger.debug(f"Found {len(team_history)} history entries for team='{team_name}'.")
                 return team_history
             except SQLAlchemyError as e:
@@ -184,16 +184,16 @@ class HistoryRepository:
                 )
 
                 if after:
-                    stmt = stmt.where(TeamMatchupHistoryTable.match_start_time > after)
+                    stmt = stmt.where(TeamMatchupHistoryTable.start_time > after)
                 if before:
-                    stmt = stmt.where(TeamMatchupHistoryTable.match_start_time < before)
+                    stmt = stmt.where(TeamMatchupHistoryTable.start_time < before)
 
                 stmt = (
-                    stmt.order_by(desc(TeamMatchupHistoryTable.match_start_time))
+                    stmt.order_by(desc(TeamMatchupHistoryTable.start_time))
                     .limit(effective_limit)
                 )
                 result = await session.execute(stmt)
-                matchup_history: List[bool] = result.scalars().all()
+                matchup_history: List[bool] = list(result.scalars().all())
                 logger.debug(f"Found {len(matchup_history)} matchup history entries for {team_one} vs {team_two}.")
                 return matchup_history
             except SQLAlchemyError as e:

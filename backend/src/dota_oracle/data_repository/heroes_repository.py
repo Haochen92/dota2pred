@@ -1,10 +1,10 @@
-from pydantic_models.heroes import HeroData
+from dota_oracle.pydantic_models.heroes import HeroData
 from .schemas.heroes import HeroDataTable
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from typing import Dict, Optional
 from sqlmodel import select
 from sqlalchemy.dialects.postgresql import insert
-from src.utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 from .base_repository import BaseRepository
 
 logger = get_logger(__name__)
@@ -21,7 +21,7 @@ class HeroesRepository(BaseRepository):
                     stmt = insert(HeroDataTable).values(heroes_data)
                     update_dict = {
                         col.name: getattr(stmt.excluded, col.name)
-                        for col in HeroDataTable.__table__.columns
+                        for col in HeroDataTable.__table__.columns # type: ignore
                         if col.name != 'id' 
                     }
                         
