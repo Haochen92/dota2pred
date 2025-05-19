@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 class MatchPredictionTable(SQLModel, table=True):
-    __tablename__ = 'match_predictions'
+    __tablename__ = 'match_predictions' # type: ignore
     
     # Composite Primary Key
     match_id: int = Field(sa_type=BigInteger, primary_key=True)

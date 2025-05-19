@@ -4,7 +4,7 @@ from sqlalchemy import BigInteger, Column, TIMESTAMP
 from datetime import datetime
 
 class MatchTable(SQLModel, table=True):
-    __tablename__ = "matches"
+    __tablename__ = "matches"  # type: ignore
     # Primary Key
     match_id: int = Field(default=None, sa_column=Column('match_id', BigInteger, primary_key=True))
     
@@ -44,7 +44,7 @@ class MatchTable(SQLModel, table=True):
     duration: Optional[float] = Field(default=None)
 
 class MatchOutcomeTable(SQLModel, table=True):
-    __tablename__ = 'match_outcomes'
+    __tablename__ = 'match_outcomes' # type: ignore
     
     match_id: int = Field(
         sa_column=Column(BigInteger, primary_key=True) 
