@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
-from src.pydantic_models.leagues import LeagueItem
+from dota_oracle.pydantic_models.leagues import LeagueItem
 
-class LeagueTable(SQLModel, LeagueItem, table=True):
+class LeagueTable(SQLModel, LeagueItem, table=True): # type: ignore
     # overrides LeagueItem
-    league_id: int = Field(primary_key=True)
+    leagueid: int = Field(primary_key=True)
