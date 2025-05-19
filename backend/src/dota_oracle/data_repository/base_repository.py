@@ -1,7 +1,7 @@
 from typing import Type, TypeVar, List, Optional, Any, Protocol
 from sqlmodel import SQLModel, select, Table, inspect, desc
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from src.utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 
 # helper class for type
 class SQLModelTable(Protocol):
@@ -36,12 +36,12 @@ class BaseRepository:
             try:
                 stmt = select(model_class)
                 if hasattr(model_class, 'match_id'):
-                    stmt = stmt.order_by(desc(model_class.match_id))
+                    stmt = stmt.order_by(desc(model_class.match_id)) # type: ignore
                     
                 result = await session.execute(stmt)
                 instances = result.scalars().all()
                 logger.debug(f"Retrieved {len(instances)} records for {model_class.__name__}")
-                return instances
+                return instances # type: ignore
             except Exception as e:
                 logger.error(f"Error retrieving all records for {model_class.__name__}: {e}", exc_info=True)
                 return [] 
@@ -103,7 +103,6 @@ class BaseRepository:
             pk_attribute = self._get_primary_key_attribute(model_class)
 
             async with AsyncSession(self.engine) as session:
-                # Use the .in_() operator for the WHERE clause
                 stmt = select(model_class).where(pk_attribute.in_(batch_ids))
                 result = await session.execute(stmt)
                 instances = result.scalars().all()
@@ -111,7 +110,7 @@ class BaseRepository:
                 logger.debug(f"Retrieved {len(instances)} records for {model_class.__name__} matching batch IDs.")
                 return list(instances)
 
-        except (AttributeError, ValueError) as e: # Catch PK detection errors
+        except (AttributeError, ValueError) as e: 
              logger.error(f"Error determining primary key for {model_class.__name__}: {e}", exc_info=True)
              return []
         except Exception as e:
