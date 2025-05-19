@@ -13,7 +13,7 @@ LIVE_LEAGUE_GAMES = 'IDOTA2Match_570/GetLiveLeagueGames/v1'
 async def fetch_live_league_games() -> List[LiveLeagueGame]:
     try:
         res = await fetch_steam_data(endpoint=LIVE_LEAGUE_GAMES)
-        validated_res = LiveLeagueAPIResponse(**res)
+        validated_res = LiveLeagueAPIResponse.model_validate(res)
         games_list = validated_res.result.games
         return games_list
     except ValidationError as ve:

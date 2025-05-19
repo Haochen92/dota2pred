@@ -1,7 +1,7 @@
 import aiohttp
 from dotenv import load_dotenv
 import os
-from src.utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 from typing import Optional
 
 logger = get_logger(__name__)

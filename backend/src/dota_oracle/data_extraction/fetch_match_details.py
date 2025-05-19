@@ -1,9 +1,9 @@
 from .api_clients.opendota_api import fetch_opendota_api
-from src.pydantic_models.match import MatchesAPIResponse
-from src.config import ROOT_DIR
-from src.utils.set_logging import get_logger
+from dota_oracle.pydantic_models.match import MatchesAPIResponse
+from dota_oracle.config import ROOT_DIR
+from dota_oracle.utils.set_logging import get_logger
 from typing import Optional
-from utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 import logging
 from pydantic import ValidationError
 
