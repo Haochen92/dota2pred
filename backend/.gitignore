@@ -5,3 +5,4 @@ bentoml/models/
 __pycache__/
 *.pyc
 logs
+.venv

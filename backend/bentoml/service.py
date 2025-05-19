@@ -2,7 +2,7 @@ import bentoml
 from bentoml.models import BentoModel
 import numpy as np
 from typing import Dict, Any, List
-from utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 import subprocess
 
 logger = get_logger(__name__)
