@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from .schemas.inference import MatchPredictionTable
 from sqlalchemy.dialects.postgresql import insert
-from utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 from .base_repository import BaseRepository
 from typing import Optional, List
 from sqlmodel import select
@@ -111,7 +111,7 @@ class PredictionRepository(BaseRepository):
             try:
                 stmt = select(MatchPredictionTable).where(MatchPredictionTable.match_id == match_id)
                 result = await session.execute(stmt)
-                prediction_instances: List[MatchPredictionTable] = result.scalars().all()
+                prediction_instances: List[MatchPredictionTable] = list(result.scalars().all())
                 logger.debug(f"Retrieved {len(prediction_instances)} prediction instances for match {match_id}")
                 return prediction_instances
             except SQLAlchemyError as e:
@@ -134,7 +134,7 @@ class PredictionRepository(BaseRepository):
             try:
                 stmt = select(MatchPredictionTable)
                 result = await session.execute(stmt)
-                all_predictions: List[MatchPredictionTable] = result.scalars().all()
+                all_predictions: List[MatchPredictionTable] = list(result.scalars().all())
                 logger.debug(f"Retrieved {len(all_predictions)} total prediction instances.")
                 return all_predictions
             except SQLAlchemyError as e:
@@ -162,7 +162,7 @@ class PredictionRepository(BaseRepository):
                     MatchPredictionTable.predictor_name == predictor_name
                 )
                 result = await session.execute(stmt)
-                predictor_predictions: List[MatchPredictionTable] = result.scalars().all()
+                predictor_predictions: List[MatchPredictionTable] = list(result.scalars().all())
                 logger.debug(f"Retrieved {len(predictor_predictions)} prediction instances by predictor '{predictor_name}'")
                 return predictor_predictions
             except SQLAlchemyError as e:

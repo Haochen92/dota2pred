@@ -1,8 +1,8 @@
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
-from utils.set_logging import get_logger
-from pydantic_models.leagues import LeagueItem
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.pydantic_models.leagues import LeagueItem
 from .schemas.leagues import LeagueTable
 from .base_repository import BaseRepository
 
@@ -29,8 +29,8 @@ class LeaguesRepository(BaseRepository):
                 logger.error(f"Error inserting league data: {e}", exc_info=True)
                 raise e
             
-    async def get_league_data_by_id():
+    async def get_league_data_by_id(self):
         pass
     
-    async def get_all_league_data():
+    async def get_all_league_data(self):
         pass

@@ -3,8 +3,8 @@ from .schemas.matches import MatchTable, MatchOutcomeTable
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
-from utils.set_logging import get_logger
-from pydantic_models.match import Match as MatchPydantic
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.pydantic_models.match import Match as MatchPydantic
 from .base_repository import BaseRepository
 import asyncio
 
@@ -19,8 +19,8 @@ class MatchRepository(BaseRepository):
     """
     def __init__(self, engine: AsyncEngine):
         super().__init__(engine=engine)
-        self.match_table_cols = {c.name for c in MatchTable.__table__.columns}
-        self.outcome_table_cols = {c.name for c in MatchOutcomeTable.__table__.columns}
+        self.match_table_cols = {c.name for c in MatchTable.__table__.columns} # type: ignore
+        self.outcome_table_cols = {c.name for c in MatchOutcomeTable.__table__.columns}  # type: ignore
         # Defensive check for match_id to be present
         if 'match_id' not in self.match_table_cols or 'match_id' not in self.outcome_table_cols:
              logger.warning("MatchRepository initialized but 'match_id' missing from MatchTable or MatchOutcomeTable columns.")
