@@ -26,7 +26,7 @@ class HistoryRepository:
         before: Optional[datetime] = None, 
         after: Optional[datetime] = None, 
         limit: Optional[int] = None
-    ) -> List[bool] | Exception:
+    ) -> List[bool]:
         """
         Fetches win history (list of booleans) for a specific player/hero combination.
         Optionally filters by time (Unix timestamp) and limits count.
