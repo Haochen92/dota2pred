@@ -1,8 +1,8 @@
 from .api_clients.steam_api import fetch_steam_data
 from typing import List
 import asyncio
-from utils.set_logging import get_logger
-from pydantic_models.live_league_games import LiveLeagueAPIResponse, LiveLeagueGame
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.pydantic_models.live_league_games import LiveLeagueAPIResponse, LiveLeagueGame
 from pydantic import ValidationError
 
 logger = get_logger(__name__)
@@ -20,7 +20,7 @@ async def fetch_live_league_games() -> List[LiveLeagueGame]:
         logger.error(f"API response validation failed: {ve}", exc_info=True)
         raise ve # 
     except Exception as e:
-        logger.error(f"Error fetching live_league_games: {e}", exec_info=True)
+        logger.error(f"Error fetching live_league_games: {e}", exc_info=True)
         raise e
          
 
