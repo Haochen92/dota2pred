@@ -2,7 +2,7 @@ from pydantic import BaseModel, RootModel
 from typing import List, Optional
 
 class LeagueItem(BaseModel):
-    leagueid: Optional[int] = None
+    leagueid: int
     tier: Optional[str] = None
     name: Optional[str] = None
     
