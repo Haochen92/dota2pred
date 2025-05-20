@@ -5,13 +5,14 @@ from .set_logging import get_logger
 
 logger = get_logger(__name__)
 
-T = TypeVar('T')
+T = TypeVar('T') # key variable
+R = TypeVar('R') # return variable
 
-ASYNC_TASK = Coroutine[Any, Any, T]
+ASYNC_TASK = Coroutine[Any, Any, R]
 
 async def get_outcome_concurrently(
-    keyed_coroutines: Dict[str, ASYNC_TASK]
-) -> Dict[str, T|Exception]:
+    keyed_coroutines: Dict[T, ASYNC_TASK]
+) -> Dict[T, R|Exception]:
     
     if not keyed_coroutines:
         return {}
@@ -26,7 +27,7 @@ async def get_outcome_concurrently(
     )
     
     # Process outcomes
-    outcome_dict: Dict[str, T|Exception] = {}
+    outcome_dict: Dict[T, R|Exception] = {}
     error_count = 0
     success_count = 0
     
@@ -49,20 +50,20 @@ async def get_outcome_concurrently(
     
 
 async def get_outcome_as_group(
-    keyed_coroutines: Dict[str, ASYNC_TASK]
-) -> Dict[str, T]:
+    keyed_coroutines: Dict[T, ASYNC_TASK]
+) -> Dict[T, R]:
     
     if sys.version_info < (3, 11):
         raise RuntimeError("asyncio.TaskGroup requires Python 3.11 or newer.")
     
-    created_tasks: Dict[str, asyncio.Task[T]] = {}
+    created_tasks: Dict[T, asyncio.Task[R]] = {}
     
     async with asyncio.TaskGroup() as tg:
         for key, coro in keyed_coroutines.items():
             created_tasks[key] = tg.create_task(coro)
     
 
-    results_dict: Dict[str, T] = {}
+    results_dict: Dict[T, R] = {}
     for key, task_obj in created_tasks.items():
         results_dict[key] = await task_obj
         
