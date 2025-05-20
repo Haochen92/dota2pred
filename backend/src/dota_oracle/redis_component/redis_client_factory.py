@@ -1,8 +1,8 @@
 import redis.asyncio as redis
-from typing import Dict
+from typing import Dict, Optional
 
 class RedisClientFactory:
-    _instances: Dict[str, redis.Redis] = {}
+    _instances: Dict[str, Optional[redis.Redis]] = {}
     
     @classmethod
     def create_instance(cls, env: str = 'prod') -> redis.Redis:
@@ -14,10 +14,14 @@ class RedisClientFactory:
                 decode_responses=True
             )
         
-        return cls._instances[env]
+        instance = cls._instances[env]
+        assert instance is not None
+        return instance
     
     @classmethod
-    def close_instance(cls, env: str = 'prod'):
+    async def close_instance(cls, env: str = 'prod') -> None:
         if env in cls._instances and cls._instances[env] is not None:
-            cls._instances[env].close()
-            cls._instances[env] = None
+            instance = cls._instances[env]
+            if instance:
+                await instance.aclose() 
+                cls._instances[env] = None
