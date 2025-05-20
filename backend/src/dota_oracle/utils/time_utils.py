@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
+from typing import Any
 
 def get_current_utc_iso_timestamp() -> datetime:
     """Returns the current time in ISO 8601 format with 'Z' for UTC."""
     return datetime.now(timezone.utc)
 
 
-def to_utc_datetime_object(time_input: any) -> datetime: 
+def to_utc_datetime_object(time_input: Any) -> datetime: 
     """
     Converts various time inputs (datetime objects, Unix timestamps,
     parsable date strings) to a timezone-aware datetime object in UTC.
