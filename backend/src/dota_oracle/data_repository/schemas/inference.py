@@ -15,4 +15,4 @@ class MatchPredictionTable(SQLModel, table=True):
     prediction_date: Optional[datetime] = Field(
         sa_column=Column(TIMESTAMP(timezone=True), index=True, nullable=True)
     ) 
-    prediction_probability: float = Field(default=None)
+    prediction_probability: Optional[float] = Field(default=None)
