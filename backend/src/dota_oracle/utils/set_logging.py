@@ -1,5 +1,5 @@
 import logging
-from src.config import ROOT_DIR
+from dota_oracle.config import ROOT_DIR
 import pytz
 from datetime import datetime
 
