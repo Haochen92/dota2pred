@@ -205,7 +205,7 @@ class HistoryRepository:
 
     async def add_team_match_outcome(
         self,
-        team_name: str,
+        team_name: Optional[str],
         match_id: int,
         win: bool,
         match_start_time: datetime
@@ -214,6 +214,9 @@ class HistoryRepository:
         Persists a single team match outcome.
         """
         logger.debug(f"Adding team history: team='{team_name}', match={match_id}")
+        if not team_name:
+            logger.warning(f"Missing team name")
+            return None
         async with AsyncSession(self.engine) as session:
              async with session.begin():
                 try:
@@ -236,8 +239,8 @@ class HistoryRepository:
 
     async def add_team_match_up_outcome(
         self,
-        team_one: str,
-        team_two: str,
+        team_one: Optional[str],
+        team_two: Optional[str],
         match_id: int,
         win: bool, # Assumes win is from team_one's perspective
         match_start_time: datetime
@@ -247,6 +250,9 @@ class HistoryRepository:
         Consider canonical ordering if A vs B and B vs A should be the same entry.
         """
         # Defensive canonical sorting even if calling function has sorted beforehand:
+        if not team_one or not team_two:
+            logger.warning(f"Missing team names for either of the teams")
+            return
         sorted_teams = sorted([team_one, team_two])
         team1_name = sorted_teams[0]
         team2_name = sorted_teams[1]
