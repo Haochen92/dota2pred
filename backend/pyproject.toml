@@ -30,6 +30,7 @@ aiohttp = "*"
 dependency-injector = "*"
 redis = "*"
 python-dotenv = "*"
+psycopg2 = "^2.9.10"
 
 [tool.poetry.group.dev.dependencies]
 # Development dependencies
