@@ -15,9 +15,9 @@ class PlayerData(BaseModel):
 class MatchesAPIResponse(BaseModel):
     # Match metadata
     match_id: int
-    start_time: Optional[int] = None
-    duration: Optional[float] = None
-    radiant_win: Optional[bool] = None
+    start_time: int
+    duration: float
+    radiant_win: bool
     
     # team information   
     radiant_name: Optional[str] = None
