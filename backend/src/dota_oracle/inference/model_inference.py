@@ -1,7 +1,7 @@
 import aiohttp
 import numpy as np
-from pydantic_models.inference import ModelPrediction, ModelMetaData
-from utils.set_logging import get_logger
+from dota_oracle.pydantic_models.inference import ModelPrediction, ModelMetaData
+from dota_oracle.utils.set_logging import get_logger
 from pydantic import ValidationError
 from typing import Optional
 
@@ -14,7 +14,10 @@ class ModelInferenceService:
         
     async def initialize_async_service(self):
         # Initialize async service
-        self.model_metadata: ModelMetaData = await self.get_model_metadata()
+        try:
+            self.model_metadata: ModelMetaData = await self.get_model_metadata()
+        except Exception as e:
+            raise e
 
     async def get_prediction(self, input_features: np.ndarray) -> ModelPrediction:
         
@@ -33,14 +36,16 @@ class ModelInferenceService:
                     validated_result = ModelPrediction.model_validate(result)
                     return validated_result
         except aiohttp.ClientResponseError as ce:
-            logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {ce.message}", exc_info=True)           
+            logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {ce.message}", exc_info=True)  
+            raise ce         
         except ValidationError as ve:
             logger.error(f"Validation error for returned data {ve}", exc_info=True)
+            raise ve
         except Exception as e:
             logger.error(f"Error getting prediction: {e}", exc_info=True)
             raise e
     
-    async def get_model_metadata(self) -> Optional[ModelMetaData]:
+    async def get_model_metadata(self) -> ModelMetaData:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -53,11 +58,16 @@ class ModelInferenceService:
                     logger.debug("Successfully fetched metadata")
                     validated_metadata = ModelMetaData.model_validate(result_dict)
                     
+                    if not validated_metadata:
+                        raise ValueError("Missing model metadata")
+                    
                     return validated_metadata
         except aiohttp.ClientResponseError as ce:
-            logger.error(f"HTTP error {ce.status} fetching metadata from {self.metadata_url}: {e.message}", exc_info=True)
+            logger.error(f"HTTP error {ce.status} fetching metadata from {self.metadata_url}: {ce.message}", exc_info=True)
+            raise ce
         except ValidationError as ve:
             logger.error(f"Validation error for returned data {ve}", exc_info=True)
+            raise ve
         except Exception as e:
             logger.error(f"Error getting prediction: {e}", exc_info=True)
             raise e
