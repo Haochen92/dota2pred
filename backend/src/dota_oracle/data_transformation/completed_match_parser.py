@@ -19,7 +19,7 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
         
         match_data = {
             'match_id': raw_match_data.match_id,
-            'league_id': raw_match_data.league.leagueid if raw_match_data.league else None,
+            'league_id': raw_match_data.league.leagueid if raw_match_data.league is not None else 0,
             'radiant_name': raw_match_data.radiant_name,
             'radiant_team_id': raw_match_data.radiant_team_id if raw_match_data.radiant_team_id is not None else 0,
             'dire_name': raw_match_data.dire_name,
@@ -31,7 +31,7 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
         
         for player in raw_match_data.players:
             slot = player.player_slot
-            mapped_hero_id = hero_map.get(player.hero_id, "unknown_hero")
+            mapped_hero_id = hero_map.get(player.hero_id, None)
             match_data[f"slot_{slot}_hero_id"] = mapped_hero_id
             match_data[f"slot_{slot}_account_id"] = player.account_id
         
