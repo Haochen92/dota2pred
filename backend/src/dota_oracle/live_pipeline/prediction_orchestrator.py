@@ -1,13 +1,13 @@
 import numpy as np
-from utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 from .match_prediction_service import MatchPredictionService
-from inference import FeaturePreparationService
+from dota_oracle.inference import FeaturePreparationService
 from .redis_service import RedisService
-from constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
-from utils.async_utils import get_outcome_concurrently
+from dota_oracle.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
+from dota_oracle.utils.async_utils import get_outcome_concurrently
 from typing import Coroutine, Any, Dict
-from pydantic_models.redis_models import StreamMatchEventData, FailureRecord
-from utils.time_utils import get_current_utc_iso_timestamp
+from dota_oracle.pydantic_models.redis_models import StreamMatchEventData, FailureRecord
+from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 
 logger = get_logger(__name__)
 
@@ -89,7 +89,8 @@ class PredictionOrchestrator:
                 original_event_id=event_id,
                 original_data=data,
                 original_stream=STREAM_PENDING_PREDICTION,
-                error_message=e,
+                error_type=str(type(e)),
+                error_message=str(e),
                 failure_timestamp=get_current_utc_iso_timestamp()
             )
             await self.redis.record_failure_and_ack(failure_record)
