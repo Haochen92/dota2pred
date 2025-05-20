@@ -1,8 +1,8 @@
-from data_repository.prediction_repository import PredictionRepository
-from inference import ModelInferenceService, FeaturePreparationService
+from dota_oracle.data_repository.prediction_repository import PredictionRepository
+from dota_oracle.inference import ModelInferenceService, FeaturePreparationService
 import numpy as np
-from utils.set_logging import get_logger
-from pydantic_models.inference import ModelPrediction
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.pydantic_models.inference import ModelPrediction
 
 logger = get_logger(__name__)
 
@@ -17,8 +17,8 @@ class MatchPredictionService:
         self.model_inference_service = model_inference_service
         self.storage = prediction_repository
         
-    async def predict_and_store(self, match_id: int) -> None|Exception:
-        input_array: np.ndarray = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
+    async def predict_and_store(self, match_id: int) -> None:
+        input_array: np.ndarray | None = await self.feature_preparation_service.get_transformed_features_from_id(match_id)
         
         if input_array is None or input_array.size == 0:
             raise ValueError(f"input array empty after feature preparation for match: {match_id}")
