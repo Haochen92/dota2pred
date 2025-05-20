@@ -1,15 +1,14 @@
 import pandas as pd
 import numpy as np
-import asyncio
 from sqlmodel import SQLModel
-from typing import Optional, Union, List, Dict, Coroutine, Any
-from feature_transformation.encoding import encode_hero_features
-from data_repository.schemas.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
-from data_repository.features_repository import FeaturesRepository
-from data_repository.heroes_repository import HeroesRepository
-from utils.set_logging import get_logger
-from inference.model_inference import ModelInferenceService
-from utils.async_utils import get_outcome_as_group
+from typing import Optional, List, Dict, Coroutine, Any
+from dota_oracle.feature_transformation.encoding import encode_hero_features
+from dota_oracle.data_repository.schemas.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
+from dota_oracle.data_repository.features_repository import FeaturesRepository
+from dota_oracle.data_repository.heroes_repository import HeroesRepository
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.inference.model_inference import ModelInferenceService
+from dota_oracle.utils.async_utils import get_outcome_as_group
 
 logger = get_logger(__name__)
 
@@ -17,8 +16,6 @@ logger = get_logger(__name__)
 HERO_KEY = 'hero'
 TEAM_KEY = 'team'
 PLAYER_HERO_KEY = 'player_hero'
-
-FetchResult = Union[Optional[SQLModel], Exception]
 
 class FeaturePreparationService:
     def __init__(
