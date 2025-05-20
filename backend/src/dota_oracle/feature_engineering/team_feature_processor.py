@@ -1,8 +1,9 @@
-import pandas as pd
 from typing import Dict, List, Any, Optional, Coroutine
 from dota_oracle.data_repository.history_repository import HistoryRepository 
 from dota_oracle.utils import get_logger, get_outcome_as_group
+from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from datetime import datetime
+from dota_oracle.data_repository.schemas import MatchTable, TeamFeaturesTable
 
 logger = get_logger(__name__) 
 
@@ -18,28 +19,32 @@ class TeamFeatureProcessor:
 
     async def create_team_features(
             self,
-            df: pd.DataFrame,
+            match_instances: List[MatchTable],
             before_timestamp: Optional[datetime] = None,
             after_timestamp: Optional[datetime] = None,
             history_limit: Optional[int] = None
-        ) -> pd.DataFrame:
+        ) -> List[TeamFeaturesTable]:
         
-        if df.empty:
-            logger.info("Input DataFrame is empty. Returning empty DataFrame.")
-            return pd.DataFrame()
+        if not match_instances:
+            logger.warning(f"No match instances for team feature processing")
+            return []
 
         all_match_features = []
-        logger.info(f"Calculating team features for {len(df)} matches...")
+        logger.info(f"Calculating team features for {len(match_instances)} matches...")
 
-        match_records = df.to_dict('records')
+        for instance in match_instances:
+            match_id = instance.match_id
+            radiant_team = instance.radiant_name
+            dire_team = instance.dire_name
+            current_match_start = instance.start_time
+            
+            if before_timestamp:
+                effective_before = before_timestamp
+            elif current_match_start:
+                effective_before = current_match_start
+            else:
+                effective_before = get_current_utc_iso_timestamp()
 
-        for match in match_records:
-            match_id = match.get('match_id')
-            radiant_team = match.get('radiant_name')
-            dire_team = match.get('dire_name')
-
-            current_match_start = match.get('start_time')
-            effective_before = before_timestamp if before_timestamp is not None else current_match_start
 
             tasks_dict: Dict[str, Coroutine[Any, Any, float]] = {
                 'radiant_win_rate': self._calculate_team_win_rate(radiant_team, before=effective_before),
@@ -49,16 +54,21 @@ class TeamFeatureProcessor:
 
             try:
                 outcome_dict: Dict[str, float] = await get_outcome_as_group(tasks_dict)
-                row_features = {'match_id': match_id, **outcome_dict}
-                all_match_features.append(row_features)
+                team_features_row = TeamFeaturesTable(
+                    match_id=instance.match_id,
+                    radiant_win_rate=outcome_dict['radiant_win_rate'],
+                    dire_win_rate=outcome_dict['dire_win_rate'],
+                    radiant_dire_matchup=outcome_dict['radiant_dire_matchup']
+                )
+                all_match_features.append(team_features_row)
             except Exception as e:
                  logger.error(f"Unexpected error processing match {match_id}: {e}", exc_info=True)
                  continue
 
 
-        logger.info("Finished calculating team features.")
+        logger.info(f"Created {len(all_match_features)} / {len(match_instances)} matches features")
 
-        return pd.DataFrame(all_match_features)
+        return all_match_features
 
 
     async def _calculate_team_win_rate(self,
@@ -68,7 +78,7 @@ class TeamFeatureProcessor:
                                        limit: Optional[int] = None
                                     ) -> float:
         """Calculates win rate for a single team using the history repository."""
-        if not team_name:
+        if not team_name: # team might be new or unregistered
             return 0.5
 
         # Call the injected repository's method, passing filters
@@ -90,24 +100,24 @@ class TeamFeatureProcessor:
 
 
     async def _calculate_matchup_win_rate(self,
-                                        team_name: str, 
-                                        opponent_name: str,
-                                        before: datetime ,
+                                        team_name: Optional[str], 
+                                        opponent_name: Optional[str],
+                                        before: datetime,
                                         after: Optional[datetime] = None,
                                         limit: Optional[int] = None
                                         ) -> float:
         """Calculates the head-to-head win rate for team_name against opponent_name."""
         # Input validation
         if not team_name or not opponent_name:
-            logger.warning(f"Invalid input for matchup calc: team={team_name}, opp={opponent_name}")
+            logger.warning(f"Missing team name for matchup calc: team={team_name}, opp={opponent_name}")
             return 0.5
 
         # Standardize team order for repository lookup
         team1, team2 = sorted([team_name, opponent_name])
 
         team1_win_history: List[bool] = await self.history_repo.get_team_matchup_history(
-            team1_name=team1,
-            team2_name=team2,
+            team_one=team1,
+            team_two=team2,
             before=before,
             after=after,
             limit=limit
