@@ -84,7 +84,7 @@ class FeaturesRepository(BaseRepository):
                      raise e
 
 
-    async def get_feature_by_id(self, match_id: int, feature_table_class: Type[T])-> Optional[T]|Exception:
+    async def get_feature_by_id(self, match_id: int, feature_table_class: Type[T])-> T:
         """
         Retrieves a single feature model instance by its primary key (assumed to be 'match_id').
 
@@ -100,7 +100,7 @@ class FeaturesRepository(BaseRepository):
 
             if not feature_instance:
                 logger.warning(f"No feature found for table {feature_table_class.__name__}, match_id: {match_id}")
-                return None
+                raise ValueError
 
             logger.debug(f"Found feature for table {feature_table_class.__name__}, match_id: {match_id}")
             return feature_instance
@@ -108,7 +108,7 @@ class FeaturesRepository(BaseRepository):
             logger.error(f"Error fetching feature from {feature_table_class.__name__} for match_id {match_id}: {e}", exc_info=True)
             raise
 
-    async def get_all_features_from_table(self, feature_table_class: Type[T]) -> List[T] | Exception:
+    async def get_all_features_from_table(self, feature_table_class: Type[T]) -> List[T]:
         """
         Retrieves all feature model instances from the specified table.
 
