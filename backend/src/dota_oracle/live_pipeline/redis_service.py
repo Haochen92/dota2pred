@@ -115,11 +115,11 @@ class RedisService:
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
                 status_model = MatchStatusValue(status=MatchProcessingStatus.NEW)
-                pipe.hset(f'{MATCH_STATUS}:{match_id_str}', mapping=status_model.to_redis_hset_mapping())
+                pipe.hset(f'{MATCH_STATUS}:{match_id_str}', mapping=status_model.model_dump())
                 
                 # Using StreamMatchEventData to construct payload for xadd
                 event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp) 
-                pipe.xadd(STREAM_NEW_MATCHES, event_data_model.model_dump())
+                pipe.xadd(STREAM_NEW_MATCHES, event_data_model.model_dump()) # type: ignore
                 await pipe.execute()
             return True
         except Exception as e:
@@ -141,7 +141,7 @@ class RedisService:
                 pipe.hset(f'{MATCH_STATUS}:{match_id_str}', mapping=status_model.model_dump())
 
                 event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp)
-                pipe.xadd(STREAM_PENDING_PREDICTION, event_data_model.model_dump())
+                pipe.xadd(STREAM_PENDING_PREDICTION, event_data_model.model_dump()) # type: ignore
                 pipe.xack(STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP, event_id_to_ack)
                 await pipe.execute()
             return True
@@ -164,7 +164,7 @@ class RedisService:
                 pipe.hset(f'{MATCH_STATUS}:{match_id_str}', mapping=status_model.model_dump())
 
                 event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp)
-                pipe.xadd(STREAM_PENDING_COMPLETION, event_data_model.model_dump())
+                pipe.xadd(STREAM_PENDING_COMPLETION, event_data_model.model_dump()) # type: ignore
                 pipe.xack(STREAM_PENDING_PREDICTION, PREDICTION_GROUP, event_id_to_ack)
                 await pipe.execute()
             return True
