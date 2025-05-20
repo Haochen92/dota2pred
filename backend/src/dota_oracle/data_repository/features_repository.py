@@ -1,9 +1,8 @@
-import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
-from .base_repository import BaseRepository, SQLModelTable, T
+from .base_repository import BaseRepository, T
 from dota_oracle.utils.set_logging import get_logger
-from typing import Optional, List, Dict, Any, Type, cast
+from typing import Optional, List, Type
 
 logger = get_logger(__name__)
 
@@ -19,8 +18,8 @@ class FeaturesRepository(BaseRepository):
 
     async def _batch_upsert(
         self,
-        table_class: Type[SQLModelTable],
-        records: List[Dict[str, Any]],
+        table_class: Type[T],
+        records: List[T],
         session: AsyncSession
     ) -> int:
         """
@@ -31,7 +30,7 @@ class FeaturesRepository(BaseRepository):
             logger.warning(f"No records provided for batch upsert into {table_class.__name__}")
             return 0
 
-        sql_table = table_class.__table__
+        sql_table = table_class.__table__ # type: ignore
         table_name = table_class.__name__
 
         try:
@@ -62,18 +61,16 @@ class FeaturesRepository(BaseRepository):
 
     async def store_features(
         self,
-        feature_dataframe: pd.DataFrame,
-        table_class: Type[SQLModelTable]
+        feature_instances: List[T],
+        table_class: Type[T]
     ) -> None:
         """
         Stores features from a DataFrame into the specified table using batch upsert.
         Converts DataFrame rows to dictionaries for storage.
         """
-        if feature_dataframe.empty:
-            logger.warning(f"Received empty DataFrame for storing features in {table_class.__name__}. Skipping.")
+        if not feature_instances:
+            logger.warning(f"Received empty list for storing features in {table_class.__name__}. Skipping.")
             return
-        feature_records_from_df = feature_dataframe.to_dict(orient='records')
-        feature_records = cast(List[Dict[str, Any]], feature_records_from_df)
 
         async with AsyncSession(self.engine, expire_on_commit=False) as session: 
             async with session.begin(): 
@@ -81,7 +78,7 @@ class FeaturesRepository(BaseRepository):
                     await self._batch_upsert(
                         session=session,
                         table_class=table_class,
-                        records=feature_records,
+                        records=feature_instances,
                     )
                 except Exception as e:
                      raise e
