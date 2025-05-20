@@ -1,11 +1,11 @@
 from typing import Set, Dict, Any, Optional, List, Coroutine
-from utils.set_logging import get_logger
-from utils.async_utils import run_updates_concurrently, run_updates_as_group
-from data_repository.match_repository import MatchRepository
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.utils.async_utils import run_updates_as_group, get_outcome_concurrently
+from dota_oracle.data_repository.match_repository import MatchRepository
 from .redis_service import RedisService
 
 # data extraction
-from data_extraction.fetch_live_leagues import fetch_live_league_games, LiveLeagueGame
+from dota_oracle.data_extraction.fetch_live_leagues import fetch_live_league_games, LiveLeagueGame
 
 logger = get_logger(__name__)
 
@@ -21,29 +21,29 @@ class NewMatchOrchestrator:
             return 0
         logger.info(f"found {len(curr_matches)} new matches...")
         
-        new_match_set: Set[int] = await self.redis.update_live_match_set_and_get_new(curr_matches.keys())
+        new_match_set: Set[int] = await self.redis.update_live_match_set_and_get_new(list(curr_matches.keys())) # change view object to actual lists
         if not new_match_set:
             logger.info("No new matches found")
             return 0
         
         logger.info(f"Found {len(new_match_set)} new matches...")
         
-        task_lists: List[Coroutine[Any, Any, None]] = []
+        task_dict: Dict[int, Coroutine[Any, Any, bool]] = {}
         for match_id in new_match_set:
             try:
                 match_data = curr_matches.get(match_id, {})
                 if not match_data:
                     raise ValueError(f"{match_id} not found in current_matches")
-                task_lists.append(self._store_and_update_redis(match_data, match_id))
+                task_dict[match_id] = self._store_and_update_redis(match_data, match_id)
             except Exception as e:
                 logger.error(f"Error encounted while adding match {match_id} to task group")
                 continue
             
-        outcomes = await run_updates_concurrently(task_lists)
+        outcomes: Dict[int, bool | Exception] = await get_outcome_concurrently(task_dict)
         
         success_count = 0
         failure_count = 0
-        for outcome in outcomes:
+        for index, outcome in outcomes.items():
             if outcome:
                 success_count += 1
             else:
