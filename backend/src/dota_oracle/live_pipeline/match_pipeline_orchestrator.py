@@ -1,5 +1,5 @@
 # import logging
-from src.utils.set_logging import get_logger
+from dota_oracle.utils.set_logging import get_logger
 
 # import main orchestrators for each stage
 from .new_match_orchestrator import NewMatchOrchestrator
