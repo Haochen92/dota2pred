@@ -69,12 +69,12 @@ class FeaturePreparationService:
             logger.info(f"Successfully prepared features for match {match_id}, final shape: {numpy_array.shape}")
             return numpy_array
 
-        except KeyError as e:
-            logger.error(f"Internal processing error (missing key {e}?) for match {match_id}", exc_info=True)
-            return None
+        except KeyError as ke:
+            logger.error(f"Internal processing error (missing key {ke}?) for match {match_id}", exc_info=True)
+            raise ke
         except Exception as e:
             logger.error(f"Failed during feature processing/merging stage for match {match_id}: {e}", exc_info=True)
-            return None
+            raise e
 
     async def get_transformed_features_from_df(
         self,
