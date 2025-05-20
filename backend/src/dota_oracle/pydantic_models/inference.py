@@ -16,7 +16,7 @@ class ModelMetaData(BaseModel):
     name: str
     version: str
     trained_date: datetime
-    feature_columns = List[str]
+    feature_columns: List[str]
     previous_version : str = ""
     version_metadata: VersionMetaData = Field(default_factory=VersionMetaData)
     
