@@ -1,14 +1,14 @@
 import redis.asyncio as redis
 import asyncio
-from utils.set_logging import get_logger
-from utils.time_utils import get_current_utc_iso_timestamp
-from typing import List, Dict, Set, Any
+from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
+from typing import List, Dict, Set
 from pydantic import ValidationError
-from pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
+from dota_oracle.pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
 import json
 
 # Constants
-from constants.redis_constants import (
+from dota_oracle.constants.redis_constants import (
     MATCH_SET, MATCH_STATUS, TMP_KEY,
     STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION,
     FEATURE_ENGINEER_GROUP, PREDICTION_GROUP, COMPLETION_GROUP,
@@ -21,7 +21,7 @@ class RedisService:
     def __init__(self, redis_client: redis.Redis):
         # Expects an asyncio Redis client.
         self.redis: redis.Redis = redis_client
-        self._initialized = False
+        self._initialized:bool = False
 
     async def initialize(self):
         if self._initialized:
@@ -41,7 +41,7 @@ class RedisService:
         try:
             await self.redis.xgroup_create(stream, group, id='0', mkstream=True)
             logger.info(f"Created/confirmed consumer group '{group}' for stream '{stream}'")
-        except redis.exceptions.ResponseError as e:
+        except redis.ResponseError as e:
             if 'BUSYGROUP Consumer Group name already exists' in str(e):
                 logger.info(f"Consumer group '{group}' already exists for stream '{stream}'.")
             else:
@@ -82,7 +82,7 @@ class RedisService:
                     )
                     continue
             return parsed_events
-        except redis.exceptions.TimeoutError:
+        except redis.TimeoutError:
             return {} 
         except Exception as e:
             logger.error(f"Error reading and parsing stream {stream} for group {group}: {e}", exc_info=True)
@@ -96,9 +96,9 @@ class RedisService:
         try:
             await self.redis.delete(TMP_KEY)
             if curr_ids_str:
-                await self.redis.sadd(TMP_KEY, *curr_ids_str)
+                await self.redis.sadd(TMP_KEY, *curr_ids_str) # type: ignore
 
-            new_ids_raw = await self.redis.sdiff(TMP_KEY, MATCH_SET)
+            new_ids_raw = await self.redis.sdiff(TMP_KEY, MATCH_SET) # type: ignore
             new_match_ids = {int(id_str) for id_str in new_ids_raw}
             await self.redis.rename(TMP_KEY, MATCH_SET)
             logger.info(f"Updated live match set. Found {len(new_match_ids)} new matches.")
@@ -256,7 +256,7 @@ class RedisService:
     async def get_live_match_ids(self) -> Set[int]:
         """Gets current live match IDs from the set."""
         try:
-            ids_raw = await self.redis.smembers(MATCH_SET)
+            ids_raw = await self.redis.smembers(MATCH_SET) # type: ignore
             if not ids_raw:
                 return set()
             
