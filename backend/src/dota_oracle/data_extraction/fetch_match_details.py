@@ -15,7 +15,7 @@ match_info_handler.setFormatter(handler_format)
 match_info_handler.addFilter(lambda record: record.levelno == logging.INFO)
 logger.addHandler(match_info_handler)
 
-async def fetch_match_details(match_id: str) -> Optional[MatchesAPIResponse]:
+async def fetch_match_details(match_id: int) -> Optional[MatchesAPIResponse]:
     endpoint = f'matches/{match_id}'
     try:
         res = await fetch_opendota_api(endpoint=endpoint)
