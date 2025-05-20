@@ -3,25 +3,25 @@ from dependency_injector import providers, containers
 from dependency_injector.wiring import inject, Provide
 
 # Redis client 
-from redis_component.redis_client_factory import RedisClientFactory
+from dota_oracle.redis_component.redis_client_factory import RedisClientFactory
 
 # database
-from postgresql import DatabaseEngineFactory
+from dota_oracle.postgresql import DatabaseEngineFactory
 
 # --- Low-level Repositories ---
-from data_repository.features_repository import FeaturesRepository
-from data_repository.heroes_repository import HeroesRepository
-from data_repository.history_repository import HistoryRepository
-from data_repository.match_repository import MatchRepository
-from data_repository.prediction_repository import PredictionRepository
+from dota_oracle.data_repository.features_repository import FeaturesRepository
+from dota_oracle.data_repository.heroes_repository import HeroesRepository
+from dota_oracle.data_repository.history_repository import HistoryRepository
+from dota_oracle.data_repository.match_repository import MatchRepository
+from dota_oracle.data_repository.prediction_repository import PredictionRepository
 
 # --- Feature Engineering Components ---
-from feature_engineering.team_feature_processor import TeamFeatureProcessor
-from feature_engineering.player_hero_features_processor import PlayerHeroFeaturesProcessor
+from dota_oracle.feature_engineering.team_feature_processor import TeamFeatureProcessor
+from dota_oracle.feature_engineering.player_hero_features_processor import PlayerHeroFeaturesProcessor
 
 # --- Inference Components ---
-from inference.feature_preparation import FeaturePreparationService 
-from inference.model_inference import ModelInferenceService
+from dota_oracle.inference.feature_preparation import FeaturePreparationService 
+from dota_oracle.inference.model_inference import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .redis_service import RedisService 
@@ -35,6 +35,10 @@ from .feature_engineering_orchestrator import FeatureEngineeringOrchestrator
 from .prediction_orchestrator import PredictionOrchestrator          
 from .completion_orchestrator import CompletionOrchestrator         
 from .match_pipeline_orchestrator import MatchPipelineOrchestrator   
+
+from dota_oracle.utils import get_logger
+
+logger = get_logger(__name__)
 
 class AppContainer(containers.DeclarativeContainer):
     """
@@ -110,11 +114,11 @@ class AppContainer(containers.DeclarativeContainer):
     prediction_orchestrator = providers.Factory(
         PredictionOrchestrator,
         redis_service=redis_service,
-        feature_preparation_service=feature_preparation_service, # Used to get features
-        match_prediction_service=match_prediction_service      # Used to run prediction
+        feature_preparation_service=feature_preparation_service, 
+        match_prediction_service=match_prediction_service      
     )
     completion_orchestrator = providers.Factory(
-        CompletionOrchestrator, # Use the conceptual class name
+        CompletionOrchestrator, 
         redis_service=redis_service,
         history_update_service=history_update_service,
         match_repository=match_repository
@@ -129,31 +133,30 @@ class AppContainer(containers.DeclarativeContainer):
         completion_orchestrator=completion_orchestrator
     )
 
+# to do: wrap in prefect task or CRON task
 async def run_pipeline():
     container = AppContainer()
-    # container.config.from_yaml('config.yml') # Load config if implemented
+    # todo: container.config.from_yaml('config.yml') # Load config if implemented
 
     try:
         # Initialize resources 
-        print("Initializing container resources...")
-        await container.init_resources()
-        print("Container resources initialized.")
+        logger.debug("Initializing container resources...")
+        await container.init_resources() # type: ignore
+        logger.info("Container resources initialized.")
 
-        # Get the top-level orchestrator *after* resources are initialized
+        # Get the top-level orchestrator after resources are initialized
         pipeline_orchestrator = container.match_pipeline_orchestrator()
 
-        print("Running pipeline cycle...")
+        logger.debug("Running pipeline cycle...")
         await pipeline_orchestrator.run_cycle()
-        # await asyncio.sleep(60) # Example delay
 
     except Exception as e:
-        print(f"Pipeline failed: {e}")
-        # Consider more robust error logging/handling
+        logger.error(f"Pipeline failed: {e}")
     finally:
-        # Shutdown resources (Good practice for cleanup)
-        print("Shutting down container resources...")
-        await container.shutdown_resources()
-        print("Container resources shut down.")
+        # Shutdown resources 
+        logger.debug("Shutting down container resources...")
+        await container.shutdown_resources() # type: ignore
+        logger.info("Container resources shut down.")
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline())
