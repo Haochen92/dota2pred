@@ -33,7 +33,7 @@ async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_rep
                 faction = getattr(row.scoreboard, team)
                 for player in faction.players:
                     slot = player.player_slot
-                    mapped_hero_id = hero_map.get(player.hero_id, "unknown hero")
+                    mapped_hero_id = hero_map.get(player.hero_id, None) # unlikely since upstream handles this
                     player_data = {
                         f"slot_{slot}_account_id": player.account_id,
                         f"slot_{slot}_hero_id": mapped_hero_id
