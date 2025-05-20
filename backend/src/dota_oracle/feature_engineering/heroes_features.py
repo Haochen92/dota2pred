@@ -1,32 +1,31 @@
-import pandas as pd
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.constants import DRAFT_COLS
+from dota_oracle.data_repository.schemas import MatchTable, HeroFeaturesTable
+from typing import List
+
 
 logger = get_logger(__name__)
 
 
-def create_hero_features(input_df: pd.DataFrame) -> pd.DataFrame:
+def create_hero_features(match_instances: List[MatchTable]) -> List[HeroFeaturesTable]:
     
-    required_cols = DRAFT_COLS + ['match_id']
-    missing_cols = [col for col in required_cols if col not in input_df.columns]
-    if missing_cols:
-        logger.error(f"Input DataFrame missing required columns: {missing_cols}")
-        raise ValueError(f"Input DataFrame missing required columns: {missing_cols}")
+    output_hero_features_list: List[HeroFeaturesTable] = []
     
-    df_copy = input_df.copy()
-
-    df_heroes_only = df_copy[DRAFT_COLS]
-    
-    # convert to type int, then aggregate series into a list using series method
-    hero_picks_series = df_heroes_only.apply(lambda row: row.astype(int).tolist(), axis=1)
-    
-    output_df = pd.DataFrame({
-        'match_id': df_copy['match_id'],
-        'hero_picks': hero_picks_series
-    })
-
-    logger.info(f"Created hero pick list (simplified) for {len(output_df)} matches.")
-    return output_df
+    for instance in match_instances:
+        heroes_list = []
+        for col_name in DRAFT_COLS:
+            hero_name = getattr(instance, col_name)
+            heroes_list.append(hero_name) 
+            
+        hero_feature = HeroFeaturesTable(
+            match_id=instance.match_id,
+            hero_picks=heroes_list
+        )
+        output_hero_features_list.append(hero_feature)
+        
+        
+    logger.info(f"Created {len(output_hero_features_list)} hero features")
+    return output_hero_features_list
 
     
     
