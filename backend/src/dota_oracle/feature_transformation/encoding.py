@@ -1,5 +1,5 @@
 from sklearn.preprocessing import MultiLabelBinarizer
-from data_repository.heroes_repository import HeroesRepository
+from dota_oracle.data_repository.heroes_repository import HeroesRepository
 import pandas as pd
 
 async def encode_hero_features(hero_features: pd.DataFrame, heros_repo: HeroesRepository) -> pd.DataFrame:
@@ -21,8 +21,13 @@ async def encode_hero_features(hero_features: pd.DataFrame, heros_repo: HeroesRe
     
     hero_matrix = mlb.fit_transform(hero_features['hero_picks'])
     
+    features = pd.DataFrame.sparse.from_spmatrix(
+        data=hero_matrix,
+        columns=mlb.classes_,
+        index=hero_features.index
+    )
     features = pd.DataFrame(
-        hero_matrix,
+        hero_matrix, # type: ignore
         columns=mlb.classes_,
         index=hero_features.index 
     )
