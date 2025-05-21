@@ -51,7 +51,7 @@ class CompletionOrchestrator:
         
         events_processed = 0
         for event_id, match_model in outcome_dict.items():
-            original_data = completed_matches['event_id']
+            original_data = completed_matches[event_id]
             match_id = original_data.match_id
             
             try:
