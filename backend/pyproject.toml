@@ -42,3 +42,5 @@ ruff = "*"
 black = "*"
 ipykernel = "*"
 pre-commit = "*"
+testcontainers = {extras = ["postgres", "redis"], version = "^4.10.0"}
+pytest-asyncio = "^0.26.0"
