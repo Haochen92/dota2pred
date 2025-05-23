@@ -68,12 +68,11 @@ class RedisService:
             if not raw_events_response:
                 return {}
 
-            _stream_name_bytes, stream_events_data_list = raw_events_response[0]
+            _stream_name, stream_events_data_list = raw_events_response[0]
 
             for event_id_bytes, data_dict in stream_events_data_list:
                 event_id = "" # Initialize for potential use in error logging
                 try:
-                    event_id = event_id_bytes.decode('utf-8')
                     parsed_event = StreamMatchEventData.model_validate(data_dict)
                     parsed_events[event_id] = parsed_event
                 except ValidationError as e:
@@ -110,6 +109,9 @@ class RedisService:
 
     async def add_match_for_processing(self, match_id: int) -> bool:
         """Atomically sets initial status and adds match to the first stream."""
+        if not match_id or type(match_id) != int:
+            logger.error(f"Missing input value or invalid datatype")
+            return False
         match_id_str = str(match_id)
         timestamp = get_current_utc_iso_timestamp()
         try:
