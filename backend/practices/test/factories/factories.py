@@ -1,5 +1,5 @@
 from polyfactory.factories.pydantic_factory import ModelFactory
-from src.pydantic_models.inference import PerformanceMetrics
+from dota_oracle.pydantic_models.inference import PerformanceMetrics
 
 class PerformanceMetricsFactory(ModelFactory[PerformanceMetrics]):
     pass
