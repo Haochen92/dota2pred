@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from enum import Enum
 from datetime import datetime
 
@@ -19,10 +19,14 @@ class MatchProcessingStatus(str, Enum):
 class StreamMatchEventData(BaseModel):
     """
     Data model for messages in the match processing streams.
-    e.g., {'match_id': '12345', 'timestamp': '2023-10-27 10:00:00'}
+    e.g., {'match_id': '12345', 'timestamp': isoformat}
     """
     match_id: int 
     timestamp: datetime
+    
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        return dt.isoformat()
 
     
 class MatchStatusValue(BaseModel):
