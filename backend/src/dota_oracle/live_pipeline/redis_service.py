@@ -70,8 +70,7 @@ class RedisService:
 
             _stream_name, stream_events_data_list = raw_events_response[0]
 
-            for event_id_bytes, data_dict in stream_events_data_list:
-                event_id = "" # Initialize for potential use in error logging
+            for event_id, data_dict in stream_events_data_list:
                 try:
                     parsed_event = StreamMatchEventData.model_validate(data_dict)
                     parsed_events[event_id] = parsed_event
