@@ -1,7 +1,7 @@
 import pytest
 from pytest_mock import mocker
 from datetime import datetime, timezone, timedelta
-from src.utils.time_utils import to_utc_datetime_object
+from dota_oracle.utils.time_utils import to_utc_datetime_object
 
 def test_to_utc_aware_datetime():
     dt_input = datetime(2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
