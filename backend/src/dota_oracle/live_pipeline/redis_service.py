@@ -10,7 +10,7 @@ import json
 # Constants
 from dota_oracle.constants.redis_constants import (
     MATCH_SET, MATCH_STATUS, TMP_KEY,
-    STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION,
+    STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION, 
     FEATURE_ENGINEER_GROUP, PREDICTION_GROUP, COMPLETION_GROUP,
     FAILED_EVENTS_MAPPING
 )
@@ -241,7 +241,7 @@ class RedisService:
                 "original_stream": failure_record.original_stream,
                 "error_type": type(e).__name__,
                 "error_message": f"Original serialization failed: {e}",
-                "failure_timestamp": failure_record.failure_timestamp
+                "failure_timestamp": failure_record.failure_timestamp.isoformat()
             })
 
         # Attempt to record failure in Redis and ACK the original message
