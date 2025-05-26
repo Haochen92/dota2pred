@@ -1,9 +1,12 @@
 import pytest
 from datetime import datetime, timezone
+from polyfactory import Ignore
 from redis.asyncio import Redis as AIORedis
 from typing import Any, Set, List, Dict
+import json
+import pydantic
 
-from dota_oracle.pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData
+from dota_oracle.pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
 from dota_oracle.constants.redis_constants import (
     MATCH_SET, MATCH_STATUS, TMP_KEY,
     STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION,
@@ -14,6 +17,14 @@ from dota_oracle.constants.redis_constants import (
 from dota_oracle.live_pipeline.redis_service import RedisService
 
 from ..factories.redis_models_factory import StreamMatchEventDataFactory, MatchStatusValueFactory, FailureRecordFactory
+
+from .test_scenarios.redis_service_scenarios import (
+    UPDATE_LIVE_MATCH_SCENARIOS_ARGS, UPDATE_LIVE_MATCH_SCENARIOS,
+    ADD_NEW_MATCH_SCENARIOS_ARGS, ADD_NEW_MATCH_SCENARIOS,
+    ADVANCE_MATCH_TO_NEXT_ARG_NAMES, ADVANCE_MATCH_TO_NEXT_SCENARIOS,
+    FETCH_MATCHES_SCENARIOS_ARGS, FETCH_MATCHES_SCENARIOS,
+    FAILURE_RECORD_SCENARIO_ARGS, FAILURE_RECORD_SCENARIO
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -51,34 +62,10 @@ async def test_initialize_redis_service(
 '''
 Testing New Match orchestration related operations
 '''
-# Scenarios for update_live
-update_live_match_scenarios = [
-    (
-        "blank_state_all_new",
-        set(),
-        [1,2,3],
-        {1,2,3},
-        {1,2,3}
-    ),
-    (
-        "existing_data_some_new_overlap",
-        {1,2,3},
-        [2,4,5],
-        {4,5},
-        {2,4,5}
-    ),
-    (
-        "existin_data_all_overlap_no_new",
-        {1,2,3},
-        [1,2,3],
-        set(),
-        {1,2,3}
-    )
-]
 
 @pytest.mark.parametrize(
-    "test_id, initial_redis_match_set, input_current_ids, expected_new_ids_returned, expected_final_redis_match_set",
-    update_live_match_scenarios
+    UPDATE_LIVE_MATCH_SCENARIOS_ARGS,
+    UPDATE_LIVE_MATCH_SCENARIOS
 )
 async def test_update_live_match(
     redis_service_test_subject: RedisService,
@@ -104,33 +91,14 @@ async def test_update_live_match(
     
     assert actual_final_redis_match_set == expected_final_redis_match_set, \
         f"Test ID '{test_id}': Incorrect final state of MATCH_SET in Redis."
-    
 
-add_new_match_scenarios = [
-    (
-        "happy path", # test_id
-        12, # input_match_id
-        "new", # expected match status
-        True, # expected return value
-        
-    ),
-    (
-        "empty input",
-        None,
-        None,
-        False,
-    ),
-    (
-        "input of wrong format",
-        "123",
-        None,
-        False
-    )
-]
+'''
+Test adding new matches
+'''
 
 @pytest.mark.parametrize(
-    "test_id, input_match_id, expected_match_status, expected_return_value",
-    add_new_match_scenarios
+    ADD_NEW_MATCH_SCENARIOS_ARGS,
+    ADD_NEW_MATCH_SCENARIOS
 )
 async def test_add_new_match(
     redis_service_test_subject: RedisService,
@@ -154,7 +122,7 @@ async def test_add_new_match(
         assert actual_match_status == expected_match_status, \
             f"got {actual_match_status} expected {expected_match_status} for test {test_id}"
     
-
+        # test for actual data in stream
         stream_entries =await test_redis_client.xrevrange(STREAM_NEW_MATCHES, count=1)
         assert len(stream_entries) > 0, f"Test ID '{test_id}': No entry found in stream after successful add"
         
@@ -175,60 +143,99 @@ async def test_add_new_match(
             f"Test ID '{test_id}': Stream '{STREAM_NEW_MATCHES}' should be empty after failed operation due to invalid input."
 
 
+
+'''
+Test advancing match to next stage
+'''
+
+
+@pytest.mark.parametrize(
+    ADVANCE_MATCH_TO_NEXT_ARG_NAMES,
+    ADVANCE_MATCH_TO_NEXT_SCENARIOS,
+    
+)
+async def test_advance_match_to_next(
+    redis_service_test_subject: RedisService,
+    test_redis_client: AIORedis,
+    test_id: str,
+    method_to_call: str,
+    from_stream: str,
+    to_stream: str,
+    from_consumer_group: str,
+    expected_match_status: str,
+    test_match_id: Any,
+    prev_event_dict: Dict[str, Any],
+    expected_return_val: bool
+):
+    match_status_key = f"{MATCH_STATUS}:{test_match_id}"
+    # reset redis status
+    await test_redis_client.delete(match_status_key)
+    await test_redis_client.xtrim(from_stream, maxlen=0)
+    await test_redis_client.xtrim(to_stream, maxlen=0)
+    
+    # seeding inputs:
+    await test_redis_client.xadd(from_stream, prev_event_dict) #type:ignore
+    seeded_entries = await test_redis_client.xrevrange(from_stream, count=1)
+    assert len(seeded_entries) > 0, f"Test ID '{test_id}': Seeding of data failed"
+    
+    from_event_id, from_event_data = seeded_entries[0]
+    assert from_event_data is not None, f"Test Id '{test_id}: Latest event data in stream {from_stream} is None after seeding"
+    assert from_event_id is not None, f"Test Id {test_id}: event_id {from_event_id} is missing from seeded stream"
+    
+    # run test method
+    actual_return_val = await getattr(redis_service_test_subject, method_to_call)(
+        match_id=test_match_id,
+        event_id_to_ack=from_event_id
+    )
+        
+    # test return value
+    assert actual_return_val == expected_return_val, f"Test_id {test_id}: expected {expected_return_val} got {actual_return_val}"
+    
+    actual_match_status = await test_redis_client.hget(match_status_key, 'status') # type: ignore
+    assert actual_match_status == expected_match_status, \
+        f"got {actual_match_status} expected {expected_match_status} for test {test_id}"
+    
+    if actual_return_val:
+        # test for actual data in stream
+        stream_entries = await test_redis_client.xrevrange(to_stream, count=1)
+        assert len(stream_entries) == 1, f"Test ID '{test_id}': expected 1 entry but got {len(stream_entries)}"
+        
+        latest_event_id, latest_event_data = stream_entries[0]
+        assert latest_event_data is not None, f"Test Id '{test_id}: Latest event data in stream {from_stream} is missing"
+        
+        # test for data value
+        assert int(latest_event_data.get('match_id')) == test_match_id, \
+            f"Test ID '{test_id}': match_id in stream incorrect. Expected {test_match_id} got {latest_event_data.get('match_id')}"
+            
+        assert 'timestamp' in latest_event_data, f"Test ID '{test_id}': Timestamp missing from stream event data."
+        
+        # test for acknowledgement
+        pending = await test_redis_client.xpending_range(
+            name=from_stream, 
+            groupname=from_consumer_group,
+            min=from_event_id,
+            max=from_event_id,
+            count=1
+        )
+        assert len(pending) == 0, f"Test {test_id}: event has not been acknowledged"
+    else:
+        stream_entries_to = await test_redis_client.xlen(to_stream)
+        assert stream_entries_to == 0, f"Test ID '{test_id}': Event incorrectly added to {to_stream} on failure"
+        
+        # test for acknowledgement
+        stream_entries_from = await test_redis_client.xrange(
+            from_stream, from_event_id, from_event_id
+        )
+        assert len(stream_entries_from) == 1, f"Test {test_id}: message still exists in stream and no ACK was attempted"
+        
+
 '''
 Test Fetch Events
 '''
 
-FETCH_MATCHES_SCENARIOS = [
-    (
-        "fetch_new_matches_single_event", # test_id
-        "fetch_new_matches_for_feature_eng", # method_to_call
-        STREAM_NEW_MATCHES, # Stream_to_fetch_from
-        FEATURE_ENGINEER_GROUP, # consumer_group
-        [StreamMatchEventDataFactory.build(match_id=100).model_dump()], # input_list of dict
-        "test_consumer_fe", # Consumer_name
-        1, # fetch_count for number of events to fetch
-        {100} # expected_match_ids set of match_ids expected back 
-    ),
-    (
-        "fetch_new_matches_multiple_events",
-        "fetch_new_matches_for_feature_eng",
-        STREAM_NEW_MATCHES,
-        FEATURE_ENGINEER_GROUP,
-        [
-            StreamMatchEventDataFactory.build(match_id=101).model_dump(),
-            StreamMatchEventDataFactory.build(match_id=102).model_dump(),
-            StreamMatchEventDataFactory.build(match_id=103).model_dump()
-        ],
-        "test_consumer_fe",
-        10,
-        {101, 102, 103}
-    ),
-    (
-        "fetch_pending_prediction_single_event",
-        "fetch_matches_pending_prediction",
-        STREAM_PENDING_PREDICTION,
-        PREDICTION_GROUP,
-        [StreamMatchEventDataFactory.build(match_id=104).model_dump()],
-        "test_consumer_pred",
-        1,
-        {104}
-    ),
-    (
-        "fetch_pending_completion_no_events",
-        "fetch_matches_pending_completion",
-        STREAM_PENDING_COMPLETION,
-        COMPLETION_GROUP,
-        [],
-        "test_consumer_completion",
-        10,
-        set(),
-    )
-]
 
 @pytest.mark.parametrize(
-    ["test_id","method_to_call","stream_to_fetch_from",
-     "consumer_group","input_list","consumer_name","fetch_count","expected_match_ids"],
+    FETCH_MATCHES_SCENARIOS_ARGS,
     FETCH_MATCHES_SCENARIOS
 )
 async def test_fetch_events(
@@ -265,7 +272,131 @@ async def test_fetch_events(
     assert actual_match_ids == expected_match_ids, \
         f"Test {test_id}: expected {expected_match_ids} got {actual_match_ids} for stream {stream_to_fetch_from} consumer_group {consumer_group}"
     
-    
-    
-    
 
+
+
+'''
+Test Failure Acknowledgement 
+'''
+
+@pytest.mark.parametrize(
+    FAILURE_RECORD_SCENARIO_ARGS,
+    FAILURE_RECORD_SCENARIO
+)
+async def test_record_failure_and_ack(
+    redis_service_test_subject: RedisService,
+    test_redis_client: AIORedis,
+    test_id: str,
+    test_stream_input: str,
+    test_original_group: str
+):
+    # Set up
+    original_stream = test_stream_input
+    original_group = test_original_group
+    original_data = StreamMatchEventDataFactory.build(match_id=123).model_dump()
+    target_dlq_hash = FAILED_EVENTS_MAPPING.get(original_stream) 
+    
+    if target_dlq_hash:
+        await test_redis_client.delete(target_dlq_hash)
+        await test_redis_client.xtrim(original_stream, maxlen=0)
+        original_event_id = await test_redis_client.xadd(
+            original_stream,
+            original_data, #type: ignore
+            id='*' 
+        )
+        
+        test_failure_record = FailureRecordFactory.build(
+            original_group=original_group,
+            original_stream=original_stream,
+            original_data=original_data,
+            original_event_id=original_event_id
+        )
+        
+        # test return value
+        actual_return_value = await redis_service_test_subject.record_failure_and_ack(test_failure_record)
+        assert actual_return_value == True, f"Test ID 'test_id': Expected {True} got {actual_return_value}"
+        
+        # test target hash value
+        actual_hash_dict = await test_redis_client.hgetall(target_dlq_hash) # type:ignore
+        
+        # Check if the event_id exists as a field name and get its value
+        assert actual_hash_dict.get(original_event_id) is not None, \
+            f"test_id {test_id}: event_id {original_event_id} not found in hash"
+
+        expected_json = test_failure_record.model_dump_json()
+        
+        actual_data_json = actual_hash_dict.get(original_event_id)
+        
+        assert actual_data_json == expected_json, \
+            f"test_id {test_id}: expected data_json: {expected_json} got {actual_data_json}"
+            
+        pending = await test_redis_client.xpending_range(
+            name=original_stream, 
+            groupname=original_group,
+            min=original_event_id,
+            max=original_event_id,
+            count=1
+            )
+        assert len(pending) == 0, f"Test {test_id}: event has not been acknowledged"
+    else:
+        pass
+
+
+
+async def test_record_failure_and_ack_serialization_error(
+    redis_service_test_subject: RedisService,
+    test_redis_client: AIORedis,
+    mocker
+):
+    # arrange
+    original_stream = STREAM_PENDING_PREDICTION
+    original_group = PREDICTION_GROUP
+    original_data = StreamMatchEventDataFactory.build(match_id=123).model_dump()
+    target_dlq_hash = FAILED_EVENTS_MAPPING[original_stream]
+    
+    # set up
+    await test_redis_client.delete(target_dlq_hash)
+    await test_redis_client.xtrim(original_stream, maxlen=0)
+    original_event_id = await test_redis_client.xadd(
+        original_stream,
+        original_data, #type: ignore
+        id='*' 
+    )
+    
+    test_failure_record = FailureRecordFactory.build(
+        original_group=original_group,
+        original_stream=original_stream,
+        original_data=original_data,
+        original_event_id=original_event_id
+    )
+    
+    mocked_json_dump_method = mocker.patch.object(
+        FailureRecord, # Mock class as a workaround for pydantic protection mechanism 
+        'model_dump_json',
+        side_effect=ValueError("Simulated Serialization Error"),
+        autospec=True
+    )
+    
+    # ACT
+    actual_return_value = await redis_service_test_subject.record_failure_and_ack(test_failure_record)
+    
+    # Assert
+    assert actual_return_value == True
+    
+    mocked_json_dump_method.assert_called_once()
+    
+    stored_fallback_json_str = await test_redis_client.hget(target_dlq_hash, original_event_id) # type:ignore
+    
+    assert stored_fallback_json_str is not None, f"Fallback Json not found in DLQ"
+    fallback_data = json.loads(stored_fallback_json_str)
+    
+    assert fallback_data.get("error") == "DLQ data serialization failed"
+    assert fallback_data.get("original_event_id") == original_event_id
+    assert fallback_data.get("original_stream") == original_stream
+    
+    # Verify ACK
+    pending_after_ack = await test_redis_client.xpending_range(
+        name=original_stream, groupname=original_group,
+        min=original_event_id, max=original_event_id, count=1
+    )
+    assert len(pending_after_ack) == 0, f"Event {original_event_id} was not ACKed on serialization error."
