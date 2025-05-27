@@ -4,11 +4,11 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy import delete
 from sqlmodel import select
-from dota_oracle.data_repository.history_repository import TeamHistoryTable, PlayerHeroHistoryTable, TeamMatchupHistoryTable
+from dota_oracle.data_repository.schemas import TeamHistoryTable, PlayerHeroHistoryTable, TeamMatchupHistoryTable
 from dota_oracle.data_repository.history_repository import HistoryRepository
 from dota_oracle.utils.set_logging import get_logger
 from datetime import datetime, timezone
-from ...factories.histories_models_factory import TeamHistoryTableFactory, PlayerHeroHistoryTableFactory, TeamMatchupHistoryTableFactory
+from ...factories.repository_factories import TeamHistoryTableFactory, PlayerHeroHistoryTableFactory, TeamMatchupHistoryTableFactory
 
 logger = get_logger(__name__)
 
