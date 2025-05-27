@@ -98,7 +98,7 @@ class HistoryRepository:
                         hero_id=hero_id,
                         match_id=match_id,
                         win=win,
-                        match_start_time=match_start_time
+                        start_time=match_start_time
                     ).on_conflict_do_nothing(
                         index_elements=['match_id', 'hero_id', 'account_id'] # Ensure this matches your unique constraint
                     )
