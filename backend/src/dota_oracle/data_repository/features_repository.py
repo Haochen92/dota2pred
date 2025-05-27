@@ -39,13 +39,18 @@ class FeaturesRepository(BaseRepository):
                  raise ValueError(f"Table {table_name} does not have a primary key defined for upsert.")
 
             update_cols = {c.name for c in sql_table.columns if c.name not in primary_keys}
-
+            
+            '''
+            
+            '''
             update_dict = {
                 col_name: getattr(insert(sql_table).excluded, col_name)
                 for col_name in update_cols
             }
+            
+            records_dict = [record.model_dump() for record in records]
 
-            stmt = insert(sql_table).values(records).on_conflict_do_update(
+            stmt = insert(sql_table).values(records_dict).on_conflict_do_update(
                 index_elements=primary_keys,
                 set_=update_dict
             )
