@@ -224,7 +224,7 @@ class HistoryRepository:
                         team_name=team_name,
                         match_id=match_id,
                         win=win,
-                        match_start_time=match_start_time
+                        start_time=match_start_time
                     ).on_conflict_do_nothing(
                         index_elements=['team_name', 'match_id'] 
                     )
@@ -267,7 +267,7 @@ class HistoryRepository:
                         team2_name=team2_name,
                         match_id=match_id,
                         win=win, 
-                        match_start_time=match_start_time
+                        start_time=match_start_time
                     ).on_conflict_do_nothing(
                         index_elements=['team1_name','team2_name' ,'match_id']
                     )
