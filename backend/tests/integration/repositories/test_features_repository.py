@@ -33,6 +33,10 @@ pytestmark = pytest.mark.asyncio(loop_scope='session')
 async def features_repository_test_subject(test_postgres_engine: AsyncEngine) -> FeaturesRepository:
     return FeaturesRepository(engine=test_postgres_engine)
 
+
+'''
+-- TEST STORE FEATURES ---
+'''
 TEST_STORE_FEATURES_ARGS = [
     "test_id",
     "input_factory",
@@ -138,6 +142,116 @@ async def test_store_features_empty_list(
     await features_repository_test_subject.store_features([], TeamFeaturesTable)
 
 
+"""
+-- TEST GET FEATURE BY ID ---
+"""
+GET_FEATURE_BY_ID_ARGS = [
+    "test_id",
+    "test_match_id",
+    "test_feature_table_class",
+    "expected_fields"
+]
+
+GET_FEATURE_BY_ID_SCENARIOS = [
+    (
+        "get_team_features_happy",
+        1001,
+        TeamFeaturesTable,
+        {
+            "match_id":1001,
+            "radiant_dire_matchup": 0.65,
+            "radiant_win_rate": 0.4,
+            "dire_win_rate": 0.8
+        }
+    ),
+    (
+        "get_hero_feature_happy",
+        1003,
+        HeroFeaturesTable,
+        {
+            "match_id": 1003,
+            "hero_picks": ['mirana','windrunner','crystal_maiden']
+        }
+    ),
+    (
+        "get_player_hero_feature_happy",
+        1003,
+        PlayerHeroFeatureTable,
+        {
+            "match_id": 1003,
+            "player_hero_0_win_rate": 0.1,
+            "player_hero_1_win_rate": 0.2,
+            "player_hero_2_win_rate": 0.3,
+            "player_hero_3_win_rate": 0.4,
+            "player_hero_4_win_rate": 0.5,
+            "player_hero_128_win_rate": 0.6,
+            "player_hero_129_win_rate": 0.7,
+            "player_hero_130_win_rate": 0.8,
+            "player_hero_131_win_rate": 0.9,
+            "player_hero_132_win_rate": 1.0
+        }
+    )
+]
+
+@pytest.mark.usefixtures("seed_features_data")
+@pytest.mark.parametrize(GET_FEATURE_BY_ID_ARGS, GET_FEATURE_BY_ID_SCENARIOS)
+async def test_get_feature_by_id(
+    features_repository_test_subject: FeaturesRepository,
+    test_id: str,
+    test_match_id: int,
+    test_feature_table_class: Type[T],
+    expected_fields: Dict[str, Any]
+):
+    actual_instance = await features_repository_test_subject.get_feature_by_id(test_match_id, test_feature_table_class)
+
+    for field_name, expected_value in expected_fields.items():
+        actual_value = getattr(actual_instance, field_name)
+        assert actual_value == expected_value, (
+            f"{test_id}: Field '{field_name}' - expected {expected_value}, got {actual_value}"
+        )
+
+
+
+@pytest.mark.usefixtures("seed_features_data")
+@pytest.mark.parametrize(
+    "test_id, test_match_id, test_feature_table_class, expected_error_message",
+    [
+        ("missing_match_id", None, HeroFeaturesTable, "missing match_id"),
+        ("midding_table_class", 1003, None, "missing feature_table_class"),
+        ("invalid_class_type", 1003, dict, "feature_table_class must be a subclass of SQLModel")
+    ]
+)
+async def test_get_feature_invalid_inputs_raise_errors(
+    features_repository_test_subject: FeaturesRepository,
+    test_id: str,
+    test_match_id: int,
+    test_feature_table_class: Type[T],
+    expected_error_message: str
+):
+    with pytest.raises(ValueError, match=expected_error_message):
+        logger.info(f"test_id: {test_id}")
+        await features_repository_test_subject.get_feature_by_id(test_match_id, test_feature_table_class)
+
+
+"""
+--- Test Get all features ---
+"""
+@pytest.mark.usefixtures("seed_features_data")
+async def test_get_all_features_from_table(
+    features_repository_test_subject: FeaturesRepository,
+):
+    actual_instances = await features_repository_test_subject.get_all_features_from_table(TeamFeaturesTable)
+    expected_instances_count = 2
+    actual_instances_count = len(actual_instances)
+    assert expected_instances_count == actual_instances_count, (
+        f"Expected {expected_instances_count} results, got {actual_instances_count}"
+    )
+
+
+"""
+-- Fixtures --
+"""
+
 @pytest_asyncio.fixture(scope="function")
 async def seed_features_data(test_postgres_engine: AsyncEngine):
     """Seeds data for features repository tests"""
@@ -226,3 +340,5 @@ async def seed_prerequisite_match_ids_fk(test_postgres_engine:AsyncEngine):
             await session.commit()
         
     logger.info("Cleanup complete")
+    
+    
