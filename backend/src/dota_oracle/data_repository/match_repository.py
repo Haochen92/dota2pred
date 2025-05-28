@@ -58,7 +58,7 @@ class MatchRepository(BaseRepository):
         match_id = match_outcome_data.match_id
         match_outcome_dict = match_outcome_data.model_dump()
         
-        logger.debug(f"Attempting to insert/update outcome for match {match_id}")
+        logger.debug(f"Attempting to insert outcome for match {match_id}")
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
@@ -69,7 +69,7 @@ class MatchRepository(BaseRepository):
                         }
                     )
                     await session.execute(stmt)
-                    logger.info(f"Insert/update outcome statement executed for match {match_id}")
+                    logger.info(f"insert outcome statement executed for match {match_id}")
                 except SQLAlchemyError as e:
                     logger.error(f"DB error inserting outcome for match {match_id}: {e}", exc_info=True)
                     raise
@@ -113,15 +113,12 @@ class MatchRepository(BaseRepository):
                         await session.execute(match_stmt)
 
                     if outcome_db_dicts:
-                        outcome_stmt = insert(MatchOutcomeTable).values(outcome_db_dicts).on_conflict_do_update(
-                            index_elements=["match_id"],
-                            set_={
-                                "radiant_win": insert(MatchOutcomeTable).excluded.radiant_win,
-                            }
+                        outcome_stmt = insert(MatchOutcomeTable).values(outcome_db_dicts).on_conflict_do_nothing(
+                            index_elements=["match_id"]
                         )
                         await session.execute(outcome_stmt)
 
-                    logger.info(f"Batch insert/update executed for {len(matches)} input matches.")
+                    logger.info(f"Batch insert executed for {len(matches)} input matches.")
 
                 except SQLAlchemyError as e:
                     logger.error(f"DB error during batch insert of matches/outcomes: {e}", exc_info=True)
