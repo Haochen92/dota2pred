@@ -1,4 +1,6 @@
 from polyfactory.factories.pydantic_factory import ModelFactory
+from polyfactory import Use
+from datetime import datetime, timezone
 from dota_oracle.data_repository.schemas import (
     PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable, # Histories
     TeamFeaturesTable, PlayerHeroFeatureTable, HeroFeaturesTable, # Features
@@ -6,6 +8,8 @@ from dota_oracle.data_repository.schemas import (
     MatchOutcomeTable, MatchTable, # Matches
     HeroDataTable # herodata
 )
+
+from dota_oracle.pydantic_models.match import Match as MatchPydantic
 
 
 '''
@@ -45,9 +49,14 @@ class MatchPredictionTableFactory(ModelFactory[MatchPredictionTable]):
 Matches Tables
 '''
 class MatchOutcomeTableFactory(ModelFactory[MatchOutcomeTable]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 class MatchTableFactory(ModelFactory[MatchTable]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
+    pass
+
+class MatchPydanticFactory(ModelFactory[MatchPydantic]):
     pass
 
 
