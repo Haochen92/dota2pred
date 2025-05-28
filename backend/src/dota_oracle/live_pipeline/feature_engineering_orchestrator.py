@@ -55,46 +55,10 @@ class FeatureEngineeringOrchestrator:
             logger.warning(f"no match details found in the database")
             return 0
         
-        events_task_dict : Dict[str, Coroutine[Any, Any, Any]] = {}
+        output_dict = await self._run_concurrent_tasks(match_details_dict, events)
         
-        successful_events = 0
-        failed_events = 0
-        
-        for event_id, data in events.items():
-            try:
-                match_id = data.match_id
-                match_details_instance = match_details_dict.get(match_id)
-                if not match_details_instance:
-                    raise ValueError(f"match details for {match_id} is empty")
-                
-                events_task_dict[event_id] = self._engineer_and_update_redis(
-                    match_details_instance, 
-                    match_id,
-                    event_id,
-                    data
-                )
-            except Exception as e:
-                failure_record = FailureRecord(
-                    original_event_id=event_id,
-                    original_stream=STREAM_NEW_MATCHES,
-                    original_group=FEATURE_ENGINEER_GROUP,
-                    original_data=data,
-                    error_type=type(e).__name__,
-                    error_message=str(e),
-                    failure_timestamp=get_current_utc_iso_timestamp()
-                )
-                await self.redis.record_failure_and_ack(failure_record)
-                failed_events += 1
-        
-        output_dict = await get_outcome_concurrently(events_task_dict)
-        
-        
-        
-        for event, outcome in output_dict.items():
-            if outcome and not isinstance(outcome, Exception):
-                successful_events += 1
-            else:
-                failed_events += 1
+        successful_events = sum(1 for val in output_dict.values() if val)
+        failed_events = sum(1 for val in output_dict.values() if not val)
         
         logger.info(f"Feature engineering orchestrator orchestrated {successful_events} successful events, and {failed_events} failed events")
         return successful_events
@@ -108,16 +72,7 @@ class FeatureEngineeringOrchestrator:
             await run_updates_as_group(task_group)
             return True
         except Exception as e:
-            failure_record = FailureRecord(
-                original_event_id=event_id,
-                original_stream=STREAM_NEW_MATCHES,
-                original_group=FEATURE_ENGINEER_GROUP,
-                original_data=data,
-                error_type=type(e).__name__,
-                error_message=str(e),
-                failure_timestamp=get_current_utc_iso_timestamp()
-            )
-            await self.redis.record_failure_and_ack(failure_record)
+            await self._handle_processing_failure(data, event_id, e)
             return False
         
     
@@ -131,3 +86,42 @@ class FeatureEngineeringOrchestrator:
         
         matches_dict = {match_instance.match_id : match_instance for match_instance in batch_matches}
         return matches_dict
+    
+    async def _run_concurrent_tasks(
+        self, 
+        match_details: Dict[int, MatchTable], 
+        events: Dict[str, StreamMatchEventData]
+    )-> Dict[str, bool]:
+        concurrent_task_dict : Dict[str, Coroutine[Any, Any, Any]] = {}
+        for event_id, data in events.items():
+            try:
+                match_id = data.match_id
+                match_details_instance = match_details.get(match_id)
+                if not match_details_instance:
+                    raise ValueError(f"match details for {match_id} is empty")
+                
+                concurrent_task_dict[event_id] = self._engineer_and_update_redis(
+                    match_details_instance, 
+                    match_id,
+                    event_id,
+                    data
+                )
+            except Exception as e:
+                await self._handle_processing_failure(data, event_id, e)
+                continue
+        
+        output_dict = await get_outcome_concurrently(concurrent_task_dict)
+        return output_dict # type: ignore
+        
+    async def _handle_processing_failure(self, data: StreamMatchEventData, event_id: str, e: Exception) -> None:
+        failure_record = FailureRecord(
+                    original_event_id=event_id,
+                    original_stream=STREAM_NEW_MATCHES,
+                    original_group=FEATURE_ENGINEER_GROUP,
+                    original_data=data,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                    failure_timestamp=get_current_utc_iso_timestamp()
+                )
+        await self.redis.record_failure_and_ack(failure_record)
+        
