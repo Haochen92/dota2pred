@@ -6,6 +6,7 @@ from typing import Dict, Any, Set, Coroutine, List
 from .history_update_service import HistoryUpdateService
 from .redis_service import RedisService
 from dota_oracle.data_repository.match_repository import MatchRepository
+from dota_oracle.data_repository.schemas import MatchOutcomeTable
 from dota_oracle.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from dota_oracle.utils.async_utils import get_outcome_concurrently, run_updates_as_group
@@ -66,11 +67,10 @@ class CompletionOrchestrator:
                     logger.error(f"Exception when fetching match_details for {match_id}, e: {match_model}")
                     raise match_model
                 
-                match_id = match_model.match_id
-                match_outcome = match_model.radiant_win
+                match_outcome = MatchOutcomeTable(match_id=match_model.match_id, radiant_win=match_model.radiant_win)
                 
                 task_group: List[Coroutine[Any, Any, None | bool]] = [
-                    self.storage.insert_match_outcome(match_id, match_outcome),
+                    self.storage.insert_match_outcome(match_outcome),
                     self.history_updater.update_histories(match_model),
                     self.redis.mark_match_as_completed(match_id, event_id)
                 ]

@@ -50,20 +50,19 @@ class MatchRepository(BaseRepository):
                     logger.error(f"Unexpected error inserting details for match {match_id}: {e}", exc_info=True)
                     raise
 
-    async def insert_match_outcome(self, match_id: int, outcome: bool) -> None:
+    async def insert_match_outcome(self, match_outcome_data: MatchOutcomeTable) -> None:
         """
         Inserts or updates a match outcome using INSERT ... ON CONFLICT DO UPDATE.
         """
+        
+        match_id = match_outcome_data.match_id
+        match_outcome_dict = match_outcome_data.model_dump()
+        
         logger.debug(f"Attempting to insert/update outcome for match {match_id}")
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
-                    outcome_db_dict = {'match_id': match_id, 'radiant_win': outcome}
-                    valid_outcome_dict = {k:v for k,v in outcome_db_dict.items() if k in self.outcome_table_cols}
-                    if 'match_id' not in valid_outcome_dict:
-                         raise ValueError(f"Cannot insert match outcome: 'match_id' key missing internally.")
-
-                    stmt = insert(MatchOutcomeTable).values(valid_outcome_dict).on_conflict_do_update(
+                    stmt = insert(MatchOutcomeTable).values(match_outcome_dict).on_conflict_do_update(
                         index_elements=["match_id"],
                         set_={
                             'radiant_win': insert(MatchOutcomeTable).excluded.radiant_win
