@@ -33,7 +33,7 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
             slot = player.player_slot
             mapped_hero_id = hero_map.get(player.hero_id, None)
             match_data[f"slot_{slot}_hero_id"] = mapped_hero_id
-            match_data[f"slot_{slot}_account_id"] = str(player.account_id) # convert to str for database storage later
+            match_data[f"slot_{slot}_account_id"] = player.account_id
         
         # Create and return the Match model
         return Match(**match_data)
