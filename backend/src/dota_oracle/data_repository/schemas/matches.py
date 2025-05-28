@@ -8,6 +8,9 @@ class MatchTable(SQLModel, table=True):
     # Primary Key
     match_id: int = Field(default=None, sa_column=Column('match_id', BigInteger, primary_key=True))
     
+    # League id
+    leagueid: Optional[int] = None
+    
     # Columns for hero IDs:
     slot_0_hero_id: Optional[str] = None
     slot_1_hero_id: Optional[str] = None 
