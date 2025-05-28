@@ -35,7 +35,7 @@ class Match(BaseModel):
     match_id: int
     
     # league information
-    league_id: Optional[int] = None
+    leagueid: Optional[int] = None
     
     # Team information
     radiant_name: Optional[str] = None

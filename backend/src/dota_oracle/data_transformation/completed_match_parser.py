@@ -19,7 +19,7 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
         
         match_data = {
             'match_id': raw_match_data.match_id,
-            'league_id': raw_match_data.league.leagueid if raw_match_data.league is not None else 0,
+            'leagueid': raw_match_data.league.leagueid if raw_match_data.league is not None else 0,
             'radiant_name': raw_match_data.radiant_name,
             'radiant_team_id': raw_match_data.radiant_team_id if raw_match_data.radiant_team_id is not None else 0,
             'dire_name': raw_match_data.dire_name,
