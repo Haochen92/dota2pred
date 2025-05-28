@@ -1,13 +1,13 @@
 from typing import List
 from dota_oracle.pydantic_models.live_league_games import LiveLeagueGame
-from dota_oracle.pydantic_models.match import Match
+from dota_oracle.data_repository.schemas import MatchTable
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
 logger = get_logger(__name__)
 
-async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_repo: HeroesRepository) -> List[Match]:
+async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_repo: HeroesRepository) -> List[MatchTable]:
     parsed_live_league_games = []
     
     try:
@@ -40,7 +40,7 @@ async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_rep
                     } 
                     match_data.update(player_data)
                     
-            parsed_live_league_games.append(Match(**match_data))
+            parsed_live_league_games.append(MatchTable(**match_data))
         except Exception as e:
             logger.info(f"Skipping match {row.match_id} due to error: {str(e)}")
             continue
