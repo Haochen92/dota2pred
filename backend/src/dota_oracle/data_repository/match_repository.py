@@ -28,7 +28,7 @@ class MatchRepository(BaseRepository):
 
     async def insert_match_details(self, match_data: MatchTable) -> None:
         """
-        Inserts match details from a dictionary, filtering keys to match MatchTable columns.
+        Inserts match details from a MatchTable Instance.
         Uses INSERT ... ON CONFLICT DO NOTHING.
         """
         match_id = match_data.match_id
@@ -52,7 +52,7 @@ class MatchRepository(BaseRepository):
 
     async def insert_match_outcome(self, match_outcome_data: MatchOutcomeTable) -> None:
         """
-        Inserts or updates a match outcome using INSERT ... ON CONFLICT DO UPDATE.
+        Upsert a match outcome using INSERT ... ON CONFLICT DO UPDATE.
         """
         
         match_id = match_outcome_data.match_id
