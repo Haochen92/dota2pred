@@ -91,11 +91,13 @@ class MatchRepository(BaseRepository):
 
         for match in matches:
             match_full_dict = match.model_dump()
-            match_data = MatchTable.model_validate(match_full_dict)
-            outcome_data = MatchOutcomeTable.model_validate(match_full_dict)
+            match_data = {k: v for k, v in match_full_dict.items() if k in self.match_table_cols}
+            outcome_data = { k: v for k, v in match_full_dict.items() if k in self.outcome_table_cols }
             
-            match_db_dicts.append(match_data.model_dump())
-            outcome_db_dicts.append(outcome_data.model_dump())
+            if 'match_id' in match_data:
+                 match_db_dicts.append(match_data)
+            if 'match_id' in outcome_data and 'radiant_win' in outcome_data:
+                 outcome_db_dicts.append(outcome_data)
 
         if not match_db_dicts or not outcome_db_dicts:
              logger.warning("Filtered match data resulted in empty lists for DB insert.")
