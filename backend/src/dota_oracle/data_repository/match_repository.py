@@ -21,27 +21,24 @@ class MatchRepository(BaseRepository):
         super().__init__(engine=engine)
         self.match_table_cols = {c.name for c in MatchTable.__table__.columns} # type: ignore
         self.outcome_table_cols = {c.name for c in MatchOutcomeTable.__table__.columns}  # type: ignore
-        # Defensive check for match_id to be present
+        # Defensive Check
         if 'match_id' not in self.match_table_cols or 'match_id' not in self.outcome_table_cols:
              logger.warning("MatchRepository initialized but 'match_id' missing from MatchTable or MatchOutcomeTable columns.")
 
 
-    async def insert_match_details(self, match_data: Dict[str, Any]) -> None:
+    async def insert_match_details(self, match_data: MatchTable) -> None:
         """
         Inserts match details from a dictionary, filtering keys to match MatchTable columns.
         Uses INSERT ... ON CONFLICT DO NOTHING.
         """
-        match_id = match_data.get('match_id', 'UNKNOWN')
+        match_id = match_data.match_id
+        
         logger.debug(f"Attempting to insert details for match {match_id}")
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
-                    # Filter input dict to only include keys present in the MatchTable schema
-                    match_db_dict = {k: v for k, v in match_data.items() if k in self.match_table_cols}
-                    if 'match_id' not in match_db_dict:
-                        raise ValueError(f"Cannot insert match details: 'match_id' missing from input data.")
-
-                    stmt = insert(MatchTable).values(match_db_dict).on_conflict_do_nothing(
+                    match_dict = match_data.model_dump()
+                    stmt = insert(MatchTable).values(match_dict).on_conflict_do_nothing(
                         index_elements=['match_id']
                     )
                     await session.execute(stmt)
