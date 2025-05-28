@@ -103,7 +103,8 @@ class AppContainer(containers.DeclarativeContainer):
     new_match_orchestrator = providers.Factory(
         NewMatchOrchestrator,
         redis_service=redis_service,
-        storage=match_repository 
+        storage=match_repository,
+        hero_repo=heroes_repository
     )
     feature_engineering_orchestrator = providers.Factory(
         FeatureEngineeringOrchestrator,
