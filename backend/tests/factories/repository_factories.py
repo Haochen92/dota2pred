@@ -57,6 +57,7 @@ class MatchTableFactory(ModelFactory[MatchTable]):
     pass
 
 class MatchPydanticFactory(ModelFactory[MatchPydantic]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
