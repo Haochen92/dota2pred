@@ -46,7 +46,7 @@ class Match(BaseModel):
     # Match metadata
     start_time: datetime
     duration: Optional[float] = None
-    radiant_win: Optional[bool] = None
+    radiant_win: bool
     
     # Hero & Player Data
     slot_0_hero_id: str
