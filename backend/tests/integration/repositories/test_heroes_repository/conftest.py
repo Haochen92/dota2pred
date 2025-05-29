@@ -11,6 +11,8 @@ from ....factories.repository_factories import HeroDataTableFactory
 from dota_oracle.data_repository.schemas import HeroDataTable
 from dota_oracle.utils import get_logger 
 
+from typing import Dict
+
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -37,7 +39,7 @@ async def clear_heroes_database(test_postgres_engine):
     
     
 @pytest_asyncio.fixture(scope='function')
-async def seed_hero_data(test_postgres_engine):
+async def seed_hero_data(test_postgres_engine) -> Dict[int, str]:
     HERO_DATA = [
         HeroDataTableFactory.build(id=1, localized_name='sniper'),
         HeroDataTableFactory.build(id=2, localized_name='pangolider'),
@@ -45,10 +47,14 @@ async def seed_hero_data(test_postgres_engine):
         HeroDataTableFactory.build(id=4, localized_name='spectre'),
         HeroDataTableFactory.build(id=5, localized_name='crystal maiden'),
     ]
+    hero_map = {instance.id:instance.localized_name for instance in HERO_DATA}
     
     async with AsyncSession(test_postgres_engine) as session:
         async with session.begin():
-            for instance in HERO_DATA:
-                session.add(instance)
+            session.add_all(HERO_DATA)
                 
     logger.info(f"Sucessfully seeded {len(HERO_DATA)} data")
+    
+    
+    
+    return hero_map
