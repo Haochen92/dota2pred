@@ -13,7 +13,7 @@ class HeroesRepository(BaseRepository):
     def __init__(self, engine: AsyncEngine):
         super().__init__(engine=engine)
         
-    async def store_hero_data(self, heroes_input: Dict[str, HeroData]):
+    async def store_hero_data(self, heroes_input: Dict[str, HeroDataTable]):
         async with AsyncSession(self.engine) as session:
             async with session.begin(): 
                 try:
@@ -35,14 +35,13 @@ class HeroesRepository(BaseRepository):
                     logger.error(f"Error inserting hero data: {e}", exc_info=True)
                     raise e 
             
-    async def get_hero_data_by_id(self, hero_id: int) -> Optional[HeroData]:
+    async def get_hero_data_by_id(self, hero_id: int) -> Optional[HeroDataTable]:
         try:
             instance: Optional[HeroDataTable] = await self._get_instance_by_id(HeroDataTable, hero_id)
             if instance is None:
                 return None
             
-            hero_data = HeroData.model_validate(instance.model_dump())
-            return hero_data
+            return instance
         except Exception as e:
             logger.error(f"Error fetching data from hero_id {hero_id}")
             raise e
