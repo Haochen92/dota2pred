@@ -216,7 +216,6 @@ async def auto_clear_history_database(test_postgres_engine: AsyncEngine):
             await session.execute(delete(PlayerHeroHistoryTable))
             await session.execute(delete(TeamHistoryTable))
             await session.execute(delete(TeamMatchupHistoryTable))
-            await session.commit()
     
     logger.info("Clean database is set up")
     
@@ -230,7 +229,6 @@ async def auto_clear_history_database(test_postgres_engine: AsyncEngine):
             await session.execute(delete(PlayerHeroHistoryTable))
             await session.execute(delete(TeamHistoryTable))
             await session.execute(delete(TeamMatchupHistoryTable))
-            await session.commit()
     
     logger.info("Auto history cleanup complete")
 
@@ -272,7 +270,6 @@ async def seed_history_data(test_postgres_engine: AsyncEngine):
             all_data = player_hero_data + team_history_data + team_match_up_data
             for instance in all_data:
                 session.add(instance)
-            await session.commit()
             
         logger.info(f"History seeding complete.")
 
