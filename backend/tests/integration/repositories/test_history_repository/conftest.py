@@ -209,6 +209,17 @@ async def history_repository_test_subject(test_postgres_engine: AsyncEngine) -> 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def auto_clear_history_database(test_postgres_engine: AsyncEngine):
+    # Ensure clean state before each test
+    logger.info("Setting up test by clearing database...")
+    async with AsyncSession(test_postgres_engine) as session:
+        async with session.begin():
+            await session.execute(delete(PlayerHeroHistoryTable))
+            await session.execute(delete(TeamHistoryTable))
+            await session.execute(delete(TeamMatchupHistoryTable))
+            await session.commit()
+    
+    logger.info("Clean database is set up")
+    
     """Automatically clean up history tables after each test."""
     yield  # Let the test run first
     
@@ -223,17 +234,6 @@ async def auto_clear_history_database(test_postgres_engine: AsyncEngine):
     
     logger.info("Auto history cleanup complete")
 
-@pytest_asyncio.fixture(scope="function")
-async def clear_history_database(test_postgres_engine: AsyncEngine):
-    """Manual cleanup fixture - use when you need to clear before a test."""
-    async with AsyncSession(test_postgres_engine) as session:
-        async with session.begin():
-            await session.execute(delete(PlayerHeroHistoryTable))
-            await session.execute(delete(TeamHistoryTable))
-            await session.execute(delete(TeamMatchupHistoryTable))
-            await session.commit()
-    
-    logger.info("Manual history cleanup complete")
 
 @pytest_asyncio.fixture(scope="function")
 async def seed_history_data(test_postgres_engine: AsyncEngine):
@@ -280,16 +280,3 @@ async def seed_history_data(test_postgres_engine: AsyncEngine):
     
     # This fixture's cleanup is handled by auto_clear_history_database
     logger.info("Seed history data fixture completed")
-
-@pytest_asyncio.fixture(scope="function")
-async def empty_history_database(test_postgres_engine: AsyncEngine):
-    """Ensure history database is completely empty before test."""
-    async with AsyncSession(test_postgres_engine) as session:
-        async with session.begin():
-            await session.execute(delete(PlayerHeroHistoryTable))
-            await session.execute(delete(TeamHistoryTable))
-            await session.execute(delete(TeamMatchupHistoryTable))
-            await session.commit()
-    
-    logger.info("Empty history database setup complete")
-    yield
