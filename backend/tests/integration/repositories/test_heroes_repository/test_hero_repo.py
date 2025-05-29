@@ -11,7 +11,7 @@ from ....factories.repository_factories import HeroDataTableFactory
 from dota_oracle.data_repository.schemas import HeroDataTable
 from dota_oracle.utils import get_logger 
 
-from typing import List
+from typing import List, Dict
 
 
 logger = get_logger(__name__)
@@ -37,7 +37,7 @@ class TestStoreHeroData:
         await hero_repository_test_subject.store_hero_data(input_data) 
         
         stored_heroes = await self._get_instances(test_postgres_engine, [10, 11])
-                
+        
         # ASSERT
         assert len(stored_heroes) == len(input_data), f"expected {len(stored_heroes)} data, got {len(input_data)}"
         
@@ -88,7 +88,7 @@ class TestStoreHeroData:
         
         # Validate stored data with updated values
         assert data_instance.base_armor == 10.6, f"expected updated data to be {10.6}, got {data_instance.base_armor}"
-        
+    
     
     async def _get_instances(
         self,
@@ -117,4 +117,26 @@ class TestStoreHeroData:
             assert expected_value == actual_value, (
                 f"values mismatch for field {field}"
                 f"expected {expected_value}, got {actual_value}"
+            )
+            
+            
+            
+           
+class TestGetHeroIdMap:   
+    async def test_get_hero_map(self, 
+        hero_repository_test_subject: HeroesRepository,
+        seed_hero_data: Dict[int, str]
+    ):
+        # Arrange 
+        actual_hero_map = await hero_repository_test_subject.get_hero_id_map()
+        
+        assert len(actual_hero_map) == len(seed_hero_data), \
+        f"expected {len(seed_hero_data)}, got {len(actual_hero_map)}"
+        
+        for key, value in seed_hero_data.items():
+            actual_value = actual_hero_map.get(key)
+            
+            assert value == actual_value, (
+                f"Values mismatch for key: {key}"
+                f"expected {value}, got {actual_value}"
             )
