@@ -177,6 +177,10 @@ class MatchRepository(BaseRepository):
         """Retrieves multiple MatchTable instances by a list of match_ids."""
         if not list_match_ids:
             return []
+        
+        if not isinstance(list_match_ids, list):
+            raise AttributeError(f"expected input type {list.__name__}, got {type(list_match_ids).__name__}")
+        
         logger.debug(f"Fetching details batch for {len(list_match_ids)} matches.")
         try:
             match_instances: List[MatchTable] = await self._get_instances_by_batch_ids(MatchTable, list_match_ids)
@@ -276,6 +280,7 @@ class MatchRepository(BaseRepository):
             combined_results: List[MatchWithOutcome] = []
             for detail in all_details:
                 outcome = outcomes_dict.get(detail.match_id)
+                # Only append if both match details and outcome found
                 if outcome:
                     combined_results.append((detail, outcome))
 
