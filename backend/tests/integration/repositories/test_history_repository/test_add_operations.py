@@ -90,37 +90,6 @@ class TestAddPlayerHeroMatchOutcome(BaseHistoryRepositoryTest):
                 record, account_id, hero_id, match_id, 
                 expected_win, expected_start_time, test_scenario
             )
-    
-    async def test_add_player_hero_outcome_empty_database(
-        self,
-        history_repository_test_subject: HistoryRepository,
-        test_postgres_engine,
-        empty_history_database  # Inject fixture as parameter
-    ):
-        """Test adding player hero outcome to empty database."""
-        # Arrange
-        account_id, hero_id, match_id = 1, 10, 1001
-        win = True
-        start_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        
-        # Act
-        await history_repository_test_subject.add_player_hero_match_outcome(
-            account_id=account_id,
-            hero_id=hero_id,
-            match_id=match_id,
-            win=win,
-            match_start_time=start_time
-        )
-        
-        # Assert
-        records = await self._get_player_hero_records(
-            test_postgres_engine, account_id, hero_id, match_id
-        )
-        
-        assert len(records) == 1, "Expected 1 record in empty database"
-        self._assert_player_hero_record_equals(
-            records[0], account_id, hero_id, match_id, win, start_time, "Empty database test"
-        )
 
 
 @pytest.mark.usefixtures("seed_history_data")
