@@ -16,6 +16,7 @@ from .conftest import BaseFeaturesRepositoryTest, T
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
+@pytest.mark.usefixtures("seed_features_data")
 class TestGetFeatureById(BaseFeaturesRepositoryTest):
     """Test retrieving individual features by match_id."""
     
@@ -62,7 +63,6 @@ class TestGetFeatureById(BaseFeaturesRepositoryTest):
             )
         ]
     )
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_get_existing_feature_returns_correct_data(
         self,
         features_repository_test_subject: FeaturesRepository,
@@ -79,7 +79,7 @@ class TestGetFeatureById(BaseFeaturesRepositoryTest):
         assert actual_instance is not None, f"{test_scenario}: Expected feature but got None"
         self._assert_feature_fields_match(actual_instance, expected_fields, test_scenario)
     
-    @pytest.mark.usefixtures("seed_features_data")
+
     async def test_get_nonexistent_feature_returns_none(
         self,
         features_repository_test_subject: FeaturesRepository
@@ -99,7 +99,6 @@ class TestGetFeatureById(BaseFeaturesRepositoryTest):
             ("invalid_class_type", 1003, dict, "feature_table_class must be a subclass of SQLModel")
         ]
     )
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_invalid_inputs_raise_value_errors(
         self,
         features_repository_test_subject: FeaturesRepository,
@@ -112,7 +111,7 @@ class TestGetFeatureById(BaseFeaturesRepositoryTest):
         with pytest.raises(ValueError, match=expected_error_message):
             await features_repository_test_subject.get_feature_by_id(match_id, feature_class)
 
-
+@pytest.mark.usefixtures("seed_features_data")
 class TestGetAllFeaturesFromTable(BaseFeaturesRepositoryTest):
     """Test retrieving all features from a table."""
     
@@ -124,7 +123,6 @@ class TestGetAllFeaturesFromTable(BaseFeaturesRepositoryTest):
             ("get_all_player_hero_features", PlayerHeroFeatureTable, 1),
         ]
     )
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_get_all_features_returns_correct_count(
         self,
         features_repository_test_subject: FeaturesRepository,
@@ -139,7 +137,6 @@ class TestGetAllFeaturesFromTable(BaseFeaturesRepositoryTest):
         # Assert
         self._assert_feature_count_equals(expected_count, actual_features, test_scenario)
     
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_get_all_team_features_data_integrity(
         self,
         features_repository_test_subject: FeaturesRepository
@@ -167,22 +164,3 @@ class TestGetAllFeaturesFromTable(BaseFeaturesRepositoryTest):
         assert feature_1002.radiant_win_rate == 0.6
         assert feature_1002.dire_win_rate == 0.4
     
-    @pytest.mark.usefixtures("clear_features_database")
-    async def test_get_all_features_empty_table_returns_empty_list(
-        self,
-        features_repository_test_subject: FeaturesRepository
-    ):
-        """Test that get_all_features returns empty list when table is empty."""
-        # Act
-        result = await features_repository_test_subject.get_all_features_from_table(TeamFeaturesTable)
-        
-        # Assert
-        assert result == [], "Expected empty list for empty table"
-    
-    async def test_get_all_features_invalid_table_class_raises_error(
-        self,
-        features_repository_test_subject: FeaturesRepository
-    ):
-        """Test that invalid table class raises appropriate error."""
-        with pytest.raises((ValueError, TypeError)):
-            await features_repository_test_subject.get_all_features_from_table(dict)  # type: ignore

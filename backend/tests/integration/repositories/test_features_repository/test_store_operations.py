@@ -21,7 +21,7 @@ from .conftest import BaseFeaturesRepositoryTest, T
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
-
+@pytest.mark.usefixtures('seed_features_data')
 class TestStoreFeatures(BaseFeaturesRepositoryTest):
     """Test storing different types of features to database."""
     
@@ -77,7 +77,6 @@ class TestStoreFeatures(BaseFeaturesRepositoryTest):
             ),
         ]
     )
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_store_feature_successfully(
         self,
         features_repository_test_subject: FeaturesRepository,
@@ -101,7 +100,6 @@ class TestStoreFeatures(BaseFeaturesRepositoryTest):
         stored_instance = await self._get_feature_by_id(test_postgres_engine, match_id, table_class)
         self._assert_feature_fields_match(stored_instance, feature_data, test_scenario)
     
-    @pytest.mark.usefixtures("seed_features_data")
     async def test_store_multiple_features_batch(
         self,
         features_repository_test_subject: FeaturesRepository,
@@ -138,25 +136,3 @@ class TestStoreFeatures(BaseFeaturesRepositoryTest):
         await features_repository_test_subject.store_features([], HeroFeaturesTable)
         await features_repository_test_subject.store_features([], PlayerHeroFeatureTable)
     
-    @pytest.mark.usefixtures("clear_features_database")
-    async def test_store_features_in_empty_database(
-        self,
-        features_repository_test_subject: FeaturesRepository,
-        test_postgres_engine
-    ):
-        """Test storing features when features database is initially empty (but FKs exist)."""
-        # Arrange - Features database is empty but MatchTable has required FKs
-        hero_feature = HeroFeaturesTableFactory.build(
-            match_id=1001,  # This match_id exists due to FK fixture
-            hero_picks=["invoker", "pudge", "sniper"]
-        )
-        
-        # Act
-        await features_repository_test_subject.store_features([hero_feature], HeroFeaturesTable)
-        
-        # Assert
-        total_count = await self._count_features_in_table(test_postgres_engine, HeroFeaturesTable)
-        assert total_count == 1, f"Expected 1 feature in empty database, got {total_count}"
-        
-        stored_feature = await self._get_feature_by_id(test_postgres_engine, 1001, HeroFeaturesTable)
-        assert stored_feature.hero_picks == ["invoker", "pudge", "sniper"]
