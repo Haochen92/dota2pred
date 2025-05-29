@@ -126,14 +126,61 @@ async def features_repository_test_subject(test_postgres_engine: AsyncEngine) ->
     """Create FeaturesRepository instance for testing."""
     return FeaturesRepository(engine=test_postgres_engine)
 
-@pytest_asyncio.fixture(scope="function")
-async def clear_features_database(test_postgres_engine: AsyncEngine):
-    """Clean up features tables between tests."""
+
+@pytest_asyncio.fixture(scope='session', autouse=True)
+async def seed_prerequisite_match_ids_fk(test_postgres_engine: AsyncEngine):
+    """Seeds foreign key dependency data (MatchTable) required for features."""
+    # Include all match_ids used across all tests
+    match_ids_new = [1011, 1012]  
+    match_ids_existing = [1001, 1002, 1003]
+    match_ids_all = match_ids_new + match_ids_existing
+    
+    match_table_instances = [MatchTableFactory.build(match_id=test_match_id) for test_match_id in match_ids_all]
+        
     async with AsyncSession(test_postgres_engine) as session:
         async with session.begin():
+            for instance in match_table_instances:
+                session.add(instance)
+            await session.commit()
+            
+        logger.info("FK seeding complete.")
+
+    yield
+    
+    # Cleanup
+    logger.info("Cleaning up FK data...")
+    async with AsyncSession(test_postgres_engine) as session:
+        async with session.begin():
+            # Clean up children dependencies
             await session.execute(delete(PlayerHeroFeatureTable))
-            await session.execute(delete(TeamFeaturesTable))
+            await session.execute(delete(TeamFeaturesTable)) 
             await session.execute(delete(HeroFeaturesTable))
+            
+            # Clean up fk seeding
+            await session.execute(delete(MatchTable))
+            await session.commit()
+        
+            logger.info("FK cleanup complete")
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def clear_features_database(test_postgres_engine: AsyncEngine):
+    """Clean up features tables between tests automatically."""
+    await _clear_database(test_postgres_engine)
+    logger.info(f"cleared database for set up...")
+    
+    yield
+    
+    await _clear_database(test_postgres_engine)
+    logger.info(f"cleared database after test")
+    
+async def _clear_database(test_postgres_engine):
+    async with AsyncSession(test_postgres_engine) as session:
+        async with session.begin():
+            # Clean up children dependencies
+            await session.execute(delete(PlayerHeroFeatureTable))
+            await session.execute(delete(TeamFeaturesTable)) 
+            await session.execute(delete(HeroFeaturesTable))
+            
 
 @pytest_asyncio.fixture(scope="function")
 async def seed_features_data(test_postgres_engine: AsyncEngine):
@@ -177,50 +224,4 @@ async def seed_features_data(test_postgres_engine: AsyncEngine):
             
     logger.info("Seeding complete.")
 
-    yield
-    
-    # Cleanup
-    logger.info("Cleaning up seeded features data...")
-    async with AsyncSession(test_postgres_engine) as session:
-        async with session.begin():
-            await session.execute(delete(PlayerHeroFeatureTable))
-            await session.execute(delete(TeamFeaturesTable))
-            await session.execute(delete(HeroFeaturesTable))
-            await session.commit()
-        
-    logger.info("Cleanup complete")
 
-@pytest_asyncio.fixture(scope='session', autouse=True)
-async def seed_prerequisite_match_ids_fk(test_postgres_engine: AsyncEngine):
-    """Seeds foreign key dependency data (MatchTable) required for features."""
-    # Include all match_ids used across all tests
-    match_ids_new = [1011, 1012]  
-    match_ids_existing = [1001, 1002, 1003]
-    match_ids_all = match_ids_new + match_ids_existing
-    
-    match_table_instances = [MatchTableFactory.build(match_id=test_match_id) for test_match_id in match_ids_all]
-        
-    async with AsyncSession(test_postgres_engine) as session:
-        async with session.begin():
-            for instance in match_table_instances:
-                session.add(instance)
-            await session.commit()
-            
-        logger.info("FK seeding complete.")
-
-    yield
-    
-    # Cleanup
-    logger.info("Cleaning up FK data...")
-    async with AsyncSession(test_postgres_engine) as session:
-        async with session.begin():
-            # Clean up children dependencies
-            await session.execute(delete(PlayerHeroFeatureTable))
-            await session.execute(delete(TeamFeaturesTable)) 
-            await session.execute(delete(HeroFeaturesTable))
-            
-            # Clean up fk seeding
-            await session.execute(delete(MatchTable))
-            await session.commit()
-        
-            logger.info("FK cleanup complete")
