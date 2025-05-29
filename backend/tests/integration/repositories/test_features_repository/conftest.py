@@ -141,7 +141,6 @@ async def seed_prerequisite_match_ids_fk(test_postgres_engine: AsyncEngine):
         async with session.begin():
             for instance in match_table_instances:
                 session.add(instance)
-            await session.commit()
             
         logger.info("FK seeding complete.")
 
@@ -158,7 +157,6 @@ async def seed_prerequisite_match_ids_fk(test_postgres_engine: AsyncEngine):
             
             # Clean up fk seeding
             await session.execute(delete(MatchTable))
-            await session.commit()
         
             logger.info("FK cleanup complete")
 
@@ -220,7 +218,6 @@ async def seed_features_data(test_postgres_engine: AsyncEngine):
             all_data = team_features_data + hero_features_data + player_hero_feature_data
             for instance in all_data:
                 session.add(instance)
-            await session.commit()
             
     logger.info("Seeding complete.")
 
