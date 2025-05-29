@@ -14,6 +14,10 @@ class HeroesRepository(BaseRepository):
         super().__init__(engine=engine)
         
     async def store_hero_data(self, heroes_input: Dict[str, HeroDataTable]):
+        if not heroes_input:
+            logger.warning(f"Missing heroes_data: {heroes_input}")
+            return
+        
         async with AsyncSession(self.engine) as session:
             async with session.begin(): 
                 try:
