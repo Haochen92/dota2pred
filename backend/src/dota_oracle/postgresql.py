@@ -15,18 +15,18 @@ class DatabaseEngineFactory:
     # --- Baked-in Configuration ---
     _BASE_CONFIG = {
         "drivername": "postgresql+asyncpg",
-        "username": "liuhaochen",      # Replace with your actual user
-        "password": "110799",          # Replace or load from env var for safety
+        "username": "liuhaochen",
+        "password": "110799",
         "host": "localhost",
-        "database": "dota2",           # Replace with your actual DB name
-        "echo_sql": False,
-        # Basic pooling defaults (SQLAlchemy uses QueuePool by default)
-        "pool_size": 5,               # Minimal pool size
-        "max_overflow": 2             # Minimal overflow
+        "database": "dota2",
+        "pool_size": 5,
+        "max_overflow": 2,
+        "pool_recycle": 1800,
     }
+    
     _ENV_PORTS = {
         "prod": 6000,
-        "test": 6030                  # Changed test port as requested
+        "test": 6006
     }
 
     @classmethod
@@ -47,27 +47,34 @@ class DatabaseEngineFactory:
         if env in cls._engines and cls._engines[env] is not None:
             return cls._engines[env]
 
-        # --- Engine Creation Logic ---
+        # Validate environment
         if env not in cls._ENV_PORTS:
             raise ValueError(f"Invalid environment specified: '{env}'. Use 'prod' or 'test'.")
 
         port = cls._ENV_PORTS[env]
         logger.info(f"Creating singleton engine instance for env '{env}' on port {port}...")
 
-        config = cls._BASE_CONFIG.copy() # Start with base config
-        config['port'] = port           # Add the environment-specific port
-
         try:
-            url_object = URL.create(**config) # Create URL from combined config
+            # Create URL
+            url_object = URL.create(
+                drivername=cls._BASE_CONFIG["drivername"],
+                username=cls._BASE_CONFIG["username"],
+                password=cls._BASE_CONFIG["password"],
+                host=cls._BASE_CONFIG["host"],
+                port=port,
+                database=cls._BASE_CONFIG["database"]
+            )
 
+            # Create engine
             engine = create_async_engine(
                 url_object,
-                pool_size=config['pool_size'],
-                max_overflow=config['max_overflow'],
-                pool_recycle=1800, 
-                echo=config['echo_sql']
+                pool_size=cls._BASE_CONFIG["pool_size"],
+                max_overflow=cls._BASE_CONFIG["max_overflow"],
+                pool_recycle=cls._BASE_CONFIG["pool_recycle"],
             )
-            cls._engines[env] = engine 
+            
+            cls._engines[env] = engine
+            logger.info(f"Successfully created engine for env '{env}'")
             return engine
 
         except Exception as e:
@@ -75,26 +82,34 @@ class DatabaseEngineFactory:
             raise 
 
     @classmethod
-    async def close_engine(cls, env: str = 'prod'):
+    async def close_engine(cls, env: str = 'prod') -> None:
         """Closes and removes the engine instance for a specific environment."""
         engine = cls._engines.pop(env, None)
         if engine:
             logger.info(f"Closing engine instance for env '{env}'...")
             await engine.dispose()
+            logger.info(f"Successfully closed engine for env '{env}'")
         else:
-             logger.info(f"No active engine instance found for env '{env}' to close.")
+            logger.info(f"No active engine instance found for env '{env}' to close.")
 
     @classmethod
-    async def close_all_engines(cls):
+    async def close_all_engines(cls) -> None:
         """Closes all managed singleton engine instances."""
+        if not cls._engines:
+            logger.info("No engines to close.")
+            return
+            
         logger.info("Closing all singleton database engine instances...")
-        items = list(cls._engines.items())
+        
+        # Copy to avoid dictionary changed during iteration
+        engines_to_close = list(cls._engines.items())
         cls._engines.clear()
 
-        for env, engine in items:
-             try:
-                 await engine.dispose()
-                 logger.info(f"Closed engine for env: {env}")
-             except Exception as e:
-                 logger.error(f"Error closing engine for env {env}: {e}")
+        for env, engine in engines_to_close:
+            try:
+                await engine.dispose()
+                logger.info(f"Closed engine for env: {env}")
+            except Exception as e:
+                logger.error(f"Error closing engine for env {env}: {e}")
+                
         logger.info("Finished closing all engines.")
