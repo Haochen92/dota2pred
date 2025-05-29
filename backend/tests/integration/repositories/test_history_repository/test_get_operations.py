@@ -74,20 +74,7 @@ class TestGetPlayerHeroWinHistory(BaseHistoryRepositoryTest):
         # Assert
         self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
-    async def test_get_player_hero_win_history_empty_database(
-        self,
-        history_repository_test_subject: HistoryRepository,
-        empty_history_database  # Inject fixture as parameter
-    ):
-        """Test that empty database returns empty list."""
-        # Act
-        result = await history_repository_test_subject.get_player_hero_win_history(
-            account_id=1, hero_id=10, before=None, limit=5
-        )
-        
-        # Assert
-        assert result == [], "Expected empty list for empty database"
-
+    
 
 @pytest.mark.usefixtures("seed_history_data")
 class TestGetTeamHistory(BaseHistoryRepositoryTest):
@@ -146,10 +133,12 @@ class TestGetTeamHistory(BaseHistoryRepositoryTest):
         # Assert
         self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
+    
+
+class TestGetOperationsEmptyDatabase:
     async def test_get_team_history_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
-        empty_history_database  # Inject fixture as parameter
     ):
         """Test that empty database returns empty list."""
         # Act
@@ -159,8 +148,34 @@ class TestGetTeamHistory(BaseHistoryRepositoryTest):
         
         # Assert
         assert result == [], "Expected empty list for empty database"
-
-
+        
+    async def test_get_player_hero_win_history_empty_database(
+        self,
+        history_repository_test_subject: HistoryRepository,
+    ):
+        """Test that empty database returns empty list."""
+        # Act
+        result = await history_repository_test_subject.get_player_hero_win_history(
+            account_id=1, hero_id=10, before=None, limit=5
+        )
+        
+        # Assert
+        assert result == [], "Expected empty list for empty database"
+        
+    async def test_get_team_matchup_history_empty_database(
+        self,
+        history_repository_test_subject: HistoryRepository,
+    ):
+        """Test that empty database returns empty list."""
+        # Act
+        result = await history_repository_test_subject.get_team_matchup_history(
+            team_one="team_secret", team_two="PSG_LGD", before=None, limit=5
+        )
+        
+        # Assert
+        assert result == [], "Expected empty list for empty database"
+        
+    
 @pytest.mark.usefixtures("seed_history_data")
 class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
     """Test retrieving team matchup history with various filters."""
@@ -232,24 +247,10 @@ class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
         # Assert
         self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
-    async def test_get_team_matchup_history_empty_database(
-        self,
-        history_repository_test_subject: HistoryRepository,
-        empty_history_database  # Inject fixture as parameter
-    ):
-        """Test that empty database returns empty list."""
-        # Act
-        result = await history_repository_test_subject.get_team_matchup_history(
-            team_one="team_secret", team_two="PSG_LGD", before=None, limit=5
-        )
-        
-        # Assert
-        assert result == [], "Expected empty list for empty database"
     
     async def test_team_order_independence(
         self,
         history_repository_test_subject: HistoryRepository,
-        seed_history_data
     ):
         """Test that team order doesn't matter for matchup history."""
         # Act - Get matchup in both orders
