@@ -42,7 +42,7 @@ class PredictionRepository(BaseRepository):
                 try:
                     insert_dict = match_prediction.model_dump()
                     stmt = insert(MatchPredictionTable).values(insert_dict).on_conflict_do_update(
-                        index_elements=['match_id', 'predictor_name'],
+                        index_elements=pk_fields,
                         set_=upsert_cols
                     )
 
