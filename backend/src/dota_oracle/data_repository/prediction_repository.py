@@ -18,41 +18,32 @@ class PredictionRepository(BaseRepository):
     def __init__(self, engine: AsyncEngine):
         super().__init__(engine=engine)
 
-    async def store_match_prediction(
-        self,
-        match_id: int,
-        prediction: bool,
-        predictor_name: str,
-        predictor_version: str,
-        prediction_probability: Optional[float] = None
-    ) -> None:
+    async def store_match_prediction(self, match_prediction: MatchPredictionTable) -> None:
         """
         Stores or updates a match prediction using INSERT ... ON CONFLICT DO UPDATE.
         """
-        logger.debug(f"Storing prediction for match {match_id} by {predictor_name} v:{predictor_version}")
+        match_id = match_prediction.match_id
+        predictor_name = match_prediction.predictor_name
+        predictor_version = match_prediction.predictor_version
+        logger.info(f"Storing prediction for match: {match_id}, "
+                     f"model: {predictor_name}, v:{predictor_version}")
+        
+        pk_fields = [col.name for col in MatchPredictionTable.__table__.primary_key.columns]
+        primary_keys = set(pk_fields)
+        
+        upsert_cols = {
+            col.name: insert(MatchPredictionTable).excluded[col.name]
+            for col in MatchPredictionTable.__table__.columns
+            if col.name not in primary_keys
+        }
+        
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
-                    insert_values = {
-                        'match_id': match_id,
-                        'prediction': prediction,
-                        'predictor_name': predictor_name,
-                        'predictor_version': predictor_version,
-                        'prediction_timestamp': datetime.now(timezone.utc),
-                        'prediction_probability': prediction_probability
-                    }
-
-                    # Columns to update on conflict
-                    update_columns = {
-                        'prediction': insert(MatchPredictionTable).excluded.prediction,
-                        'predictor_version': insert(MatchPredictionTable).excluded.predictor_version,
-                        'prediction_timestamp': insert(MatchPredictionTable).excluded.prediction_timestamp,
-                        'prediction_probability': insert(MatchPredictionTable).excluded.prediction_probability
-                    }
-
-                    stmt = insert(MatchPredictionTable).values(insert_values).on_conflict_do_update(
+                    insert_dict = match_prediction.model_dump()
+                    stmt = insert(MatchPredictionTable).values(insert_dict).on_conflict_do_update(
                         index_elements=['match_id', 'predictor_name'],
-                        set_=update_columns
+                        set_=upsert_cols
                     )
 
                     await session.execute(stmt)
@@ -65,7 +56,7 @@ class PredictionRepository(BaseRepository):
                     logger.error(f"Unexpected error storing prediction for match {match_id} by {predictor_name}: {e}", exc_info=True)
                     raise
 
-    async def get_specific_prediction(
+    async def get_specific_prediction_by_model_name(
         self,
         match_id: int,
         predictor_name: str
@@ -77,7 +68,7 @@ class PredictionRepository(BaseRepository):
             An optional MatchPredictionTable instance, or None if not found.
         """
         logger.debug(f"Fetching prediction for match {match_id} by {predictor_name}")
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        async with AsyncSession(self.engine) as session:
             try:
                 stmt = select(MatchPredictionTable).where(
                     MatchPredictionTable.match_id == match_id,
@@ -99,7 +90,7 @@ class PredictionRepository(BaseRepository):
                 logger.error(f"Unexpected error retrieving prediction for match {match_id} by {predictor_name}: {e}", exc_info=True)
                 raise
 
-    async def get_predictions_for_match(self, match_id: int) -> List[MatchPredictionTable]:
+    async def get_predictions_for_match_all_models(self, match_id: int) -> List[MatchPredictionTable]:
         """
         Retrieves all prediction model instances for a given match_id.
 
@@ -107,7 +98,7 @@ class PredictionRepository(BaseRepository):
             A list of MatchPredictionTable instances (potentially empty).
         """
         logger.debug(f"Fetching all predictions for match {match_id}")
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        async with AsyncSession(self.engine) as session:
             try:
                 stmt = select(MatchPredictionTable).where(MatchPredictionTable.match_id == match_id)
                 result = await session.execute(stmt)
@@ -130,7 +121,7 @@ class PredictionRepository(BaseRepository):
             A list of MatchPredictionTable instances (potentially empty).
         """
         logger.debug("Fetching all predictions")
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        async with AsyncSession(self.engine) as session:
             try:
                 stmt = select(MatchPredictionTable)
                 result = await session.execute(stmt)
@@ -156,7 +147,7 @@ class PredictionRepository(BaseRepository):
             A list of MatchPredictionTable instances (potentially empty).
         """
         logger.debug(f"Fetching all predictions by predictor '{predictor_name}'")
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        async with AsyncSession(self.engine) as session:
             try:
                 stmt = select(MatchPredictionTable).where(
                     MatchPredictionTable.predictor_name == predictor_name
