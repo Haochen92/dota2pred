@@ -2,16 +2,15 @@ import pytest
 import pytest_asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from sqlalchemy.dialects.postgresql import insert
-from sqlmodel import delete, select
+from sqlmodel import delete
 
 from ....factories.repository_factories import MatchPredictionTableFactory
 from dota_oracle.data_repository.schemas import MatchPredictionTable
 from dota_oracle.data_repository.prediction_repository import PredictionRepository
 
-from typing import List, Tuple, Any, AsyncGenerator, Dict, Set
-
 from dota_oracle.utils.set_logging import get_logger
+
+from typing import List
 
 logger = get_logger(__name__)
 
@@ -50,12 +49,14 @@ async def seed_prediction_data(test_postgres_engine) -> List[MatchPredictionTabl
         MatchPredictionTableFactory.build(match_id=1003, predictor_name='random_forest'),
     ]
     
-    seeded_data = prediction_data.copy()
-    
-    async with AsyncSession(test_postgres_engine) as session:
+    async with AsyncSession(test_postgres_engine, expire_on_commit=False) as session:
         async with session.begin():
             session.add_all(prediction_data)
             
-    logger.info(f"prediction data seeding completed")
+        
+            
+        session.expunge_all() # Detach the instances
+            
+    logger.info(f"prediction data seeding completed - inserted {len(prediction_data)} records")
     
-    return seeded_data
+    return prediction_data
