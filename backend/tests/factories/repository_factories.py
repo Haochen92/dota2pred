@@ -29,12 +29,15 @@ class HeroFeaturesTableFactory(ModelFactory[HeroFeaturesTable]):
 Histories Tables
 '''
 class PlayerHeroHistoryTableFactory(ModelFactory[PlayerHeroHistoryTable]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 class TeamHistoryTableFactory(ModelFactory[TeamHistoryTable]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 class TeamMatchupHistoryTableFactory(ModelFactory[TeamMatchupHistoryTable]):
+    start_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
@@ -42,6 +45,7 @@ class TeamMatchupHistoryTableFactory(ModelFactory[TeamMatchupHistoryTable]):
 Inference Tables
 '''
 class MatchPredictionTableFactory(ModelFactory[MatchPredictionTable]):
+    prediction_date = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
