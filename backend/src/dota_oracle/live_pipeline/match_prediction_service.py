@@ -2,7 +2,9 @@ from dota_oracle.data_repository.prediction_repository import PredictionReposito
 from dota_oracle.inference import ModelInferenceService, FeaturePreparationService
 import numpy as np
 from dota_oracle.utils.set_logging import get_logger
+from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from dota_oracle.pydantic_models.inference import ModelPrediction
+from dota_oracle.data_repository.schemas import MatchPredictionTable
 
 logger = get_logger(__name__)
 
@@ -33,12 +35,14 @@ class MatchPredictionService:
         
         try:
             metadata = self.model_inference_service.model_metadata
-            await self.storage.store_match_prediction(
+            prediction_table = MatchPredictionTable(
                 match_id=match_id,
                 prediction=bool(prediction),
                 predictor_name=metadata.name,
-                predictor_version=metadata.version
+                predictor_version=metadata.version,
+                prediction_date=get_current_utc_iso_timestamp()
             )
+            await self.storage.store_match_prediction(prediction_table)
         except Exception as e:
             logger.error(f"Failed to store predictions for match {match_id}: {e}", exc_info=True)
             raise e
