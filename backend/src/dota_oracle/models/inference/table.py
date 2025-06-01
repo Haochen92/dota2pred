@@ -1,7 +1,6 @@
 from sqlmodel import Field
 from sqlalchemy import BigInteger, Column, TIMESTAMP
 from datetime import datetime
-from typing import Optional
 
 from .schema import MatchPrediction
 
@@ -13,7 +12,7 @@ class MatchPredictionTable(MatchPrediction, table=True):
     predictor_name: str = Field(primary_key=True, index=True)
     
     # Override datetime with timezone
-    prediction_date: Optional[datetime] = Field(
-        sa_column=Column(TIMESTAMP(timezone=True), index=True, nullable=True)
+    prediction_date: datetime = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), index=True, nullable=False)
     ) 
 
