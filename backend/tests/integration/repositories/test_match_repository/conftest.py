@@ -9,7 +9,7 @@ from ....factories.repository_factories import MatchOutcomeTableFactory, MatchTa
 from dota_oracle.data_repository.schemas import MatchOutcomeTable, MatchTable
 from dota_oracle.data_repository.match_repository import MatchRepository
 
-from dota_oracle.pydantic_models.match import Match as MatchPydantic
+from dota_oracle.models.match import Match as MatchPydantic
 
 from typing import List, Tuple, Any, AsyncGenerator, Dict, Set
 

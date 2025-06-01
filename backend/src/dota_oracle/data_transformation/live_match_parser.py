@@ -1,5 +1,5 @@
 from typing import List
-from dota_oracle.pydantic_models.live_league_games import LiveLeagueGame
+from dota_oracle.models.live_games.schema import LiveLeagueGame
 from dota_oracle.data_repository.schemas import MatchTable
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object

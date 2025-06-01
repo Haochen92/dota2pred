@@ -8,7 +8,7 @@ from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.schemas import MatchTable
 from dota_oracle.utils.async_utils import run_updates_as_group, get_outcome_concurrently
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
-from dota_oracle.pydantic_models.redis_models import StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 
 logger = get_logger(__name__)
 

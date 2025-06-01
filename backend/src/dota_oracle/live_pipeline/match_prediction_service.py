@@ -3,7 +3,7 @@ from dota_oracle.inference import ModelInferenceService, FeaturePreparationServi
 import numpy as np
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
-from dota_oracle.pydantic_models.inference import ModelPrediction
+from dota_oracle.models.inference.schema import ModelPredictionAPIResponse
 from dota_oracle.data_repository.schemas import MatchPredictionTable
 
 logger = get_logger(__name__)
@@ -25,7 +25,7 @@ class MatchPredictionService:
         if input_array is None or input_array.size == 0:
             raise ValueError(f"input array empty after feature preparation for match: {match_id}")
         try:
-            prediction_instance: ModelPrediction = await self.model_inference_service.get_prediction(input_array)
+            prediction_instance: ModelPredictionAPIResponse = await self.model_inference_service.get_prediction(input_array)
             prediction_list = prediction_instance.prediction
             prediction = prediction_list[0]
             logger.info(f"Successfully fetched prediction for match: {match_id}, value: {prediction}")

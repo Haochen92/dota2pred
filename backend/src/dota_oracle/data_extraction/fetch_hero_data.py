@@ -1,5 +1,5 @@
 from .api_clients.opendota_api import fetch_opendota
-from dota_oracle.pydantic_models.heroes import HeroesAPIResponse, HeroData
+from dota_oracle.models.heroes import HeroesAPIResponse, HeroData
 import asyncio
 from dota_oracle.utils.set_logging import get_logger
 from pydantic import ValidationError

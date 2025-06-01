@@ -4,7 +4,7 @@ from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from typing import List, Dict, Set
 from pydantic import ValidationError
-from dota_oracle.pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
 import json
 
 # Constants
@@ -108,8 +108,8 @@ class RedisService:
 
     async def add_match_for_processing(self, match_id: int) -> bool:
         """Atomically sets initial status and adds match to the first stream."""
-        if not match_id or type(match_id) != int:
-            logger.error(f"Missing input value or invalid datatype")
+        if not match_id or type(match_id) is not int:
+            logger.error("Missing input value or invalid datatype")
             return False
         match_id_str = str(match_id)
         timestamp = get_current_utc_iso_timestamp()
@@ -134,11 +134,11 @@ class RedisService:
 
     async def advance_match_to_pending_prediction(self, match_id: int, event_id_to_ack: str) -> bool:
         """Atomically updates status, adds to next stream, ACKs previous stream event."""
-        if not match_id or type(match_id) != int:
+        if not match_id or type(match_id) is not int:
             logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
             return False
         elif not event_id_to_ack:
-            logger.error(f"event_id cannot be missing")
+            logger.error("event_id cannot be missing")
             return False  
         
         match_id_str = str(match_id)
@@ -164,11 +164,11 @@ class RedisService:
 
     async def advance_match_to_pending_completion(self, match_id: int, event_id_to_ack: str) -> bool:
         """Atomically updates status, adds to next stream, ACKs previous stream event."""
-        if not match_id or type(match_id) != int:
+        if not match_id or type(match_id) is not int:
             logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
             return False
         elif not event_id_to_ack:
-            logger.error(f"event_id cannot be missing")
+            logger.error("fevent_id cannot be missing")
             return False 
         
         match_id_str = str(match_id)
@@ -194,11 +194,11 @@ class RedisService:
 
     async def mark_match_as_completed(self, match_id: int, event_id_to_ack: str) -> bool:
         """Atomically deletes status hash and ACKs the final processing stream event."""
-        if not match_id or type(match_id) != int:
+        if not match_id or type(match_id) is not int:
             logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
             return False
         elif not event_id_to_ack:
-            logger.error(f"event_id cannot be missing")
+            logger.error("event_id cannot be missing")
             return False 
         
         match_id_str = str(match_id)

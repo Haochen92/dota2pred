@@ -6,7 +6,7 @@ from typing import Any, Set, List, Dict
 import json
 import pydantic
 
-from dota_oracle.pydantic_models.redis_models import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
 from dota_oracle.constants.redis_constants import (
     MATCH_SET, MATCH_STATUS, TMP_KEY,
     STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION,

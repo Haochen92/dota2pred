@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.pydantic_models.match import Match as MatchPydantic
+from dota_oracle.models.match import Match as MatchPydantic
 from .base_repository import BaseRepository
 import asyncio
 

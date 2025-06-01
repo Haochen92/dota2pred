@@ -1,6 +1,6 @@
 from dota_oracle.data_extraction.fetch_match_details import fetch_match_details
-from dota_oracle.pydantic_models.match import MatchesAPIResponse
-from dota_oracle.pydantic_models.redis_models import StreamMatchEventData, FailureRecord
+from dota_oracle.models.match import MatchesAPIResponse
+from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 from dota_oracle.utils.set_logging import get_logger
 from typing import Dict, Any, Set, Coroutine, List
 from .history_update_service import HistoryUpdateService

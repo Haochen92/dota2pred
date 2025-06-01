@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-import asyncio
 
 # Postgresql Imports
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine

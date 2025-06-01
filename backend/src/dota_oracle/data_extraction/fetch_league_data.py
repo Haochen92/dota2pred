@@ -1,5 +1,5 @@
 from .api_clients.opendota_api import fetch_opendota
-from dota_oracle.pydantic_models.leagues import LeaguesAPIResponse, LeagueItem
+from dota_oracle.models.leagues.schema import LeaguesAPIResponse, LeagueItem
 import asyncio
 from typing import List
 from pydantic import ValidationError
@@ -13,14 +13,14 @@ async def fetch_league_data() -> List[LeagueItem]:
         res = await fetch_opendota(endpoint='leagues')
         if not res:
             return []
-        validated_data = LeaguesAPIResponse(res)
+        validated_data = LeaguesAPIResponse.model_validate(res)
         list_league_items = validated_data.root
         return list_league_items
     except ValidationError as ve:
-        logger.error(f'Validation Error: {ve}', exe_info=True)
+        logger.error(f'Validation Error: {ve}', exc_info=True)
         raise ve
     except Exception as e:
-        logger.error(f'Error fetching leagues data:')
+        logger.error('Error fetching leagues data:')
         raise e
     
             

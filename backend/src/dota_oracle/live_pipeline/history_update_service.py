@@ -1,5 +1,5 @@
 from dota_oracle.data_repository.history_repository import HistoryRepository
-from dota_oracle.pydantic_models.match import MatchesAPIResponse
+from dota_oracle.models.match import MatchesAPIResponse
 from dota_oracle.utils import get_logger, run_updates_as_group
 from dota_oracle.utils.time_utils import to_utc_datetime_object
 from typing import List, Coroutine, Any
