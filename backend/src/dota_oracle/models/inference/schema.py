@@ -33,9 +33,9 @@ class MatchPrediction(SQLModel):
     match_id: int 
     predictor_name: str
     
-    prediction: Optional[bool]
-    prediction_probability: Optional[float]
+    prediction: Optional[bool] 
+    prediction_probability: Optional[float] = Field(ge=0.0, le=1.0)
     
-    predictor_version: Optional[str]
-    prediction_date: Optional[datetime] 
+    predictor_version: str = Field(default='1.0')
+    prediction_date: datetime
 
