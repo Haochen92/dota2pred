@@ -1,8 +1,8 @@
-from pydantic import BaseModel
+from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
 
-class Match(BaseModel):
+class Match(SQLModel):
     # UUID
     match_id: int
     
@@ -17,6 +17,7 @@ class Match(BaseModel):
     
     # Match metadata
     start_time: datetime
+    duration: Optional[float] = None
     
     # Hero & Player Data
     slot_0_hero_id: str
@@ -42,7 +43,7 @@ class Match(BaseModel):
     slot_132_account_id: int
     
     
-class MatchOutcome(BaseModel):
+class MatchOutcome(SQLModel):
     match_id: int
     radiant_win: bool
     
