@@ -8,7 +8,7 @@ class MatchPredictionTable(MatchPrediction, table=True):
     __tablename__ = 'match_predictions' # type: ignore
     
     # Override Composite Primary Key
-    match_id: int = Field(sa_type=BigInteger, primary_key=True)
+    match_id: int = Field(sa_type=BigInteger, foreign_key="matches.match_id", primary_key=True)
     predictor_name: str = Field(primary_key=True, index=True)
     
     # Override datetime with timezone

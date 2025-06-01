@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import Field, Relationship
-from sqlalchemy import BigInteger, Column, TIMESTAMP 
+from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey 
 from datetime import datetime
 from .base import Match, MatchOutcome
+from ..inference import MatchPredictionTable
 
 class MatchTable(Match, table=True):
     __tablename__ = "matches"  # type: ignore
@@ -28,16 +29,19 @@ class MatchTable(Match, table=True):
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False)
     )
     
-    # Relationship
+    # Relationships
     outcome: Optional["MatchOutcomeTable"] = Relationship(
         back_populates="matches",
         sa_relationship_kwargs={}
+    )
+    predictions: List["MatchPredictionTable"] = Relationship(
+        back_populates="matches"
     )
 
 class MatchOutcomeTable(MatchOutcome, table=True):
     __tablename__ = 'match_outcomes' # type: ignore
     
     match_id: int = Field(
-        sa_column=Column(BigInteger, primary_key=True, foreign_key="matches.match_id") 
+        sa_column=Column(BigInteger, ForeignKey("matches.match_id"), primary_key=True) 
     )
     
