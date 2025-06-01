@@ -9,7 +9,7 @@ from dota_oracle.data_repository.schemas import (
     HeroDataTable # herodata
 )
 
-from dota_oracle.pydantic_models.match import Match as MatchPydantic
+from dota_oracle.models.match import Match as MatchPydantic
 
 
 '''

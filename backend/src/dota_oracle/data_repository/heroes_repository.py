@@ -1,4 +1,4 @@
-from dota_oracle.pydantic_models.heroes import HeroData
+from dota_oracle.models.heroes import HeroData
 from .schemas.heroes import HeroDataTable
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from typing import Dict, Optional

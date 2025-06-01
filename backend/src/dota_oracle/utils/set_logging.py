@@ -11,7 +11,7 @@ from datetime import datetime
 '''
 def get_logger(name):
  
-    output_fpath = ROOT_DIR / 'logs' / f'{name}_error.log'
+    # output_fpath = ROOT_DIR / 'logs' / f'{name}_error.log'
     logger = logging.getLogger(name)
     logger.propagate = False
     logger.setLevel(logging.INFO)
@@ -20,22 +20,22 @@ def get_logger(name):
     if not logger.hasHandlers():
         # Set up handlers
         console_handler = logging.StreamHandler()
-        file_handler = logging.FileHandler(output_fpath)
+        # file_handler = logging.FileHandler(output_fpath)
 
         # Configure handlers
         console_handler.setLevel(logging.INFO)
-        file_handler.setLevel(logging.ERROR)
+        # file_handler.setLevel(logging.ERROR)
 
         console_format = logging.Formatter('%(name)s - %(message)s')
-        file_format = logging.Formatter('Time: %(asctime)s - File: %(filename)s - Name: %(name)s - Error Msg: %(message)s')
-        file_format.converter = lambda *args: datetime.now(pytz.timezone('Asia/Shanghai')).timetuple()
+        # file_format = logging.Formatter('Time: %(asctime)s - File: %(filename)s - Name: %(name)s - Error Msg: %(message)s')
+        # file_format.converter = lambda *args: datetime.now(pytz.timezone('Asia/Shanghai')).timetuple()
 
         console_handler.setFormatter(console_format)
-        file_handler.setFormatter(file_format)
+        # file_handler.setFormatter(file_format)
 
         # Add handlers to the logger
         logger.addHandler(console_handler)
-        logger.addHandler(file_handler)
+        # logger.addHandler(file_handler)
     else:
         logger.info(f"Handlers already set up {logger.handlers}")
     

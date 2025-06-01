@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlalchemy.dialects.postgresql import insert
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.pydantic_models.leagues import LeagueItem
+from dota_oracle.models.leagues.schema import LeagueItem
 from .schemas.leagues import LeagueTable
 from .base_repository import BaseRepository
 

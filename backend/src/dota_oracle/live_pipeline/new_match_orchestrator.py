@@ -5,7 +5,7 @@ from dota_oracle.data_transformation.live_match_parser import parse_live_league_
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 from dota_oracle.data_repository.schemas import MatchTable
-from dota_oracle.pydantic_models.live_league_games import LiveLeagueGame
+from dota_oracle.models.live_games.schema import LiveLeagueGame
 from .redis_service import RedisService
 
 # data extraction

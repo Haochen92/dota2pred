@@ -6,7 +6,7 @@ from .redis_service import RedisService
 from dota_oracle.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
 from dota_oracle.utils.async_utils import get_outcome_concurrently
 from typing import Coroutine, Any, Dict
-from dota_oracle.pydantic_models.redis_models import StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 
 logger = get_logger(__name__)

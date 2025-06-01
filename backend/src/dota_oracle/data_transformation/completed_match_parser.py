@@ -1,6 +1,6 @@
-from dota_oracle.pydantic_models.match import MatchesAPIResponse, Match
+from dota_oracle.models.match import MatchesAPIResponse, Match
 from pydantic import ValidationError
-from dota_oracle.pydantic_models.match import Match
+from dota_oracle.models.match import Match
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object
 from dota_oracle.data_repository.heroes_repository import HeroesRepository

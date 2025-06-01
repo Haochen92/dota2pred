@@ -1,9 +1,8 @@
 import aiohttp
 import numpy as np
-from dota_oracle.pydantic_models.inference import ModelPrediction, ModelMetaData
+from dota_oracle.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
 from dota_oracle.utils.set_logging import get_logger
 from pydantic import ValidationError
-from typing import Optional
 
 logger = get_logger(__name__)
 
@@ -15,13 +14,13 @@ class ModelInferenceService:
     async def initialize_async_service(self):
         # Initialize async service
         try:
-            self.model_metadata: ModelMetaData = await self.get_model_metadata()
+            self.model_metadata: ModelMetaDataAPIResponse = await self.get_model_metadata()
         except Exception as e:
             raise e
 
-    async def get_prediction(self, input_features: np.ndarray) -> ModelPrediction:
+    async def get_prediction(self, input_features: np.ndarray) -> ModelPredictionAPIResponse:
         
-        logger.info(f"calling model endpoint for prediction...")
+        logger.info("calling model endpoint for prediction...")
         request_data = {"input_data": {"features": input_features.tolist()}}
         
         try:
@@ -33,7 +32,7 @@ class ModelInferenceService:
                 ) as response:
                     response.raise_for_status()
                     result = await response.json()
-                    validated_result = ModelPrediction.model_validate(result)
+                    validated_result = ModelPredictionAPIResponse.model_validate(result)
                     return validated_result
         except aiohttp.ClientResponseError as ce:
             logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {ce.message}", exc_info=True)  
@@ -45,7 +44,7 @@ class ModelInferenceService:
             logger.error(f"Error getting prediction: {e}", exc_info=True)
             raise e
     
-    async def get_model_metadata(self) -> ModelMetaData:
+    async def get_model_metadata(self) -> ModelMetaDataAPIResponse:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -56,7 +55,7 @@ class ModelInferenceService:
                     result_dict = await response.json()
                     
                     logger.debug("Successfully fetched metadata")
-                    validated_metadata = ModelMetaData.model_validate(result_dict)
+                    validated_metadata = ModelMetaDataAPIResponse.model_validate(result_dict)
                     
                     if not validated_metadata:
                         raise ValueError("Missing model metadata")
