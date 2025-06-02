@@ -23,6 +23,10 @@ class BaseRepository:
     """
     Base class for data repositories providing common database interactions.
     """
+    
+    # ===============================
+    #   CRUD base methods
+    # ==============================
         
     async def _insert_data(
         self,
@@ -125,6 +129,11 @@ class BaseRepository:
         except Exception as e:
             logger.error(f"Error records for {model_class.__name__}: {e}", exc_info=True)
             raise
+    
+    
+    # ========================
+    # Helper methods
+    # ========================
     
     
     def _get_primary_key_attribute(self, model_class: Type[T]) -> List[InstrumentedAttribute]:
