@@ -2,7 +2,8 @@ from typing import Type, TypeVar, List, Optional, Any, Protocol
 from sqlmodel import SQLModel, select, Table, inspect, desc
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from dota_oracle.utils.set_logging import get_logger
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload 
+from sqlalchemy import Select
 
 # helper class for type
 class SQLModelTable(Protocol):
@@ -22,32 +23,39 @@ class BaseRepository:
             raise ValueError("Missing Database Engine")
         self.engine = engine
         
-    
-    async def _get_all_data_by_class(self, model_class: Type[T]) -> List[T]:
-        """
-        Retrieves all records for a given model class.
-
-        Args:
-            model_class: The SQLModel class to retrieve records for.
-
-        Returns:
-            A list of SQLModel instances. Returns empty list if none found or error.
-        """
+    async def _fetch_data(
+        self,
+        *,
+        model_class: Type[T],
+        id_filters: Optional[List[int]] = None,
+        relationships: Optional[List[str]] = None,
+        limit: Optional[int] = None,
+    ):
         async with AsyncSession(self.engine) as session:
+            pk_attribute = self._get_primary_key_attribute(model_class)
+            
             try:
                 stmt = select(model_class)
-                if hasattr(model_class, 'match_id'):
-                    stmt = stmt.order_by(desc(model_class.match_id)) # type: ignore
-                    
+                if id_filters:
+                    stmt = self._filter_by_ids(pk_attribute, id_filters, stmt) 
+                if relationships:
+                    stmt = self._add_relationships(model_class, relationships, stmt)
+                if limit:
+                    stmt = stmt.limit(limit=limit)
+                
+                stmt = stmt.order_by(desc(pk_attribute))
+                
+                # Execute 
                 result = await session.execute(stmt)
                 instances = result.scalars().all()
-                logger.debug(f"Retrieved {len(instances)} records for {model_class.__name__}")
+                
+                logger.info(f"Retrieved {len(instances)} records for {model_class.__name__}")
                 return instances # type: ignore
             except Exception as e:
-                logger.error(f"Error retrieving all records for {model_class.__name__}: {e}", exc_info=True)
-                return [] 
+                logger.error(f"Error records for {model_class.__name__}: {e}", exc_info=True)
+                raise
             
-    def _get_primary_key_attribute(self, model_class: Type[T]):
+    def _get_primary_key_attribute(self, model_class: Type[T]) -> Any:
         """Helper to get the single primary key attribute of a model."""
         mapper = inspect(model_class)
         pk_columns = mapper.primary_key
@@ -62,80 +70,44 @@ class BaseRepository:
 
         pk_attribute = getattr(model_class, pk_col_name)
         return pk_attribute
-
-    async def _get_instance_by_id(
-        self, model_class: Type[T], 
-        pk_value: Any,
-        relationships: Optional[List[str]] = None
-        
-    ) -> Optional[T]:
-        """
-        Retrieves a single record by its primary key value.
-        Assumes a single primary key column.
-        Loads optional relationships, if any
-        """
-        try:
-            pk_attribute = self._get_primary_key_attribute(model_class)
-
-            async with AsyncSession(self.engine) as session:
-                stmt = select(model_class).where(pk_attribute == pk_value)
-                
-                if relationships:
-                    mapper = inspect(model_class)
-                    valid_relationship_names = set(mapper.relationships.keys())
                     
-                    for rel_name in relationships:
-                        if rel_name in valid_relationship_names:
-                            relationship_attribute = getattr(model_class, rel_name)
-                            stmt = stmt.options(selectinload(relationship_attribute))
-                        else:
-                            logger.warning(
-                                f"Relationship name '{rel_name}' not found in model"
-                                f"'{model_class.__name__}'"
-                            )
-                        
-                
-                result = await session.execute(stmt)
-                instance = result.scalars().first()
+                    
+    def _filter_by_ids(self, pk_attribute: Any, id_filters: List[int], stmt: Select):
+        
+        if not id_filters:
+            logger.warning("empty input list provided for id_filters")
+            return stmt
+        if not isinstance(id_filters, list):
+            logger.warning(f"expected type list, got type {type(id_filters)} for id_filters")
+            return stmt
+        
+        
+        stmt = stmt.where(pk_attribute.in_(id_filters))
+        
+        return stmt
 
-                if instance:
-                    logger.debug(f"Retrieved record for {model_class.__name__} with pk {pk_value}")
-                else:
-                    logger.debug(f"No record found for {model_class.__name__} with pk {pk_value}")
-                return instance 
-
-        except (AttributeError, ValueError) as e: 
-             logger.error(f"Error determining primary key for {model_class.__name__}: {e}", exc_info=True)
-             raise 
-        except Exception as e:
-             logger.error(f"Error retrieving {model_class.__name__} by pk {pk_value}: {e}", exc_info=True)
-             raise e
-
-
-    async def _get_instances_by_batch_ids(self, model_class: Type[T], batch_ids: List[Any]) -> List[T]:
-        """
-        Retrieves multiple records by a list of primary key values.
-        Assumes a single primary key column. Returns an empty list if no matches or on error.
-        """
-        # Handle empty input list efficiently
-        if not batch_ids:
-            logger.debug(f"Received empty batch ID list for {model_class.__name__}. Returning empty list.")
-            return []
-
-        try:
-            pk_attribute = self._get_primary_key_attribute(model_class)
-
-            async with AsyncSession(self.engine) as session:
-                stmt = select(model_class).where(pk_attribute.in_(batch_ids))
-                result = await session.execute(stmt)
-                instances = result.scalars().all()
-
-                logger.debug(f"Retrieved {len(instances)} records for {model_class.__name__} matching batch IDs.")
-                return list(instances)
-
-        except (AttributeError, ValueError) as e: 
-             logger.error(f"Error determining primary key for {model_class.__name__}: {e}", exc_info=True)
-             return []
-        except Exception as e:
-             logger.error(f"Error retrieving {model_class.__name__} by batch IDs: {e}", exc_info=True)
-             raise e
+            
+    def _add_relationships( self, model_class: Type[T], relationships: List[str], stmt: Select) -> Select:
+        
+        if not relationships:
+            logger.warning(f"No relationships, input: {relationships}")
+            return stmt
+        
+        if not isinstance(relationships, list):
+            logger.warning(f"expected type {type(list)}, got type {type(relationships)} for relationships")
+            return stmt
+        
+        mapper = inspect(model_class)
+        valid_relationship_names = set(mapper.relationships.keys())
+        
+        for rel_name in relationships:
+            if rel_name in valid_relationship_names:
+                relationship_attribute = getattr(model_class, rel_name)
+                stmt = stmt.options(selectinload(relationship_attribute))
+            else:
+                logger.warning(
+                    f"Relationship name '{rel_name}' not found in model"
+                    f"'{model_class.__name__}'"
+                )
+        return stmt
+   
