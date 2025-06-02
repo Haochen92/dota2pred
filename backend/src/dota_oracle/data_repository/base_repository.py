@@ -27,13 +27,15 @@ class BaseRepository:
     # ===============================
     #   CRUD base methods
     # ==============================
+    
+    def __init__(self, session: AsyncSession):
+        self.session = session
         
     async def _insert_data(
         self,
         *,
         model_class: Type[T],
         instances: Union[T, List[T]],
-        session: AsyncSession
     )-> bool:
 
         try:
@@ -48,8 +50,8 @@ class BaseRepository:
             stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(
                 index_elements=on_conflict_keys
             )
-            await session.execute(stmt)
-            await session.flush()
+            await self.session.execute(stmt)
+            await self.session.flush()
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -63,7 +65,6 @@ class BaseRepository:
         *,
         model_class: Type[T],
         instances: Union[T, List[T]],
-        session: AsyncSession
     )-> bool:
 
         try:
@@ -81,8 +82,8 @@ class BaseRepository:
                 index_elements=on_conflict_keys,
                 set_=update_dict
             )
-            await session.execute(stmt)
-            await session.flush()
+            await self.session.execute(stmt)
+            await self.session.flush()
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -95,10 +96,9 @@ class BaseRepository:
         self,
         *,
         model_class: Type[T],
-        id_filters: Optional[List[int| str]] = None,
+        id_filters: Optional[List[int]] = None,
         relationships: Optional[List[str]] = None,
         limit: Optional[int] = None,
-        session: AsyncSession
     )->  List[T]:
 
         pk_attributes = self._get_primary_key_attribute(model_class)
@@ -121,7 +121,7 @@ class BaseRepository:
             stmt = stmt.order_by(desc(single_pk_attribute))
             
             # Execute 
-            result = await session.execute(stmt)
+            result = await self.session.execute(stmt)
             instances = result.scalars().all()
             
             logger.info(f"Retrieved {len(instances)} records for {model_class.__name__}")
@@ -162,7 +162,7 @@ class BaseRepository:
         
         return update_dict         
                     
-    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int|str], stmt: Select):
+    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int], stmt: Select):
         
         if not id_filters:
             logger.warning("empty input list provided for id_filters")
