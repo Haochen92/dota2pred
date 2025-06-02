@@ -1,36 +1,42 @@
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.models.leagues.schema import LeagueItem
-from .schemas.leagues import LeagueTable
+from dota_oracle.models.leagues import LeagueTable
 from .base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
 class LeaguesRepository(BaseRepository):
-    def __init__(self, engine: AsyncEngine):
-        super().__init__(engine=engine)
+    def __init__(self, session: AsyncSession):
+        super().__init__(session)
         
-    async def store_league_data(self, league_inputs: List[LeagueItem]):
-        async with AsyncSession(self.engine) as session:
-            try:
-                # Convert pydantic models to dictionaries
-                leagues_data = [league.model_dump() for league in league_inputs]
-                
-                # Create insert statement with on_conflict_do_nothing
-                stmt = insert(LeagueTable).values(leagues_data).on_conflict_do_nothing()
-                
-                await session.execute(stmt)
-                await session.commit()
-                logger.info(f"Successfully stored {len(leagues_data)} league records")
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"Error inserting league data: {e}", exc_info=True)
-                raise e
+    async def store_league_data(self, league_inputs: List[LeagueTable]):
+        
+        try:
+            await self._insert_data(model_class=LeagueTable, instances=league_inputs)
+        except Exception as e:
+            logger.error(f"Error encountered when storing league data: Error {e}", exc_info=True)
+            raise e
             
-    async def get_league_data_by_id(self):
-        pass
+    async def get_league_data_by_ids(self, league_id_inputs: List[int]):
+        try:
+            league_data_instances = await self._get_data(model_class=LeagueTable, id_filters=league_id_inputs)
+            if not league_data_instances:
+                logger.debug(f"No data found for league_ids, {league_id_inputs}")
+                return []
+            return league_data_instances
+        except Exception as e:
+            logger.error(f"Error fetching league_data for league_ids: {league_id_inputs},{e}", exc_info=True)
     
     async def get_all_league_data(self):
-        pass
+        try:
+            all_league_data = await self._get_data(model_class=LeagueTable)
+            if not all_league_data:
+                logger.warning(f"Table {LeagueTable.__tablename__} is empty")
+                return []
+            
+            logger.info(f"Found {len(all_league_data)} league data entries")
+            return all_league_data
+        except Exception as e:
+            logger.error(f"Error encountered while fetching all league data, error: {e}", exc_info=True)
+            raise
