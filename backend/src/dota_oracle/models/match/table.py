@@ -4,6 +4,7 @@ from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey
 from datetime import datetime
 from .base import Match, MatchOutcome
 from ..inference import MatchPredictionTable
+from ..features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
 
 class MatchTable(Match, table=True):
     __tablename__ = "matches"  # type: ignore
@@ -32,10 +33,24 @@ class MatchTable(Match, table=True):
     # Relationships
     outcome: Optional["MatchOutcomeTable"] = Relationship(
         back_populates="matches",
-        sa_relationship_kwargs={}
+        sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
     predictions: List["MatchPredictionTable"] = Relationship(
-        back_populates="matches"
+        back_populates="matches",
+        sa_relationship_kwargs={'cascade': "all, delete-orphan"}
+    )
+    
+    team_features: Optional["TeamFeaturesTable"] = Relationship(
+        back_populates="matches",
+        sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
+    )
+    player_hero_features: Optional["PlayerHeroFeatureTable"] = Relationship(
+        back_populates="matches",
+        sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
+    )
+    hero_features: Optional["HeroFeaturesTable"] = Relationship(
+        back_populates="matches",
+        sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
 
 class MatchOutcomeTable(MatchOutcome, table=True):
