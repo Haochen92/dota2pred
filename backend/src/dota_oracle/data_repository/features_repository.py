@@ -6,6 +6,10 @@ from typing import Optional, List, Type
 logger = get_logger(__name__)
 
 class FeaturesRepository(BaseRepository):
+    
+    def __init__(self, session:AsyncSession):
+        super().__init__(session)
+        self.session = session
     """
     Repository class for handling database operations related to
     match features (Hero, Team, Player-Hero).
@@ -17,7 +21,6 @@ class FeaturesRepository(BaseRepository):
         self,
         feature_instances: List[T],
         table_class: Type[T],
-        session: AsyncSession
     ) -> None:
         """
         Stores features from a DataFrame into the specified table using batch upsert.
@@ -30,7 +33,6 @@ class FeaturesRepository(BaseRepository):
             await self._upsert_data(
                 model_class=table_class,
                 instances=feature_instances,
-                session=session
             )
         except Exception as e:
             raise e
@@ -38,7 +40,6 @@ class FeaturesRepository(BaseRepository):
     async def get_features(
         self, 
         table_class: Type[T],
-        session: AsyncSession,
         match_ids: Optional[List[int]] = None,
         limit: Optional[int] = None,  
     ):
@@ -56,8 +57,7 @@ class FeaturesRepository(BaseRepository):
             feature_instance_list = await self._get_data(
                 model_class=table_class,
                 id_filters=match_ids,
-                limit=limit,
-                session=session
+                limit=limit
             )
             
             if not feature_instance_list:
