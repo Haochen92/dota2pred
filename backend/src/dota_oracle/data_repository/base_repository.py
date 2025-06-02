@@ -23,7 +23,7 @@ class BaseRepository:
             raise ValueError("Missing Database Engine")
         self.engine = engine
         
-    async def _fetch_data(
+    async def _get_data(
         self,
         *,
         model_class: Type[T],
