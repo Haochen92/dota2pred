@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, select, Table, inspect, desc
 from dota_oracle.utils.set_logging import get_logger
 
 # SQLAlchemy imports
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, InstrumentedAttribute
 from sqlalchemy import Select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -23,71 +23,69 @@ class BaseRepository:
     """
     Base class for data repositories providing common database interactions.
     """
-    def __init__(self, engine: AsyncEngine):
-        if engine is None:
-            raise ValueError("Missing Database Engine")
-        self.engine = engine
-    
+        
     async def _insert_data(
         self,
         *,
         model_class: Type[T],
-        instances: Union[T, List[T]]
+        instances: Union[T, List[T]],
+        session: AsyncSession
     )-> bool:
-        async with AsyncSession(self.engine) as session:
-            try:
-                logger.info("Validating inputs...")
-                
-                validated_inputs = self._validate_input_types(model_class, instances)
-                input_values = [instance.model_dump() for instance in validated_inputs]
-                
-                pk_attributes = self._get_primary_key_attribute(model_class)
-                on_conflict_keys = [attr.key for attr in pk_attributes]
-                
-                stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(
-                    index_elements=on_conflict_keys
-                )
-                await session.execute(stmt)
-                await session.commit()
-                return True
-            except SQLAlchemyError as e:
-                logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
-                raise
-            except Exception as e:
-                logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
-                raise
+
+        try:
+            logger.info("Validating inputs...")
+            
+            validated_inputs = self._validate_input_types(model_class, instances)
+            input_values = [instance.model_dump() for instance in validated_inputs]
+            
+            pk_attributes = self._get_primary_key_attribute(model_class)
+            on_conflict_keys = [attr.key for attr in pk_attributes]
+            
+            stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(
+                index_elements=on_conflict_keys
+            )
+            await session.execute(stmt)
+            await session.flush()
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
+            raise
             
     async def _upsert_data(
         self,
         *,
         model_class: Type[T],
-        instances: Union[T, List[T]]
+        instances: Union[T, List[T]],
+        session: AsyncSession
     )-> bool:
-        async with AsyncSession(self.engine) as session:
-            try:
-                logger.info("Validating inputs...")
-                
-                validated_inputs = self._validate_input_types(model_class, instances)
-                input_values = [instance.model_dump() for instance in validated_inputs]
-                
-                pk_attributes = self._get_primary_key_attribute(model_class)
-                on_conflict_keys = [attr.key for attr in pk_attributes]
-                
-                update_dict = self._get_update_excluded_dict(model_class)
-                
-                stmt = pg_insert(model_class).values(input_values).on_conflict_do_update(
-                    index_elements=on_conflict_keys,
-                    set_=update_dict
-                )
-                await session.execute(stmt)
-                await session.commit()
-                return True
-            except SQLAlchemyError as e:
-                logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
-                raise
-            except Exception as e:
-                logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
-                raise      
+
+        try:
+            logger.info("Validating inputs...")
+            
+            validated_inputs = self._validate_input_types(model_class, instances)
+            input_values = [instance.model_dump() for instance in validated_inputs]
+            
+            pk_attributes = self._get_primary_key_attribute(model_class)
+            on_conflict_keys = [attr.key for attr in pk_attributes]
+            
+            update_dict = self._get_update_excluded_dict(model_class)
+            
+            stmt = pg_insert(model_class).values(input_values).on_conflict_do_update(
+                index_elements=on_conflict_keys,
+                set_=update_dict
+            )
+            await session.execute(stmt)
+            await session.flush()
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
+            raise      
     
     async def _get_data(
         self,
@@ -96,36 +94,37 @@ class BaseRepository:
         id_filters: Optional[List[int| str]] = None,
         relationships: Optional[List[str]] = None,
         limit: Optional[int] = None,
+        session: AsyncSession
     )->  List[T]:
-        async with AsyncSession(self.engine) as session:
-            pk_attributes = self._get_primary_key_attribute(model_class)
-            if len(pk_attributes) != 1:
-                logger.warning(f"model {model_class} has more than 1 primary key")
-                return []
+
+        pk_attributes = self._get_primary_key_attribute(model_class)
+        if len(pk_attributes) != 1:
+            logger.warning(f"model {model_class} has more than 1 primary key")
+            return []
+        
+        single_pk_attribute = pk_attributes[0]
+        try:
             
-            single_pk_attribute = pk_attributes[0]
-            try:
-                
-                stmt = select(model_class)
-                
-                if id_filters:
-                    stmt = self._filter_by_ids(single_pk_attribute, id_filters, stmt) 
-                if relationships:
-                    stmt = self._add_relationships(model_class, relationships, stmt)
-                if limit:
-                    stmt = stmt.limit(limit=limit)
-                
-                stmt = stmt.order_by(desc(single_pk_attribute))
-                
-                # Execute 
-                result = await session.execute(stmt)
-                instances = result.scalars().all()
-                
-                logger.info(f"Retrieved {len(instances)} records for {model_class.__name__}")
-                return instances # type: ignore
-            except Exception as e:
-                logger.error(f"Error records for {model_class.__name__}: {e}", exc_info=True)
-                raise
+            stmt = select(model_class)
+            
+            if id_filters:
+                stmt = self._filter_by_ids(single_pk_attribute, id_filters, stmt) 
+            if relationships:
+                stmt = self._add_relationships(model_class, relationships, stmt)
+            if limit:
+                stmt = stmt.limit(limit=limit)
+            
+            stmt = stmt.order_by(desc(single_pk_attribute))
+            
+            # Execute 
+            result = await session.execute(stmt)
+            instances = result.scalars().all()
+            
+            logger.info(f"Retrieved {len(instances)} records for {model_class.__name__}")
+            return instances # type: ignore
+        except Exception as e:
+            logger.error(f"Error records for {model_class.__name__}: {e}", exc_info=True)
+            raise
     
     
     def _get_primary_key_attribute(self, model_class: Type[T]) -> List[InstrumentedAttribute]:
