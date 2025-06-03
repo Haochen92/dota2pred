@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import BigInteger, Column, JSON
 from typing import List
+from ..match import MatchTable
 
 
 class TeamFeaturesTable(SQLModel, table=True):
@@ -18,6 +19,9 @@ class TeamFeaturesTable(SQLModel, table=True):
     radiant_dire_matchup: float
     radiant_win_rate: float
     dire_win_rate: float
+    
+    # Relationships
+    match: "MatchTable" = Relationship(back_populates="team_features")
 
 
 
@@ -31,6 +35,8 @@ class HeroFeaturesTable(SQLModel, table=True):
     # Feature columns
     hero_picks: List[str] = Field(sa_column=Column(JSON))
 
+    # Relationship
+    match: "MatchTable" = Relationship(back_populates="hero_features")
 
 class PlayerHeroFeatureTable(SQLModel, table=True):
     __tablename__ = 'player_hero_features' # type: ignore
@@ -50,4 +56,5 @@ class PlayerHeroFeatureTable(SQLModel, table=True):
     player_hero_131_win_rate: float
     player_hero_132_win_rate: float    
 
-
+    # Relationship
+    match: "MatchTable" = Relationship(back_populates="player_hero_features")
