@@ -2,9 +2,9 @@ import pytest
 import pytest_asyncio
 
 # Postgresql Imports
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
 from sqlmodel import SQLModel
-from dota_oracle.data_repository import schemas
+from dota_oracle import models
 
 # Redis Imports
 from testcontainers.redis import RedisContainer
@@ -106,4 +106,22 @@ async def create_db_tables(test_postgres_engine: AsyncEngine):
         await conn.run_sync(app_metadata_to_create.create_all)
         
     logger.info("Database tables created in test PostgreSQL container.")
-        
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(test_postgres_engine):
+    async with test_postgres_engine.connect() as connection: # Get dedicated connection
+        async with connection.begin() as conn_transaction: # Start DB transaction
+            LocalSession = async_sessionmaker(
+                bind=connection, 
+                class_=AsyncSession, 
+                expire_on_commit=False
+            )
+            
+            async with LocalSession() as session:
+                yield session
+                
+            await conn_transaction.rollback()
+            
+            
+    
