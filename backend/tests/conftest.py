@@ -13,11 +13,10 @@ import redis.asyncio as aioredis
 
 # Services import
 from dota_oracle.live_pipeline.redis_service import RedisService
-
-
 from dota_oracle.utils.set_logging import get_logger
 
-
+# db base class import
+from .integration.repositories.base_test_repository import BaseTestRepository
 
 
 logger = get_logger(__name__)
@@ -123,5 +122,6 @@ async def db_session(test_postgres_engine):
                 
             await conn_transaction.rollback()
             
-            
-    
+@pytest_asyncio.fixture(scope="function")
+async def test_repository(db_session: AsyncSession) -> BaseTestRepository:
+    return BaseTestRepository(session=db_session)
