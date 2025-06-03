@@ -3,7 +3,6 @@ from sqlalchemy import BigInteger, Column, TIMESTAMP
 from datetime import datetime
 
 from .schema import MatchPrediction
-from ..match import MatchTable
 
 class MatchPredictionTable(MatchPrediction, table=True):
     __tablename__ = 'match_predictions' # type: ignore
@@ -18,6 +17,6 @@ class MatchPredictionTable(MatchPrediction, table=True):
     )
     
     # Relationship
-    match: "MatchTable" = Relationship( back_populates="predictions")
+    match: "MatchTable" = Relationship(back_populates="predictions")
     
 
