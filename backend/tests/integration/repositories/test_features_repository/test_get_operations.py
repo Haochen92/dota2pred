@@ -2,165 +2,115 @@
 Tests for get operations: get_feature_by_id, get_all_features_from_table
 """
 import pytest
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, List, TypeVar, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import SQLModel
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
-from dota_oracle.data_repository.schemas import (
+from dota_oracle.models.features import (
     PlayerHeroFeatureTable,
     TeamFeaturesTable,
     HeroFeaturesTable,
 )
 
-from .conftest import BaseFeaturesRepositoryTest, T
+from ..base_test_repository import BaseTestRepository
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
+T = TypeVar("T", bound=SQLModel)
 
-@pytest.mark.usefixtures("seed_features_data")
-class TestGetFeatureById(BaseFeaturesRepositoryTest):
+class TestGetFeatureById():
     """Test retrieving individual features by match_id."""
     
     @pytest.mark.parametrize(
-        "test_scenario,match_id,feature_class,expected_fields",
+        ["test_scenario", "input_match_ids", "feature_class", "expected_count", "limit"],
         [
             (
-                "get_team_features_successfully",
-                1001,
+                "get_multiple_team_feature_no_limit",
+                [1001, 1002],
                 TeamFeaturesTable,
-                {
-                    "match_id": 1001,
-                    "radiant_dire_matchup": 0.65,
-                    "radiant_win_rate": 0.4,
-                    "dire_win_rate": 0.8
-                }
+                2,
+                None,
             ),
             (
-                "get_hero_features_successfully",
-                1003,
+                "get_single_hero_feature_no_limit",
+                [1003],
                 HeroFeaturesTable,
-                {
-                    "match_id": 1003,
-                    "hero_picks": ['mirana', 'windrunner', 'crystal_maiden']
-                }
+                1,
+                None,
             ),
             (
-                "get_player_hero_features_successfully",
-                1003,
+                "get_single_player_hero_feature_no_limit",
+                [1002],
                 PlayerHeroFeatureTable,
-                {
-                    "match_id": 1003,
-                    "player_hero_0_win_rate": 0.1,
-                    "player_hero_1_win_rate": 0.2,
-                    "player_hero_2_win_rate": 0.3,
-                    "player_hero_3_win_rate": 0.4,
-                    "player_hero_4_win_rate": 0.5,
-                    "player_hero_128_win_rate": 0.6,
-                    "player_hero_129_win_rate": 0.7,
-                    "player_hero_130_win_rate": 0.8,
-                    "player_hero_131_win_rate": 0.9,
-                    "player_hero_132_win_rate": 1.0
-                }
+                1,
+                None,
+            ),
+            (
+                "get_all_player_hero_feature_no_limit",
+                None,
+                PlayerHeroFeatureTable,
+                3,
+                None,
+            ),
+            (
+                "empty_list_return_all",
+                [],
+                PlayerHeroFeatureTable,
+                3,
+                None   
+            ),
+            (
+                "get_all_Player_hero_feature_limit_2",
+                None,
+                PlayerHeroFeatureTable,
+                2,
+                2,
             )
         ]
     )
-    async def test_get_existing_feature_returns_correct_data(
+    async def test_successful_get_ops(
         self,
         features_repository_test_subject: FeaturesRepository,
+        db_session: AsyncSession,
+        seed_features_data: Dict[str, Any],
         test_scenario: str,
-        match_id: int,
+        input_match_ids: List[int],
         feature_class: Type[T],
-        expected_fields: Dict[str, Any]
+        expected_count: int,
+        limit: Optional[int]
     ):
         """Test retrieving existing features by ID returns correct data."""
+        # Arrange
+        test_repo = BaseTestRepository(session=db_session)
+        expected_dict = seed_features_data.get(feature_class.__name__)
+        
+        assert expected_dict is not None, f"No seed data found for {feature_class.__name__}"
+        
         # Act
-        actual_instance = await features_repository_test_subject.get_feature_by_id(match_id, feature_class)
+        actual_instance_list: List[T] = await features_repository_test_subject.get_features(
+            table_class=feature_class,
+            match_ids=input_match_ids,
+            limit=limit
+        )
         
         # Assert
-        assert actual_instance is not None, f"{test_scenario}: Expected feature but got None"
-        self._assert_feature_fields_match(actual_instance, expected_fields, test_scenario)
+        test_repo._assert_count_equal(expected_count, len(actual_instance_list), test_scenario)
+        
+        for instance in actual_instance_list:
+            match_id = instance.match_id # type: ignore
+            expected_instance = expected_dict.get(match_id)
+            
+            test_repo._assert_equal(expected_instance, instance, test_scenario)
     
+      
+    async def test_return_empty_list(self, features_repository_test_subject: FeaturesRepository):
+        # Act 
+        result = await features_repository_test_subject.get_features(
+            table_class=TeamFeaturesTable,
+            match_ids=[9999,10000]
+        )
+        
+        # Assert
+        assert result == [], f"Expected empty list, got {result}"
 
-    async def test_get_nonexistent_feature_returns_none(
-        self,
-        features_repository_test_subject: FeaturesRepository
-    ):
-        """Test that getting non-existent feature returns None."""
-        # Act
-        result = await features_repository_test_subject.get_feature_by_id(99999, TeamFeaturesTable)
-        
-        # Assert  
-        assert result is None, "Expected None for non-existent feature"
-    
-    @pytest.mark.parametrize(
-        "test_scenario,match_id,feature_class,expected_error_message",
-        [
-            ("missing_match_id", None, HeroFeaturesTable, "missing match_id"),
-            ("missing_table_class", 1003, None, "missing feature_table_class"),
-            ("invalid_class_type", 1003, dict, "feature_table_class must be a subclass of SQLModel")
-        ]
-    )
-    async def test_invalid_inputs_raise_value_errors(
-        self,
-        features_repository_test_subject: FeaturesRepository,
-        test_scenario: str,
-        match_id: int,
-        feature_class: Type[T],
-        expected_error_message: str
-    ):
-        """Test that invalid inputs raise appropriate ValueError with expected message."""
-        with pytest.raises(ValueError, match=expected_error_message):
-            await features_repository_test_subject.get_feature_by_id(match_id, feature_class)
-
-@pytest.mark.usefixtures("seed_features_data")
-class TestGetAllFeaturesFromTable(BaseFeaturesRepositoryTest):
-    """Test retrieving all features from a table."""
-    
-    @pytest.mark.parametrize(
-        "test_scenario,feature_class,expected_count",
-        [
-            ("get_all_team_features", TeamFeaturesTable, 2),
-            ("get_all_hero_features", HeroFeaturesTable, 1),  
-            ("get_all_player_hero_features", PlayerHeroFeatureTable, 1),
-        ]
-    )
-    async def test_get_all_features_returns_correct_count(
-        self,
-        features_repository_test_subject: FeaturesRepository,
-        test_scenario: str,
-        feature_class: Type[T],
-        expected_count: int
-    ):
-        """Test that get_all_features returns expected number of records."""
-        # Act
-        actual_features = await features_repository_test_subject.get_all_features_from_table(feature_class)
-        
-        # Assert
-        self._assert_feature_count_equals(expected_count, actual_features, test_scenario)
-    
-    async def test_get_all_team_features_data_integrity(
-        self,
-        features_repository_test_subject: FeaturesRepository
-    ):
-        """Test that get_all_features returns data with correct values."""
-        # Act
-        team_features = await features_repository_test_subject.get_all_features_from_table(TeamFeaturesTable)
-        
-        # Assert
-        assert len(team_features) == 2, "Expected 2 team features"
-        
-        # Find specific features by match_id
-        feature_1001 = next((f for f in team_features if f.match_id == 1001), None)
-        feature_1002 = next((f for f in team_features if f.match_id == 1002), None)
-        
-        assert feature_1001 is not None, "Expected feature for match_id 1001"
-        assert feature_1002 is not None, "Expected feature for match_id 1002"
-        
-        # Verify specific values
-        assert feature_1001.radiant_dire_matchup == 0.65
-        assert feature_1001.radiant_win_rate == 0.4
-        assert feature_1001.dire_win_rate == 0.8
-        
-        assert feature_1002.radiant_dire_matchup == 0.53
-        assert feature_1002.radiant_win_rate == 0.6
-        assert feature_1002.dire_win_rate == 0.4
-    

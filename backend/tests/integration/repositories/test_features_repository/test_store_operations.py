@@ -2,8 +2,9 @@
 Tests for store operations: store_features
 """
 import pytest
-from typing import Dict, Any, Type
-from polyfactory.factories.pydantic_factory import ModelFactory
+import pytest_asyncio
+from typing import Dict, Any, Type, List
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
 from ....factories.repository_factories import (
@@ -11,121 +12,75 @@ from ....factories.repository_factories import (
     TeamFeaturesTableFactory,
     HeroFeaturesTableFactory,
 )
-from dota_oracle.data_repository.schemas import (
+from dota_oracle.models.features import (
     PlayerHeroFeatureTable,
     TeamFeaturesTable,
     HeroFeaturesTable,
 )
 
-from .conftest import BaseFeaturesRepositoryTest, T
+from ..base_test_repository import BaseTestRepository, T
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 @pytest.mark.usefixtures('seed_features_data')
-class TestStoreFeatures(BaseFeaturesRepositoryTest):
+class TestStoreFeatures:
     """Test storing different types of features to database."""
     
     @pytest.mark.parametrize(
-        "test_scenario,factory_class,table_class,feature_data",
+        "test_scenario,feature_instances,table_class",
         [
             (
-                "store_hero_features_new_match",
-                HeroFeaturesTableFactory,
+                "store_single_hero_feature_new",
+                [HeroFeaturesTableFactory.build(match_id=1011)], # seeded match only
                 HeroFeaturesTable,
-                {
-                    'match_id': 1011,
-                    'hero_picks': ["pangolier", "puck", "windranger"]
-                }
             ),
             (
-                "store_hero_features_existing_match_upsert",
-                HeroFeaturesTableFactory,
-                HeroFeaturesTable,
-                {
-                    'match_id': 1003,
-                    'hero_picks': ["drow_ranger", "anti_mage", "spectre"]
-                }
-            ),
-            (
-                "store_team_features_new_match",
-                TeamFeaturesTableFactory,
+                "store_multiple_team_feature_new",
+                [
+                    TeamFeaturesTableFactory.build(match_id=1011), # seeded match only
+                    TeamFeaturesTableFactory.build(match_id=1012),
+                ],
                 TeamFeaturesTable,
-                {
-                    'match_id': 1011, 
-                    'radiant_dire_matchup': 0.7,
-                    'radiant_win_rate': 0.4,
-                    'dire_win_rate': 0.5
-                }
             ),
             (
-                "store_player_hero_features_new_match",
-                PlayerHeroFeatureTableFactory,
+                "store_player_hero_features_on_conflict_update",
+                [
+                    PlayerHeroFeatureTableFactory.build(match_id=1001), # seeded match and feature
+                ],
                 PlayerHeroFeatureTable,
-                {
-                    'match_id': 1011,
-                    'player_hero_0_win_rate': 0.1,
-                    'player_hero_1_win_rate': 0.1,
-                    'player_hero_2_win_rate': 0.3,
-                    'player_hero_3_win_rate': 0.3,
-                    'player_hero_4_win_rate': 0.5,
-                    'player_hero_128_win_rate': 0.4,
-                    'player_hero_129_win_rate': 0.1,
-                    'player_hero_130_win_rate': 0.83,
-                    'player_hero_131_win_rate': 0.99,
-                    'player_hero_132_win_rate': 0.01,
-                }
             ),
         ]
     )
     async def test_store_feature_successfully(
         self,
         features_repository_test_subject: FeaturesRepository,
-        test_postgres_engine,
+        db_session: AsyncSession,
+        seed_features_data: Dict[str, Dict[int, Any]],
         test_scenario: str,
-        factory_class: ModelFactory,  
+        feature_instances: List[T],
         table_class: Type[T],
-        feature_data: Dict[str, Any]
     ):
         """Test storing various types of features successfully."""
         # Arrange
-        match_id = feature_data.get('match_id')
-        assert match_id is not None, f"{test_scenario}: Test data missing match_id"
-        
-        input_instance = factory_class.build(**feature_data)
+        test_repo_helper = BaseTestRepository(db_session)
+        expected_instance_dict = {instance.match_id: instance for instance in feature_instances}
         
         # Act
-        await features_repository_test_subject.store_features([input_instance], table_class)
+        await features_repository_test_subject.store_features(feature_instances, table_class)
+        actual_instance_list = await test_repo_helper._get_data(
+            model_class=table_class,
+            id_filters=list(expected_instance_dict.keys())
+        )
         
-        # Assert - verify data was stored correctly
-        stored_instance = await self._get_feature_by_id(test_postgres_engine, match_id, table_class)
-        self._assert_feature_fields_match(stored_instance, feature_data, test_scenario)
-    
-    async def test_store_multiple_features_batch(
-        self,
-        features_repository_test_subject: FeaturesRepository,
-        test_postgres_engine
-    ):
-        """Test storing multiple features of the same type in a batch."""
-        # Arrange
-        team_features = [
-            TeamFeaturesTableFactory.build(match_id=1011, radiant_dire_matchup=0.7, radiant_win_rate=0.4),
-            TeamFeaturesTableFactory.build(match_id=1012, radiant_dire_matchup=0.6, radiant_win_rate=0.5),
-        ]
+        # Assert 
+        test_repo_helper._assert_count_equal(len(expected_instance_dict), len(actual_instance_list), test_scenario)
         
-        # Act
-        await features_repository_test_subject.store_features(team_features, TeamFeaturesTable)
-        
-        # Assert
-        stored_count = await self._count_features_in_table(test_postgres_engine, TeamFeaturesTable, {1011, 1012})
-        assert stored_count == 2, f"Expected 2 features stored, got {stored_count}"
-        
-        # Verify individual records
-        feature_1011 = await self._get_feature_by_id(test_postgres_engine, 1011, TeamFeaturesTable)
-        assert feature_1011.radiant_dire_matchup == 0.7
-        
-        feature_1012 = await self._get_feature_by_id(test_postgres_engine, 1012, TeamFeaturesTable)
-        assert feature_1012.radiant_dire_matchup == 0.6
-    
+        for curr_instance in actual_instance_list:
+            match_id = curr_instance.match_id
+            expected_instance = expected_instance_dict[match_id]
+            
+            test_repo_helper._assert_equal(expected_instance, curr_instance, test_scenario)
+
     async def test_store_empty_list_handles_gracefully(
         self,
         features_repository_test_subject: FeaturesRepository
