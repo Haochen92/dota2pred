@@ -3,8 +3,6 @@ from sqlmodel import Field, Relationship
 from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey 
 from datetime import datetime
 from .base import Match, MatchOutcome
-from ..inference import MatchPredictionTable
-from ..features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
 
 class MatchTable(Match, table=True):
     __tablename__ = "matches"  # type: ignore
