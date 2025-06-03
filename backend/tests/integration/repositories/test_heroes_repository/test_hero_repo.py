@@ -1,17 +1,12 @@
 import pytest
-import pytest_asyncio
-
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from sqlmodel import delete, select
-
-from sqlalchemy.dialects.postgresql import insert as pginsert
+from ..base_test_repository import BaseTestRepository
 
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 from ....factories.repository_factories import HeroDataTableFactory
-from dota_oracle.data_repository.schemas import HeroDataTable
+from dota_oracle.models.heroes import HeroDataTable
 from dota_oracle.utils import get_logger 
 
-from typing import List, Dict
+from typing import Dict
 
 
 logger = get_logger(__name__)
@@ -19,124 +14,143 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 class TestStoreHeroData:
+    """Test class for hero data storage operations."""
     
     async def test_store_new_data(
         self,
         hero_repository_test_subject: HeroesRepository,
-        test_postgres_engine: AsyncEngine
+        test_repository: BaseTestRepository,
     ):
+        """Test storing new hero data successfully inserts records."""
         # ARRANGE
         input_data = {
             'anti-mage': HeroDataTableFactory.build(id=10, localized_name='anti-mage'),
             'lina': HeroDataTableFactory.build(id=11, localized_name='lina')
         }
         
-        
         # ACT
-        
         await hero_repository_test_subject.store_hero_data(input_data) 
         
-        stored_heroes = await self._get_instances(test_postgres_engine, [10, 11])
+        # Use base repository method to get data
+        stored_heroes = await test_repository._get_data(
+            model_class=HeroDataTable,
+            id_filters=[10, 11]
+        )
         
         # ASSERT
-        assert len(stored_heroes) == len(input_data), f"expected {len(stored_heroes)} data, got {len(input_data)}"
+        test_repository._assert_count_equal(
+            actual_count=len(stored_heroes), 
+            expected_count=len(input_data),
+            test_scenario="store_new_data - record count"
+        )
         
         for hero_data in stored_heroes:
             hero_name = hero_data.localized_name
             
-            assert hero_name in set(input_data.keys()), f"extracted hero data has different localised name: {hero_name}"
+            assert hero_name in set(input_data.keys()), \
+                f"extracted hero data has different localised name: {hero_name}"
             
             input_instance = input_data[hero_name]
             
-            self._assert_equal(hero_data, input_instance)
+            test_repository._assert_equal(
+                expected_instance=input_instance,
+                actual_instance=hero_data,
+                test_scenario=f"store_new_data - {hero_name} field comparison"
+            )
             
     async def test_update_data_for_existing(
         self,
         hero_repository_test_subject: HeroesRepository,
-        test_postgres_engine: AsyncEngine
+        test_repository: BaseTestRepository,
     ):
-        # Arrange
+        """Test updating existing hero data modifies records correctly."""
+        # ARRANGE
         initial_data = {'Sven': HeroDataTableFactory.build(id=13, localized_name='Sven', base_armor=5.3)}
         
-        # Act
+        # ACT - Initial insert
         await hero_repository_test_subject.store_hero_data(initial_data)
         
-        # Fetch Stored data
-        stored_hero_data = await self._get_instances(test_postgres_engine, [13])
+        # Fetch stored data using base repository method
+        stored_hero_data = await test_repository._get_data(
+            model_class=HeroDataTable,
+            id_filters=[13]
+        )
         
-        # Validate stored data
-        
-        assert len(stored_hero_data) == len(initial_data), f"expected {len(stored_hero_data)} data, got {len(initial_data)}"
+        # ASSERT - Validate initial insert
+        test_repository._assert_count_equal(
+            actual_count=len(stored_hero_data), 
+            expected_count=len(initial_data),
+            test_scenario="update_existing_data - initial insert count"
+        )
         
         for hero_data in stored_hero_data:
             hero_name = hero_data.localized_name
             
-            assert hero_name in set(initial_data.keys()), f"extracted hero data has different localised name: {hero_name}"
+            assert hero_name in set(initial_data.keys()), \
+                f"extracted hero data has different localised name: {hero_name}"
             
             input_instance = initial_data[hero_name]
             
-            self._assert_equal(hero_data, input_instance)
+            test_repository._assert_equal(
+                expected_instance=input_instance,
+                actual_instance=hero_data,
+                test_scenario=f"update_existing_data - initial {hero_name} comparison"
+            )
         
-        # Seed again with modified base armour
-        
+        # ACT - Update with modified data
         reinsert_data = {'Sven': HeroDataTableFactory.build(id=13, localized_name='Sven', base_armor=10.6)}
         await hero_repository_test_subject.store_hero_data(reinsert_data)
         
-        # Fetch Stored data again
-        stored_hero_data = await self._get_instances(test_postgres_engine, [13])
-        data_instance = stored_hero_data[0]
+        # Fetch updated data
+        updated_hero_data = await test_repository._get_data(
+            model_class=HeroDataTable,
+            id_filters=[13]
+        )
         
-        # Validate stored data with updated values
-        assert data_instance.base_armor == 10.6, f"expected updated data to be {10.6}, got {data_instance.base_armor}"
-    
-    
-    async def _get_instances(
-        self,
-        test_postgres_engine: AsyncEngine,
-        input_ids: List[int],
-    ) -> List[HeroDataTable]:
+        # ASSERT - Validate update
+        test_repository._assert_count_equal(
+            actual_count=len(updated_hero_data), 
+            expected_count=1,
+            test_scenario="update_existing_data - updated record count"
+        )
         
-        async with AsyncSession(test_postgres_engine) as session:
-            async with session.begin():
-                stmt = select(HeroDataTable).where(HeroDataTable.id.in_(input_ids)) # type: ignore
-                res = await session.execute(stmt)
-                
-                stored_heroes = res.scalars().all()
-                session.expunge_all() # note to use expunge all to expunge all objects
-                
+        data_instance = updated_hero_data[0]
+        expected_instance = reinsert_data['Sven']
         
-        return stored_heroes # type: ignore
-    
-    
-    def _assert_equal(self, actual_instance: HeroDataTable, expected_instance: HeroDataTable):
+        test_repository._assert_equal(
+            expected_instance=expected_instance,
+            actual_instance=data_instance,
+            test_scenario="update_existing_data - updated Sven comparison"
+        )
         
-        for field in HeroDataTable.model_fields.keys():
-            expected_value = getattr(expected_instance, field)
-            actual_value = getattr(actual_instance, field)
-            
-            assert expected_value == actual_value, (
-                f"values mismatch for field {field}"
-                f"expected {expected_value}, got {actual_value}"
-            )
-            
-            
-            
-           
-class TestGetHeroIdMap:   
+        # Specific assertion for the updated field
+        assert data_instance.base_armor == 10.6, \
+            f"expected updated base_armor to be 10.6, got {data_instance.base_armor}"
+
+
+class TestGetHeroIdMap:
+    """Test class for hero ID mapping operations."""
+    
     async def test_get_hero_map(self, 
         hero_repository_test_subject: HeroesRepository,
-        seed_hero_data: Dict[int, str]
+        test_repository: BaseTestRepository,
+        seed_hero_data: Dict[int, str],
     ):
-        # Arrange 
+        """Test getting hero ID map returns correct mapping."""
+        # ACT
         actual_hero_map = await hero_repository_test_subject.get_hero_id_map()
         
-        assert len(actual_hero_map) == len(seed_hero_data), \
-        f"expected {len(seed_hero_data)}, got {len(actual_hero_map)}"
+        # ASSERT
+        test_repository._assert_count_equal(
+            actual_count=len(actual_hero_map), 
+            expected_count=len(seed_hero_data),
+            test_scenario="get_hero_map - map size"
+        )
         
-        for key, value in seed_hero_data.items():
+        for key, expected_value in seed_hero_data.items():
             actual_value = actual_hero_map.get(key)
             
-            assert value == actual_value, (
-                f"Values mismatch for key: {key}"
-                f"expected {value}, got {actual_value}"
+            assert expected_value == actual_value, (
+                f"get_hero_map test: Values mismatch for key: {key}, "
+                f"expected {expected_value}, got {actual_value}"
             )
