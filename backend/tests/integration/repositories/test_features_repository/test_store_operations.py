@@ -4,7 +4,6 @@ Tests for store operations: store_features
 import pytest
 import pytest_asyncio
 from typing import Dict, Any, Type, List
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
 from ....factories.repository_factories import (
@@ -54,7 +53,7 @@ class TestStoreFeatures:
     async def test_store_feature_successfully(
         self,
         features_repository_test_subject: FeaturesRepository,
-        db_session: AsyncSession,
+        test_repository: BaseTestRepository,
         seed_features_data: Dict[str, Dict[int, Any]],
         test_scenario: str,
         feature_instances: List[T],
@@ -62,24 +61,23 @@ class TestStoreFeatures:
     ):
         """Test storing various types of features successfully."""
         # Arrange
-        test_repo_helper = BaseTestRepository(db_session)
         expected_instance_dict = {instance.match_id: instance for instance in feature_instances}
         
         # Act
         await features_repository_test_subject.store_features(feature_instances, table_class)
-        actual_instance_list = await test_repo_helper._get_data(
+        actual_instance_list = await test_repository._get_data(
             model_class=table_class,
             id_filters=list(expected_instance_dict.keys())
         )
         
         # Assert 
-        test_repo_helper._assert_count_equal(len(expected_instance_dict), len(actual_instance_list), test_scenario)
+        test_repository._assert_count_equal(len(expected_instance_dict), len(actual_instance_list), test_scenario)
         
         for curr_instance in actual_instance_list:
             match_id = curr_instance.match_id
             expected_instance = expected_instance_dict[match_id]
             
-            test_repo_helper._assert_equal(expected_instance, curr_instance, test_scenario)
+            test_repository._assert_equal(expected_instance, curr_instance, test_scenario)
 
     async def test_store_empty_list_handles_gracefully(
         self,
