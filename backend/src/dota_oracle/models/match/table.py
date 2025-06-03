@@ -32,24 +32,24 @@ class MatchTable(Match, table=True):
     
     # Relationships
     outcome: Optional["MatchOutcomeTable"] = Relationship(
-        back_populates="matches",
+        back_populates="match",
         sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
     predictions: List["MatchPredictionTable"] = Relationship(
-        back_populates="matches",
+        back_populates="match",
         sa_relationship_kwargs={'cascade': "all, delete-orphan"}
     )
     
     team_features: Optional["TeamFeaturesTable"] = Relationship(
-        back_populates="matches",
+        back_populates="match",
         sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
     player_hero_features: Optional["PlayerHeroFeatureTable"] = Relationship(
-        back_populates="matches",
+        back_populates="match",
         sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
     hero_features: Optional["HeroFeaturesTable"] = Relationship(
-        back_populates="matches",
+        back_populates="match",
         sa_relationship_kwargs={'uselist':False, 'cascade': "all, delete-orphan"}
     )
 
@@ -59,4 +59,7 @@ class MatchOutcomeTable(MatchOutcome, table=True):
     match_id: int = Field(
         sa_column=Column(BigInteger, ForeignKey("matches.match_id"), primary_key=True) 
     )
+    
+    # Relationship
+    match: "MatchTable" = Relationship( back_populates="outcome")
     
