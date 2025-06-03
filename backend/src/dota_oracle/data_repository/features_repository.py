@@ -38,11 +38,12 @@ class FeaturesRepository(BaseRepository):
             raise e
     
     async def get_features(
-        self, 
+        self,
+        *, 
         table_class: Type[T],
         match_ids: Optional[List[int]] = None,
         limit: Optional[int] = None,  
-    ):
+    ) -> List[T]:
         """
         Returns a list of features based on the input match_ids.
 
