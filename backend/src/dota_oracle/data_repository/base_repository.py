@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, InstrumentedAttribute
 from sqlalchemy import Select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SQLAlchemyError
 
 # helper class for type
@@ -50,6 +51,7 @@ class BaseRepository:
             stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(
                 index_elements=on_conflict_keys
             )
+    
             await self.session.execute(stmt)
             await self.session.flush()
             return True
@@ -78,10 +80,12 @@ class BaseRepository:
             
             update_dict = self._get_update_excluded_dict(model_class)
             
+            
             stmt = pg_insert(model_class).values(input_values).on_conflict_do_update(
                 index_elements=on_conflict_keys,
                 set_=update_dict
             )
+                    
             await self.session.execute(stmt)
             await self.session.flush()
             return True
@@ -121,7 +125,7 @@ class BaseRepository:
             stmt = stmt.order_by(desc(single_pk_attribute))
             
             # Execute 
-            result = await self.session.execute(stmt)
+            result = await self.session.execute(stmt.execution_options(populate_existing=True))
             instances = result.scalars().all()
             
             logger.info(f"Retrieved {len(instances)} records for {model_class.__name__}")
@@ -148,19 +152,17 @@ class BaseRepository:
     def _get_update_excluded_dict(self, model_class: Type[T]) -> Dict[str, Any]:
         
         pk_attr_names = {attr.key for attr in self._get_primary_key_attribute(model_class)}
-        
+
         filtered_cols = [
             col_name for col_name in model_class.model_fields.keys() 
             if col_name not in pk_attr_names
         ]
-        
-        # Create excluded dict
+
         update_dict = {
             col: getattr(pg_insert(model_class).excluded, col)
             for col in filtered_cols
         }
-        
-        return update_dict         
+        return update_dict        
                     
     def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int], stmt: Select):
         
