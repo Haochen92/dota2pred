@@ -91,6 +91,7 @@ async def seed_features_data(db_session: AsyncSession, seed_prerequisite_match_i
         HeroFeaturesTable.__name__ : hero_features_data
     }
     
+    
     yield seeded_instance_dict
     
 
