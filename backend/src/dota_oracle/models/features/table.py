@@ -1,7 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import BigInteger, Column, JSON
 from typing import List
-from ..match import MatchTable
 
 
 class TeamFeaturesTable(SQLModel, table=True):
