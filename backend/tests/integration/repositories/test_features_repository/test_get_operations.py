@@ -3,7 +3,6 @@ Tests for get operations: get_feature_by_id, get_all_features_from_table
 """
 import pytest
 from typing import Dict, Any, Type, List, TypeVar, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
@@ -72,7 +71,7 @@ class TestGetFeatureById():
     async def test_successful_get_ops(
         self,
         features_repository_test_subject: FeaturesRepository,
-        db_session: AsyncSession,
+        test_repository: BaseTestRepository,
         seed_features_data: Dict[str, Any],
         test_scenario: str,
         input_match_ids: List[int],
@@ -82,7 +81,6 @@ class TestGetFeatureById():
     ):
         """Test retrieving existing features by ID returns correct data."""
         # Arrange
-        test_repo = BaseTestRepository(session=db_session)
         expected_dict = seed_features_data.get(feature_class.__name__)
         
         assert expected_dict is not None, f"No seed data found for {feature_class.__name__}"
@@ -95,13 +93,13 @@ class TestGetFeatureById():
         )
         
         # Assert
-        test_repo._assert_count_equal(expected_count, len(actual_instance_list), test_scenario)
+        test_repository._assert_count_equal(expected_count, len(actual_instance_list), test_scenario)
         
         for instance in actual_instance_list:
             match_id = instance.match_id # type: ignore
             expected_instance = expected_dict.get(match_id)
             
-            test_repo._assert_equal(expected_instance, instance, test_scenario)
+            test_repository._assert_equal(expected_instance, instance, test_scenario)
     
       
     async def test_return_empty_list(self, features_repository_test_subject: FeaturesRepository):
