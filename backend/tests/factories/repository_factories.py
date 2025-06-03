@@ -1,13 +1,25 @@
 from polyfactory.factories.pydantic_factory import ModelFactory
 from polyfactory import Use
 from datetime import datetime, timezone
-from dota_oracle.data_repository.schemas import (
-    PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable, # Histories
-    TeamFeaturesTable, PlayerHeroFeatureTable, HeroFeaturesTable, # Features
-    MatchPredictionTable, # inference
-    MatchOutcomeTable, MatchTable, # Matches
-    HeroDataTable # herodata
+
+# import tables
+from dota_oracle.models.match import (
+    MatchOutcomeTable, MatchTable
 )
+from dota_oracle.models.features import (
+    PlayerHeroFeatureTable, TeamFeaturesTable, HeroFeaturesTable
+)
+from dota_oracle.models.inference import (
+    MatchPredictionTable
+)
+from dota_oracle.models.heroes import (
+    HeroDataTable
+)
+from dota_oracle.models.histories import (
+    PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable
+)
+
+
 
 from dota_oracle.models.match import Match as MatchPydantic
 
