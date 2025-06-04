@@ -57,7 +57,7 @@ class MatchRepository(BaseRepository):
     async def get_match_details(
         self,
         *,
-        input_id_list: Optional[List[int]],
+        input_id_list: Optional[List[int]] = [],
         relationship_fields: Optional[List[str]] = None,
         limit: Optional[int] = None
     ) -> List[MatchTable]:
