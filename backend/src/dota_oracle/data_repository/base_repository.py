@@ -44,8 +44,7 @@ class BaseRepository:
             validated_inputs = self._validate_input_types(model_class, instances)
             input_values = [instance.model_dump() for instance in validated_inputs]
             
-            pk_attributes = self._get_primary_key_attribute(model_class)
-            on_conflict_keys = [attr.key for attr in pk_attributes]
+            on_conflict_keys = self._get_primary_key_names(model_class)
             
             stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(
                 index_elements=on_conflict_keys
@@ -74,8 +73,7 @@ class BaseRepository:
             validated_inputs = self._validate_input_types(model_class, instances)
             input_values = [instance.model_dump() for instance in validated_inputs]
             
-            pk_attributes = self._get_primary_key_attribute(model_class)
-            on_conflict_keys = [attr.key for attr in pk_attributes]
+            on_conflict_keys = self._get_primary_key_names(model_class)
             
             update_dict = self._get_update_excluded_dict(model_class)
             
@@ -133,11 +131,9 @@ class BaseRepository:
             logger.error(f"Error records for {model_class.__name__}: {e}", exc_info=True)
             raise
     
-    
     # ========================
     # Helper methods
     # ========================
-    
     
     def _get_primary_key_attribute(self, model_class: Type[T]) -> List[InstrumentedAttribute]:
         """Helper to get the single primary key attribute of a model."""
@@ -147,6 +143,12 @@ class BaseRepository:
         pk_attributes = [getattr(model_class, col.name) for col in pk_columns]
 
         return pk_attributes
+    
+    def _get_primary_key_names(self, model_class: Type[T]) -> List[str]:
+        mapper = inspect(model_class)
+        pk_columns = mapper.primary_key
+        
+        return [col.name for col in pk_columns]
     
     def _get_update_excluded_dict(self, model_class: Type[T]) -> Dict[str, Any]:
         
