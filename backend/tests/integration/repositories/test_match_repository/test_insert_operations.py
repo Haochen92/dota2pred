@@ -1,8 +1,5 @@
 import pytest
 
-from sqlalchemy.ext.asyncio import AsyncEngine
-from sqlalchemy.exc import IntegrityError
-
 from ....factories.repository_factories import MatchTableFactory, MatchOutcomeTableFactory
 from dota_oracle.models.match import MatchOutcomeTable, MatchTable
 from dota_oracle.data_repository.match_repository import MatchRepository
