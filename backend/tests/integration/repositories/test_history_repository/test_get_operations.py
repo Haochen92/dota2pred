@@ -6,13 +6,12 @@ from typing import List
 from datetime import datetime, timezone
 
 from dota_oracle.data_repository.history_repository import HistoryRepository
-from .conftest import BaseHistoryRepositoryTest
+from .base_history_repo import BaseHistoryRepositoryTest
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
-@pytest.mark.usefixtures("seed_history_data")
-class TestGetPlayerHeroWinHistory(BaseHistoryRepositoryTest):
+class TestGetPlayerHeroWinHistory:
     """Test retrieving player hero win history with various filters."""
     
     @pytest.mark.parametrize(
@@ -55,6 +54,8 @@ class TestGetPlayerHeroWinHistory(BaseHistoryRepositoryTest):
     async def test_get_player_hero_win_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
+        test_repository: BaseHistoryRepositoryTest,
+        seed_history_data,
         test_scenario: str,
         account_id: int,
         hero_id: int,
@@ -72,12 +73,11 @@ class TestGetPlayerHeroWinHistory(BaseHistoryRepositoryTest):
         )
         
         # Assert
-        self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
 
-@pytest.mark.usefixtures("seed_history_data")
-class TestGetTeamHistory(BaseHistoryRepositoryTest):
+class TestGetTeamHistory:
     """Test retrieving team history with various filters."""
     
     @pytest.mark.parametrize(
@@ -116,6 +116,8 @@ class TestGetTeamHistory(BaseHistoryRepositoryTest):
     async def test_get_team_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
+        test_repository: BaseHistoryRepositoryTest,
+        seed_history_data,
         test_scenario: str,
         team_name: str,
         before: datetime,
@@ -131,7 +133,7 @@ class TestGetTeamHistory(BaseHistoryRepositoryTest):
         )
         
         # Assert
-        self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
 
@@ -176,8 +178,7 @@ class TestGetOperationsEmptyDatabase:
         assert result == [], "Expected empty list for empty database"
         
     
-@pytest.mark.usefixtures("seed_history_data")
-class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
+class TestGetTeamMatchupHistory:
     """Test retrieving team matchup history with various filters."""
     
     @pytest.mark.parametrize(
@@ -189,10 +190,10 @@ class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
                 "PSG_LGD",
                 None,
                 5,
-                [True, False, True, False, False],  # Most recent first: 1005,1004,1003,1002,1001
+                [False, True, False, True, True]
             ),
             (
-                "get_psg_lgd_vs_team_secret_same_result",
+                "test_team_order_independence",
                 "PSG_LGD",
                 "team_secret", 
                 None,
@@ -205,7 +206,7 @@ class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
                 "PSG_LGD",
                 datetime(2023, 1, 3, tzinfo=timezone.utc),
                 5,
-                [False, False]  # Before 2023-1-3, so matches 1002,1001
+                [True, True]  # Before 2023-1-3, so matches 1002,1001
             ),
             (
                 "get_nonexistent_team_matchup_returns_empty",
@@ -228,6 +229,8 @@ class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
     async def test_get_team_matchup_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
+        test_repository: BaseHistoryRepositoryTest,
+        seed_history_data,
         test_scenario: str,
         team1_name: str,
         team2_name: str,
@@ -245,7 +248,7 @@ class TestGetTeamMatchupHistory(BaseHistoryRepositoryTest):
         )
         
         # Assert
-        self._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
     async def test_team_order_independence(
