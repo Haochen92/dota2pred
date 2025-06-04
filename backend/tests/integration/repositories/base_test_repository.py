@@ -2,7 +2,7 @@ from dota_oracle.data_repository.base_repository import BaseRepository
 from dota_oracle.utils import get_logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
-from typing import List, TypeVar
+from typing import List, TypeVar, Set, Optional
 
 
 T = TypeVar("T", bound=SQLModel)
@@ -14,10 +14,17 @@ class BaseTestRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
             
-    def _assert_equal(self, expected_instance: T, actual_instance: T, test_scenario: str):
+    def _assert_equal(
+        self, 
+        expected_instance: T, 
+        actual_instance: T, 
+        test_scenario: str,
+    ):
+        
         field_names = self._get_relevant_field_names(expected_instance)
         
         for name in field_names:
+            
             expected_value = getattr(expected_instance, name)
             actual_value = getattr(actual_instance, name)
         
@@ -34,6 +41,7 @@ class BaseTestRepository(BaseRepository):
     def _get_relevant_field_names(self, instance) -> List[str]:
         cls = instance.__class__
         
+        # Retrieve all class columns, without relationships
         return [col.name for col in cls.__table__.columns]
     
     
