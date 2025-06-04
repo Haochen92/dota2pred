@@ -1,4 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from dota_oracle.models.inference import MatchPredictionTable
 from dota_oracle.utils.set_logging import get_logger
 from .base_repository import BaseRepository
@@ -27,6 +29,7 @@ class PredictionRepository(BaseRepository):
                 model_class=MatchPredictionTable,
                 instances=[match_prediction]
             )
+            
         except Exception as e:
             logger.error(
                 f"Error encountered when trying to insert match prediction for match {match_prediction.match_id}"
@@ -34,7 +37,7 @@ class PredictionRepository(BaseRepository):
                 exc_info=True
             )
 
-    async def get_specific_prediction_by_model_name(
+    async def get_prediction_predictor_name_match_id(
         self,
         match_id: int,
         predictor_name: str
@@ -69,30 +72,30 @@ class PredictionRepository(BaseRepository):
             logger.error(f"Unexpected error retrieving prediction for match {match_id} by {predictor_name}: {e}", exc_info=True)
             raise
 
-    async def get_all_predictions_for_matches(self, match_id_list: List[int]) -> List[MatchPredictionTable]:
+    async def get_all_predictions_match_id(self, match_id:int) -> List[MatchPredictionTable]:
         """
         Retrieves all prediction model instances for a given match_id.
 
         Returns:
             A list of MatchPredictionTable instances (potentially empty).
         """
-        logger.debug(f"Fetching all predictions for match {match_id_list}")
+        logger.debug(f"Fetching all predictions for match {match_id}")
         
         try:
-            match_predictions_list = await self._get_data(
-                model_class=MatchPredictionTable,
-                id_filters=match_id_list
-            )
-            if not match_predictions_list: # _get_data should return [] if nothing found
-                logger.debug(f"No predictions found for match_id {match_id_list}")
-                return [] # Return empty list
-            logger.info(f"found {len(match_predictions_list)} match predictions")
-            return match_predictions_list
+            stmt = select(MatchPredictionTable).where(MatchPredictionTable.match_id == match_id)
+            res = await self.session.execute(stmt.execution_options(populate_existing=True))
+            
+            instances = res.scalars().all()
+            if not instances:
+                logger.debug(f"No predictions found for match_id {match_id}")
+                return []
+            logger.info(f"found {len(instances)} match predictions")
+            return list(instances)
         except Exception as e:
-            logger.error(f"Error encountered while fetching data for matches, {match_id_list}, {e}", exc_info=True)
+            logger.error(f"Error encountered while fetching data for matches, {match_id}, {e}", exc_info=True)
             raise
 
-    async def get_predictions_by_predictor(
+    async def get_predictions_by_predictor_name(
         self,
         predictor_name: str
     ) -> List[MatchPredictionTable]:
