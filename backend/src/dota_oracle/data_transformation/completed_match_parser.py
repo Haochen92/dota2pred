@@ -1,6 +1,5 @@
 from dota_oracle.models.match import MatchesAPIResponse, Match
 from pydantic import ValidationError
-from dota_oracle.models.match import Match
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
@@ -9,10 +8,7 @@ logger = get_logger(__name__)
 
 async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo: HeroesRepository) -> Match:
     # Initialize player slots dictionaries
-    try:
-        hero_map = await hero_repo.get_hero_id_map()
-    except Exception as e:
-        raise e
+    hero_map = await hero_repo.get_hero_id_map()
     
     try:
         # Create match data dictionary with required fields
@@ -31,7 +27,9 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
         
         for player in raw_match_data.players:
             slot = player.player_slot
-            mapped_hero_id = hero_map.get(player.hero_id, None)
+            mapped_hero_id = hero_map.get(player.hero_id)
+            if mapped_hero_id is None:
+                logger.warning(f"Hero ID {player.hero_id} not found in hero map for match {raw_match_data.match_id}")
             match_data[f"slot_{slot}_hero_id"] = mapped_hero_id
             match_data[f"slot_{slot}_account_id"] = player.account_id
         
