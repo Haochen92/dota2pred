@@ -3,7 +3,6 @@ from dota_oracle.models.match import MatchesAPIResponse
 from dota_oracle.config import ROOT_DIR
 from dota_oracle.utils.set_logging import get_logger
 from typing import Optional
-from dota_oracle.utils.set_logging import get_logger
 import logging
 from pydantic import ValidationError
 
