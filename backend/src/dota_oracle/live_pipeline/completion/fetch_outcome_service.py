@@ -18,9 +18,9 @@ from dota_oracle.data_extraction.fetch_pro_match import fetch_pro_match
 # Config logging
 logger = get_logger(__name__)
 
-class CompletedMatchService:
-            
-    async def fetch_outcomes_batch(self, completed_match_ids: List[int]) -> Dict[int, bool]:
+class FetchOutcomeService:
+    @staticmethod        
+    async def fetch_outcomes_batch(completed_match_ids: List[int]) -> Dict[int, bool]:
         if not completed_match_ids:
             logger.warning("No complete matches to process")
         
