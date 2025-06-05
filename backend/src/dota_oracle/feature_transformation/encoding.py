@@ -21,15 +21,10 @@ async def encode_hero_features(hero_features: pd.DataFrame, heros_repo: HeroesRe
     
     hero_matrix = mlb.fit_transform(hero_features['hero_picks'])
     
-    features = pd.DataFrame.sparse.from_spmatrix(
+    features = pd.DataFrame.sparse.from_spmatrix( # Use sparse arrays
         data=hero_matrix,
         columns=mlb.classes_,
         index=hero_features.index
-    )
-    features = pd.DataFrame(
-        hero_matrix, # type: ignore
-        columns=mlb.classes_,
-        index=hero_features.index 
     )
     
     features = features.assign(match_id=hero_features['match_id'])
