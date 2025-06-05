@@ -6,7 +6,7 @@ from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 from dota_oracle.data_repository.schemas import MatchTable
 from dota_oracle.models.live_games.schema import LiveLeagueGame
-from .redis_service import RedisService
+from ..redis_service import RedisService
 
 # data extraction
 from dota_oracle.data_extraction.fetch_live_leagues import fetch_live_league_games

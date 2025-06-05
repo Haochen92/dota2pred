@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict, Coroutine, Any, List
 from dota_oracle.utils.set_logging import get_logger
 from .feature_engineering_service import FeatureEngineeringService
-from .redis_service import RedisService
+from ..redis_service import RedisService
 from dota_oracle.constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.schemas import MatchTable

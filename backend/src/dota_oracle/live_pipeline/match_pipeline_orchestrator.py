@@ -2,10 +2,10 @@
 from dota_oracle.utils.set_logging import get_logger
 
 # import main orchestrators for each stage
-from .new_match_orchestrator import NewMatchOrchestrator
-from .feature_engineering_orchestrator import FeatureEngineeringOrchestrator
-from .prediction_orchestrator import PredictionOrchestrator
-from .completion_orchestrator import CompletionOrchestrator 
+from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
+from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator
+from .prediction.prediction_orchestrator import PredictionOrchestrator
+from .completion.completion_orchestrator import CompletionOrchestrator 
 
 
 

@@ -20,20 +20,20 @@ from dota_oracle.feature_engineering.team_feature_processor import TeamFeaturePr
 from dota_oracle.feature_engineering.player_hero_features_processor import PlayerHeroFeaturesProcessor
 
 # --- Inference Components ---
-from dota_oracle.inference.feature_preparation_service import FeaturePreparationService 
+from dota_oracle.live_pipeline.prediction.feature_preparation_service import FeaturePreparationService 
 from dota_oracle.inference.model_inference import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .redis_service import RedisService 
-from .feature_engineering_service import FeatureEngineeringService 
-from .history_update_service import HistoryUpdateService 
-from .match_prediction_service import MatchPredictionService
+from .feature_engineering.feature_engineering_service import FeatureEngineeringService 
+from .completion.history_update_service import HistoryUpdateService 
+from .prediction.match_prediction_service import MatchPredictionService
 
 # --- Orchestrators (Workflow Controllers) ---
-from .new_match_orchestrator import NewMatchOrchestrator
-from .feature_engineering_orchestrator import FeatureEngineeringOrchestrator 
-from .prediction_orchestrator import PredictionOrchestrator          
-from .completion_orchestrator import CompletionOrchestrator         
+from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
+from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator 
+from .prediction.prediction_orchestrator import PredictionOrchestrator          
+from .completion.completion_orchestrator import CompletionOrchestrator         
 from .match_pipeline_orchestrator import MatchPipelineOrchestrator   
 
 from dota_oracle.utils import get_logger
