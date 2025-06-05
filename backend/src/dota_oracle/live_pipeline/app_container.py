@@ -20,7 +20,7 @@ from dota_oracle.feature_engineering.team_feature_processor import TeamFeaturePr
 from dota_oracle.feature_engineering.player_hero_features_processor import PlayerHeroFeaturesProcessor
 
 # --- Inference Components ---
-from dota_oracle.inference.feature_preparation import FeaturePreparationService 
+from dota_oracle.inference.feature_preparation_service import FeaturePreparationService 
 from dota_oracle.inference.model_inference import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
