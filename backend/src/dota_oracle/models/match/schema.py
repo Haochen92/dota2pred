@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 from typing import Optional, List
 
 class LeagueData(BaseModel):
@@ -27,4 +27,12 @@ class MatchesAPIResponse(BaseModel):
     
     league: LeagueData
     players: List[PlayerData]
-
+    
+class ProMatchOutcome(BaseModel):
+    match_id: int
+    radiant_win: bool
+    
+class ProMatchAPIResponse(RootModel[List[ProMatchOutcome]]):
+    root: List[ProMatchOutcome]
+    
+    
