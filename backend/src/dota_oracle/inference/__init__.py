@@ -1,2 +1,2 @@
-from .feature_preparation import FeaturePreparationService
+from .feature_preparation_service import FeaturePreparationService
 from .model_inference import ModelInferenceService
