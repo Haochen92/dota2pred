@@ -2,7 +2,7 @@ import numpy as np
 from dota_oracle.utils.set_logging import get_logger
 from .match_prediction_service import MatchPredictionService
 from dota_oracle.inference import FeaturePreparationService
-from .redis_service import RedisService
+from ..redis_service import RedisService
 from dota_oracle.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
 from dota_oracle.utils.async_utils import get_outcome_concurrently
 from typing import Coroutine, Any, Dict
