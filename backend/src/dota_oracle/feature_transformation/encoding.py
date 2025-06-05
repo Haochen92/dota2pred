@@ -1,18 +1,15 @@
 from sklearn.preprocessing import MultiLabelBinarizer
-from dota_oracle.data_repository.heroes_repository import HeroesRepository
 import pandas as pd
 
-async def encode_hero_features(hero_features: pd.DataFrame, heros_repo: HeroesRepository) -> pd.DataFrame:
+from typing import Dict
+
+async def encode_hero_features(hero_features: pd.DataFrame, hero_map: Dict[int, str]) -> pd.DataFrame:
     
     if hero_features.empty:
         raise ValueError("Input dataframe is empty")
     
     if 'hero_picks' not in hero_features.columns:
         raise ValueError("missing column hero_picks")
-    
-    hero_map = await heros_repo.get_hero_id_map()
-    if not hero_map:
-        raise ValueError("HERO MAP object is empty")
     
     hero_classes = hero_map.values()
     
