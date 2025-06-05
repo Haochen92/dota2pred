@@ -45,7 +45,7 @@ class FeaturePreparationService:
                 match_repository = MatchRepository(session=session)
                 heroes_repository = HeroesRepository(session=session)
                 
-                # Get Features
+                # Get Features from database
                 res = await self._get_features_from_db(match_id, match_repository)
                 
                 if not res:
@@ -54,7 +54,7 @@ class FeaturePreparationService:
                 
                 team_features, hero_features, player_hero_features = res
                 
-                # Convert to dataframe
+                # Convert features to dataframe
                 team_df = pd.DataFrame([team_features.model_dump(exclude={'match'})])
                 hero_df = pd.DataFrame([hero_features.model_dump(exclude={'match'})])
                 player_hero_df = pd.DataFrame([player_hero_features.model_dump(exclude={'match'})])
@@ -66,6 +66,7 @@ class FeaturePreparationService:
                     logger.warning(f"Empty dataframe or None after encoding hero_df for match {match_id}")
                     return None
                 
+                # merge all features into a single dataframe
                 final_features_df = self._merge_and_filter_dataframe(
                     hero_features=encoded_hero_df,
                     team_features=team_df,
@@ -93,7 +94,8 @@ class FeaturePreparationService:
         match_id: int,
         match_repository: MatchRepository
     ) -> Optional[Tuple[TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable]]:
-        # get data
+        
+        # get features from repository
         res = await match_repository.get_match_details(
             input_id_list=[match_id],
             relationship_fields=["team_features", "player_hero_features", "hero_features"],
@@ -104,6 +106,8 @@ class FeaturePreparationService:
             return None
         
         match_instance = res[0]
+        
+        # Extract out feature instances from match relationships
         team_features = match_instance.team_features
         hero_features = match_instance.hero_features
         player_hero_features = match_instance.player_hero_features
