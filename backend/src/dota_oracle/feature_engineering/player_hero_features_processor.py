@@ -53,7 +53,7 @@ class PlayerHeroFeaturesProcessor:
                 player_hero_features_list.append(feature_row_with_id)
             
             except ValueError as ve:
-                print(f"Skipping match {match_id} due to missing player data: {ve}")
+                logger.error(f"Skipping match {match_id} due to missing player data: {ve}")
                 continue
             except Exception as e:
                 logger.error(f"Error for match {match_id}: {e}")
