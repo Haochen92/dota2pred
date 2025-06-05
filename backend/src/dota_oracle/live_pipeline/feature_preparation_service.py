@@ -7,7 +7,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
-from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
 from dota_oracle.feature_transformation.encoding import encode_hero_features
