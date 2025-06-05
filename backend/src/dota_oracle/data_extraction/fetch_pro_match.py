@@ -7,23 +7,24 @@ import aiohttp
 
 logger = get_logger(__name__)
 
-async def fetch_pro_match(max_match_id: int, min_max_id: int) -> List[ProMatchOutcome]:
+async def fetch_pro_match(max_match_id: int, min_match_id: int) -> List[ProMatchOutcome]:
     output_list = []
     
-    while max_match_id >= min_max_id:
+    while max_match_id >= min_match_id:
         try:
             res = await fetch_opendota(
                 endpoint="/proMatches",
                 params={"less_than_match_id": max_match_id}
             )
+            logger.info(f"fetching api endpoint for less_than_match_id: {max_match_id}")
             
             api_response = ProMatchAPIResponse.model_validate(res)
             list_instances = api_response.root
             
             list_match_ids = [instance.match_id for instance in list_instances]
-            min_max_id = min(list_match_ids)
+            max_match_id = min(list_match_ids)
             
-            output_list.append(*list_instances)
+            output_list.append(list_instances)
             
         except (
             aiohttp.ClientConnectionError, 
