@@ -29,24 +29,24 @@ class PlayerHeroFeaturesProcessor:
             match_id = instance.match_id
             try:
                 # Create one session per match
-                async with AsyncSession(self.engine) as session:
-                    tasks_dict: Dict[str, Coroutine[Any, Any, float]] = {}
+                tasks_dict: Dict[str, Coroutine[Any, Any, float]] = {}
+                
+                for i in player_slots:
+                    account_id = getattr(instance, f'slot_{i}_account_id')
+                    hero_id = getattr(instance, f'slot_{i}_hero_id')
+                    feature_key = f'player_hero_{i}_win_rate'
+                    start_time = instance.start_time
                     
-                    for i in player_slots:
-                        account_id = getattr(instance, f'slot_{i}_account_id')
-                        hero_id = getattr(instance, f'slot_{i}_hero_id')
-                        feature_key = f'player_hero_{i}_win_rate'
-                        start_time = instance.start_time
-                        
-                        if not account_id or not hero_id or not start_time:
-                            raise ValueError(
-                                f"Match {match_id}, Slot {i}: Missing account_id ({account_id})"
-                                f"or hero_id ({hero_id})."
-                                f"or start_time ({start_time})" 
-                                f"Failing this match."
-                            )
-                        effective_before = before_timestamp if before_timestamp is not None else start_time
-                            
+                    if not account_id or not hero_id or not start_time:
+                        raise ValueError(
+                            f"Match {match_id}, Slot {i}: Missing account_id ({account_id})"
+                            f"or hero_id ({hero_id})."
+                            f"or start_time ({start_time})" 
+                            f"Failing this match."
+                        )
+                    effective_before = before_timestamp if before_timestamp is not None else start_time
+                    
+                    async with AsyncSession(self.engine) as session:
                         # Pass the shared session to each calculation
                         tasks_dict[feature_key] = self._calculate_win_rate(
                             session, account_id, hero_id, effective_before
