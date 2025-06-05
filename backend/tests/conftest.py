@@ -35,10 +35,12 @@ async def test_redis_client(redis_container_instance: RedisContainer):
     host = redis_container_instance.get_container_host_ip()
     port = redis_container_instance.get_exposed_port(6379)
     
-    client = aioredis.Redis(host=host, port=int(port), decode_responses=True, auto_close_connection_pool=False)
+    pool = aioredis.ConnectionPool(host=host, port=int(port))
+    client = aioredis.Redis(connection_pool=pool, decode_responses=True)
+    
     await client.ping() # Verify connection
     yield client
-    await client.aclose()
+    await pool.disconnect()
     
     
 @pytest_asyncio.fixture(scope="function")
@@ -46,23 +48,19 @@ async def redis_service_test_subject(redis_container_instance: RedisContainer):
     """
     Provides an instance of your RedisService configured to use the
     Testcontainer's Redis. This is the "subject under test".
-    It's function-scoped to potentially reset service state or re-initialize,
-    though your RedisService's _initialized flag handles re-initialization idempotency.
     """
     host = redis_container_instance.get_container_host_ip()
     port = redis_container_instance.get_exposed_port(6379)
 
-    # Create a NEW client instance specifically for the RedisService
-    # Note: decode_responses=True should match what your RedisService expects
-    # or how it handles data. Your RedisClientFactory uses decode_responses=True.
-    service_redis_client = aioredis.Redis(host=host, port=int(port), decode_responses=True, auto_close_connection_pool=False)
+    pool = aioredis.ConnectionPool(hosts=host, port=int(port))
+    service_redis_client = aioredis.Redis(connection_pool=pool, decode_responses=True)
 
     # Instantiate your service with this dedicated client
     service = RedisService(redis_client=service_redis_client)
-    # We don't call service.initialize() here; tests will do that explicitly.
+
     yield service
     # Clean up the client used by the service
-    await service_redis_client.aclose()
+    await pool.disconnect()
     
 
 @pytest.fixture(scope='session')
