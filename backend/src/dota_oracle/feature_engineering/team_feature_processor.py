@@ -3,7 +3,8 @@ from dota_oracle.data_repository.history_repository import HistoryRepository
 from dota_oracle.utils import get_logger, get_outcome_as_group
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from datetime import datetime
-from dota_oracle.data_repository.schemas import MatchTable, TeamFeaturesTable
+from dota_oracle.models.match import MatchTable
+from dota_oracle.models.features import TeamFeaturesTable
 
 logger = get_logger(__name__) 
 
@@ -26,7 +27,7 @@ class TeamFeatureProcessor:
         ) -> List[TeamFeaturesTable]:
         
         if not match_instances:
-            logger.warning(f"No match instances for team feature processing")
+            logger.warning("No match instances for team feature processing")
             return []
 
         all_match_features = []

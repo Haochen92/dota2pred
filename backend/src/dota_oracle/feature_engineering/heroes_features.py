@@ -1,6 +1,7 @@
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.constants import DRAFT_COLS
-from dota_oracle.data_repository.schemas import MatchTable, HeroFeaturesTable
+from dota_oracle.models.match import MatchTable
+from dota_oracle.models.features import HeroFeaturesTable
 from typing import List
 
 
