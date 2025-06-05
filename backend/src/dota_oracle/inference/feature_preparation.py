@@ -3,7 +3,7 @@ import numpy as np
 from sqlmodel import SQLModel
 from typing import Optional, List, Dict, Coroutine, Any
 from dota_oracle.feature_transformation.encoding import encode_hero_features
-from dota_oracle.data_repository.schemas.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
+from dota_oracle.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
 from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 from dota_oracle.utils.set_logging import get_logger
