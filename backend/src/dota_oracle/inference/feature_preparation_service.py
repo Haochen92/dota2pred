@@ -27,14 +27,10 @@ class FeaturePreparationService:
     def __init__(
         self,
         db_engine: AsyncEngine,
-        features_repository: FeaturesRepository,
-        heroes_repository: HeroesRepository,
         model_inference_service: ModelInferenceService
     ):
-        self.feature_repo = features_repository
         self.engine = db_engine
         self.model_inference_service = model_inference_service
-        self.heros_repository = heroes_repository
         self.model_feature_names: List[str] = model_inference_service.model_metadata.feature_columns
         if not self.model_feature_names:
             raise ValueError("Empty column feature names when initialising service")
@@ -60,9 +56,9 @@ class FeaturePreparationService:
                 team_features, hero_features, player_hero_features = res
                 
                 # Convert to dataframe
-                team_df = pd.DataFrame(team_features.model_dump(exclude={'match'}))
-                hero_df = pd.DataFrame(hero_features.model_dump(exclude={'match'}))
-                player_hero_df = pd.DataFrame(player_hero_features.model_dump(exclude={'match'}))
+                team_df = pd.DataFrame([team_features.model_dump(exclude={'match'})])
+                hero_df = pd.DataFrame([hero_features.model_dump(exclude={'match'})])
+                player_hero_df = pd.DataFrame([player_hero_features.model_dump(exclude={'match'})])
                 
                 # Encode hero_df
                 encoded_hero_df = await self._encode_hero_feature(heroes_repository, hero_df)
@@ -115,9 +111,9 @@ class FeaturePreparationService:
         
         if not team_features or not hero_features or not player_hero_features:
             logger.warning(
-                f"features incomplete for match {match_id}"
-                f"team_features: {team_features}"
-                f"hero_features: {hero_features}"
+                f"features incomplete for match {match_id}: "
+                f"team_features: {team_features}, "
+                f"hero_features: {hero_features}, "
                 f"player_hero_features: {player_hero_features}"
             )
             return None
@@ -150,10 +146,8 @@ class FeaturePreparationService:
     ) -> Optional[pd.DataFrame]: 
         """Merges feature DataFrames and filters columns based on model requirements."""
         try:
-            # Check required merge column exists
-            if 'match_id' not in hero_features.columns or \
-               'match_id' not in team_features.columns or \
-               'match_id' not in player_hero_features.columns:
+            dataframes = [hero_features, team_features, player_hero_features]
+            if any('match_id' not in df.columns for df in dataframes):
                 logger.error("match_id missing from one or more feature dataframes before merge.")
                 return None
 
@@ -176,5 +170,5 @@ class FeaturePreparationService:
             return final_dataframe
 
         except Exception as e:
-             logger.error(f"Error during _merge_and_filter_dataframe: {e}", exc_info=True)
-             return None 
+            logger.error(f"Error during _merge_and_filter_dataframe: {e}", exc_info=True)
+            return None 
