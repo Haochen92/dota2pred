@@ -1,6 +1,6 @@
 import pandas as pd
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.data_repository.schemas import MatchTable
+from dota_oracle.models.match import MatchTable
 from typing import List, Dict
 from dota_oracle.constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, UUID_COL
 

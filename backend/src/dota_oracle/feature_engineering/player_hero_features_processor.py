@@ -1,7 +1,8 @@
 from typing import Dict, Any, List, Coroutine, Optional
 from dota_oracle.utils import get_logger, get_outcome_as_group
 from dota_oracle.data_repository.history_repository import HistoryRepository
-from dota_oracle.data_repository.schemas import PlayerHeroFeatureTable, MatchTable
+from dota_oracle.models.match import MatchTable
+from dota_oracle.models.features import PlayerHeroFeatureTable
 from datetime import datetime
 
 logger = get_logger(__name__)
