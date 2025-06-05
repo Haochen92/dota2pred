@@ -1,6 +1,7 @@
 from dota_oracle.feature_engineering import TeamFeatureProcessor, PlayerHeroFeaturesProcessor, create_hero_features, preprocess_live_match_data
 from dota_oracle.data_repository.features_repository import FeaturesRepository
-from dota_oracle.data_repository.schemas import MatchTable, HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
+from dota_oracle.models.match import MatchTable
+from dota_oracle.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.async_utils import run_updates_as_group
 from typing import Coroutine, List, Any
