@@ -1,0 +1,180 @@
+import pandas as pd
+import numpy as np
+from typing import Optional, List, Tuple
+
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
+
+from dota_oracle.data_repository.match_repository import MatchRepository
+from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
+from dota_oracle.data_repository.features_repository import FeaturesRepository
+from dota_oracle.data_repository.heroes_repository import HeroesRepository
+
+from dota_oracle.feature_transformation.encoding import encode_hero_features
+from dota_oracle.inference.model_inference import ModelInferenceService
+
+from dota_oracle.utils.set_logging import get_logger
+
+
+logger = get_logger(__name__)
+
+# Feature keys:
+HERO_KEY = 'hero'
+TEAM_KEY = 'team'
+PLAYER_HERO_KEY = 'player_hero'
+
+class FeaturePreparationService:
+    def __init__(
+        self,
+        db_engine: AsyncEngine,
+        features_repository: FeaturesRepository,
+        heroes_repository: HeroesRepository,
+        model_inference_service: ModelInferenceService
+    ):
+        self.feature_repo = features_repository
+        self.engine = db_engine
+        self.model_inference_service = model_inference_service
+        self.heros_repository = heroes_repository
+        self.model_feature_names: List[str] = model_inference_service.model_metadata.feature_columns
+        if not self.model_feature_names:
+            raise ValueError("Empty column feature names when initialising service")
+        
+    async def prepare_features_for_inference(self, match_id: int) -> Optional[np.ndarray]:
+        """
+        Fetches raw features, processes, encodes, merges, and returns a NumPy array.
+        """
+        logger.info(f"Starting feature preparation for match {match_id}")
+        try:
+            async with AsyncSession(self.engine) as session:
+                # init repositories
+                match_repository = MatchRepository(session=session)
+                heroes_repository = HeroesRepository(session=session)
+                
+                # Get Features
+                res = await self._get_features_from_db(match_id, match_repository)
+                
+                if not res:
+                    logger.warning(f"Incomplete features for match: {match_id}")
+                    return None
+                
+                team_features, hero_features, player_hero_features = res
+                
+                # Convert to dataframe
+                team_df = pd.DataFrame(team_features.model_dump(exclude={'match'}))
+                hero_df = pd.DataFrame(hero_features.model_dump(exclude={'match'}))
+                player_hero_df = pd.DataFrame(player_hero_features.model_dump(exclude={'match'}))
+                
+                # Encode hero_df
+                encoded_hero_df = await self._encode_hero_feature(heroes_repository, hero_df)
+                
+                if encoded_hero_df is None or encoded_hero_df.empty:
+                    logger.warning(f"Empty dataframe or None after encoding hero_df for match {match_id}")
+                    return None
+                
+                final_features_df = self._merge_and_filter_dataframe(
+                    hero_features=encoded_hero_df,
+                    team_features=team_df,
+                    player_hero_features=player_hero_df
+                )
+
+                if final_features_df is None or final_features_df.empty:
+                    logger.warning(f"Feature merging/filtering resulted in None or empty DataFrame for match {match_id}")
+                    return None
+
+                # Convert final DataFrame to NumPy array
+                numpy_array = final_features_df.to_numpy()
+                logger.info(f"Successfully prepared features for match {match_id}, final shape: {numpy_array.shape}")
+                return numpy_array
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Database error during feature preparation for match {match_id}: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during feature preparation for match {match_id}: {e}", exc_info=True)
+            raise
+        
+    async def _get_features_from_db(
+        self,
+        match_id: int,
+        match_repository: MatchRepository
+    ) -> Optional[Tuple[TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable]]:
+        # get data
+        res = await match_repository.get_match_details(
+            input_id_list=[match_id],
+            relationship_fields=["team_features", "player_hero_features", "hero_features"],
+            limit=1
+        )
+        if not res:
+            logger.warning(f"No Match data created for match: {match_id}")
+            return None
+        
+        match_instance = res[0]
+        team_features = match_instance.team_features
+        hero_features = match_instance.hero_features
+        player_hero_features = match_instance.player_hero_features
+        
+        if not team_features or not hero_features or not player_hero_features:
+            logger.warning(
+                f"features incomplete for match {match_id}"
+                f"team_features: {team_features}"
+                f"hero_features: {hero_features}"
+                f"player_hero_features: {player_hero_features}"
+            )
+            return None
+        
+        return team_features, hero_features, player_hero_features
+    
+    async def _encode_hero_feature(
+        self, 
+        heroes_repository: HeroesRepository, 
+        hero_dataframe: pd.DataFrame
+    ) -> Optional[pd.DataFrame]:
+        # Get hero Map
+        hero_map = await heroes_repository.get_hero_id_map()
+        if not hero_map:
+            logger.warning("Missing hero_map. Unable to proceed with data encoding.")
+            return None
+
+        encoded_hero_df = await encode_hero_features(hero_dataframe, hero_map)
+        
+        if encoded_hero_df is None or encoded_hero_df.empty:
+            return None
+        
+        return encoded_hero_df
+
+    def _merge_and_filter_dataframe(
+        self,
+        hero_features: pd.DataFrame,
+        team_features: pd.DataFrame,
+        player_hero_features: pd.DataFrame
+    ) -> Optional[pd.DataFrame]: 
+        """Merges feature DataFrames and filters columns based on model requirements."""
+        try:
+            # Check required merge column exists
+            if 'match_id' not in hero_features.columns or \
+               'match_id' not in team_features.columns or \
+               'match_id' not in player_hero_features.columns:
+                logger.error("match_id missing from one or more feature dataframes before merge.")
+                return None
+
+            combined_features = hero_features.merge(player_hero_features, on='match_id', how='inner')
+            combined_features = combined_features.merge(team_features, on='match_id', how='inner')
+
+            if combined_features.empty:
+                logger.warning("Feature merge resulted in empty DataFrame (inner join condition not met?).")
+                return None
+
+            missing_cols = [
+                col for col in self.model_feature_names
+                if col not in combined_features.columns
+            ]
+            if missing_cols:
+                logger.error(f"Final combined features missing required columns: {missing_cols}")
+                return None
+
+            final_dataframe = combined_features[self.model_feature_names]
+            return final_dataframe
+
+        except Exception as e:
+             logger.error(f"Error during _merge_and_filter_dataframe: {e}", exc_info=True)
+             return None 
