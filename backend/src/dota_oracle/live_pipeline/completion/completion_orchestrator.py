@@ -1,25 +1,26 @@
-from dota_oracle.data_extraction.fetch_match_details import fetch_match_details
-from dota_oracle.models.match import MatchesAPIResponse
 from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 from dota_oracle.utils.set_logging import get_logger
-from typing import Dict, Any, Set, Coroutine, List
+from typing import Dict, Set, List, Tuple
 from .history_update_service import HistoryUpdateService
-from .redis_service import RedisService
+from ..redis_service import RedisService
 from dota_oracle.data_repository.match_repository import MatchRepository
-from dota_oracle.data_repository.schemas import MatchOutcomeTable
+from dota_oracle.models.match import MatchOutcomeTable
 from dota_oracle.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
-from dota_oracle.utils.async_utils import get_outcome_concurrently, run_updates_as_group
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from .fetch_outcome_service import FetchOutcomeService
 
 logger = get_logger(__name__)
 
 class CompletionOrchestrator:
     def __init__(
-        self, 
+        self,
+        db_engine: AsyncEngine, 
         redis_service: RedisService,
         history_update_service: HistoryUpdateService,
         match_repository: MatchRepository
     ):
+        self.engine = db_engine
         self.redis = redis_service
         self.history_updater = history_update_service
         self.storage = match_repository
@@ -35,74 +36,76 @@ class CompletionOrchestrator:
         events: Dict[str, StreamMatchEventData] = await self.redis.fetch_matches_pending_completion('consumer_one')
         
         if not events:
+            logger.info("No events in {STREAM_PENDING_PREDICTION}")
             return 0
         
         # Filter those match that were previously from event stream but is no longer live
-        completed_matches: Dict[str, StreamMatchEventData] = await self._filter_completed_matches(events=events)
+        completed_events_dict, completed_matches_list = await self._filter_completed_matches(events=events)
+        if not completed_events_dict or not completed_matches_list:
+            logger.info("None of the currently predicted live matches have completed")
+            return 0
         
-        fetch_match_details_task_group: Dict[str, Coroutine[Any, Any, MatchesAPIResponse | None]] = {}
+        completed_outcome_dict = await FetchOutcomeService.fetch_outcomes_batch(completed_matches_list)
         
-        for event_id , data in completed_matches.items():
-            fetch_match_details_task_group[event_id] = fetch_match_details(data.match_id)
+        if not completed_outcome_dict:
+            logger.info("Failed to fetch any match outcomes for this cycle")
+            return 0
         
-        # Fetch API responses
-        outcome_dict: Dict[str, MatchesAPIResponse| Exception | None ] = await get_outcome_concurrently(
-            fetch_match_details_task_group
-        )
-        
-        return await self._process_events(outcome_dict, completed_matches)
+        return await self._process_events(completed_events_dict, completed_outcome_dict)
         
         
     
-    async def _filter_completed_matches(self, events: Dict[str, StreamMatchEventData]) -> Dict[str, StreamMatchEventData]:
+    async def _filter_completed_matches(self, events: Dict[str, StreamMatchEventData]) -> Tuple[Dict[str, StreamMatchEventData], List[int]]:
         
-        completed_matches_dict = {}
+        completed_events_dict = {}
+        completed_matches_list = []
         curr_match_set: Set[int] = await self.redis.get_live_match_ids()
         
-        for event_id, data in events.items():
-            match_id = data.match_id
+        for event_id, stream_event_data in events.items():
+            match_id = stream_event_data.match_id
             if match_id not in curr_match_set:
-                completed_matches_dict[event_id] = data
+                completed_events_dict[event_id] = stream_event_data
+                completed_matches_list.append(match_id)
+                
+        return completed_events_dict, completed_matches_list
             
-        return completed_matches_dict
-    
-    
     async def _process_events(
-        self, 
-        task_outcome_dict: Dict[str, MatchesAPIResponse| Exception | None ],
-        original_event_dict : Dict[str, StreamMatchEventData]
-    ) -> int:
+        self,
+        completed_match_dict: Dict[str, StreamMatchEventData],
+        completed_outcome_dict: Dict[int, bool],
+    ):
         events_processed = 0
-        for event_id, match_model in task_outcome_dict.items():
-            original_data = original_event_dict[event_id]
-            match_id = original_data.match_id
-            
-            if match_model is None:
-                logger.warning(f"Match {match_id} is completed but data not available from source")
-                continue
-            
-            if isinstance(match_model, Exception):
-                # Exception happened, to raise exception and log
-                logger.error(f"Exception when fetching match_details for {match_id}, e: {match_model}")
-                await self._handle_processing_failure(original_data, event_id, match_model)
-                continue
-            
+        for event_id, stream_data in completed_match_dict.items():
+            match_id = stream_data.match_id
             try:
-                match_outcome = MatchOutcomeTable(match_id=match_model.match_id, radiant_win=match_model.radiant_win)
+                match_outcome = completed_outcome_dict.get(match_id, None)
+                if not match_outcome:
+                    logger.warning(f"Match {match_id} is completed but data not available from source")
+                    continue
+            
+                await self._update_match_outcome(match_id, match_outcome)
                 
-                task_group: List[Coroutine[Any, Any, None | bool]] = [
-                    self.storage.insert_match_outcome(match_outcome),
-                    self.history_updater.update_histories(match_model),
-                    self.redis.mark_match_as_completed(match_id, event_id)
-                ]
+                await self.history_updater.update_histories(match_id)
                 
-                await run_updates_as_group(task_group)
+                await self.redis.mark_match_as_completed(match_id, event_id)
+                
                 events_processed += 1
             except Exception as e:
-                await self._handle_processing_failure(original_data, event_id, e)
+                await self._handle_processing_failure(stream_data, event_id, e)
                 continue
-            
+        
         return events_processed
+            
+    async def _update_match_outcome(self, match_id: int, match_outcome: bool):
+        try:
+            outcome_instance = MatchOutcomeTable(match_id=match_id, radiant_win=match_outcome)
+            
+            async with AsyncSession(self.engine) as session:
+                async with session.begin():
+                    match_repository = MatchRepository(session=session)
+                    await match_repository.insert_match_outcome([outcome_instance])
+        except Exception as e:
+            raise e
     
     async def _handle_processing_failure(self, data: StreamMatchEventData, event_id: str, e: Exception) -> None:
         data_dict = data.model_dump()
