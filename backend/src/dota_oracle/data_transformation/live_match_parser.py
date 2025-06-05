@@ -1,6 +1,6 @@
 from typing import List
 from dota_oracle.models.live_games.schema import LiveLeagueGame
-from dota_oracle.data_repository.schemas import MatchTable
+from dota_oracle.models.match import MatchTable
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
@@ -10,10 +10,7 @@ logger = get_logger(__name__)
 async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_repo: HeroesRepository) -> List[MatchTable]:
     parsed_live_league_games = []
     
-    try:
-        hero_map = await hero_repo.get_hero_id_map()
-    except Exception as e:
-        raise e
+    hero_map = await hero_repo.get_hero_id_map()
 
     for row in raw_live_games:
         try:
@@ -33,7 +30,9 @@ async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_rep
                 faction = getattr(row.scoreboard, team)
                 for player in faction.players:
                     slot = player.player_slot
-                    mapped_hero_id = hero_map.get(player.hero_id, None) # unlikely since upstream handles this
+                    mapped_hero_id = hero_map.get(player.hero_id, None) 
+                    if not mapped_hero_id:
+                        logger.warning(f"Missing hero_map for hero_id: {player.hero_id}")
                     player_data = {
                         f"slot_{slot}_account_id": player.account_id,
                         f"slot_{slot}_hero_id": mapped_hero_id
