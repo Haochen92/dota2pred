@@ -107,7 +107,7 @@ class FeaturePreparationService:
         
         match_instance = res[0]
         
-        # Extract out feature instances from match relationships
+        # Extract out feature instances from match
         team_features = match_instance.team_features
         hero_features = match_instance.hero_features
         player_hero_features = match_instance.player_hero_features
