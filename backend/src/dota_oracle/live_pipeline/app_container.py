@@ -8,33 +8,40 @@ from dota_oracle.redis_component.redis_client_factory import RedisClientFactory
 # database
 from dota_oracle.postgresql import DatabaseEngineFactory
 
-# --- Low-level Repositories ---
-from dota_oracle.data_repository.features_repository import FeaturesRepository
-from dota_oracle.data_repository.heroes_repository import HeroesRepository
-from dota_oracle.data_repository.history_repository import HistoryRepository
-from dota_oracle.data_repository.match_repository import MatchRepository
-from dota_oracle.data_repository.prediction_repository import PredictionRepository
-
 # --- Feature Engineering Components ---
-from dota_oracle.feature_engineering.team_feature_processor import TeamFeatureProcessor
-from dota_oracle.feature_engineering.player_hero_features_processor import PlayerHeroFeaturesProcessor
+from dota_oracle.feature_engineering.team_features_creator import TeamFeatureCreator
+from dota_oracle.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
 
 # --- Inference Components ---
-from dota_oracle.live_pipeline.prediction.feature_preparation_service import FeaturePreparationService 
-from dota_oracle.inference.model_inference import ModelInferenceService
+from dota_oracle.inference.model_inference_service import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
-from .redis_service import RedisService 
-from .feature_engineering.feature_engineering_service import FeatureEngineeringService 
-from .completion.history_update_service import HistoryUpdateService 
-from .prediction.match_prediction_service import MatchPredictionService
+from .services.redis_service import RedisService 
+from .services.feature_engineering_service import FeatureEngineeringService 
+from .services.history_update_service import HistoryUpdateService 
+from .services.match_prediction_service import MatchPredictionService
+from .services.feature_preparation_service import FeaturePreparationService 
+
+# --- Pipeline Data Providers ---
+from .data_fetching.new_match_data_provider import NewMatchDataProvider
+from .feature_engineering.feature_engineering_data_provider import FeatureEngineeringDataProvider
+from .prediction.prediction_data_provider import PredictionDataProvider
+from .completion.completion_data_provider import CompletionDataProvider
+
+# --- Pipeline Event Processors ---
+from .data_fetching.new_match_event_processor import NewMatchEventProcessor
+from .feature_engineering.feature_engineering_processor import FeatureEngineeringEventProcessor
+from .prediction.prediction_event_processor import PredictionEventProcessor
+from .completion.completion_event_processor import CompletionEventProcessor
 
 # --- Orchestrators (Workflow Controllers) ---
 from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
 from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator 
 from .prediction.prediction_orchestrator import PredictionOrchestrator          
-from .completion.completion_orchestrator import CompletionOrchestrator         
-from .match_pipeline_orchestrator import MatchPipelineOrchestrator   
+from .completion.completion_orchestrator import CompletionOrchestrator
+
+# --- Root Application ---         
+from .app import MatchPipelineOrchestrator   
 
 from dota_oracle.utils import get_logger
 
@@ -43,7 +50,8 @@ logger = get_logger(__name__)
 class AppContainer(containers.DeclarativeContainer):
     """
     Dependency Injection container for the application components.
-    Follows a bottom-up definition: Clients -> Repositories -> Services -> Orchestrators
+    Follows a bottom-up definition: 
+    Clients -> Components -> Services -> Data Providers/ Event Processors -> Orchestrators -> Root
     """
 
     # --- Configuration ---
@@ -53,30 +61,22 @@ class AppContainer(containers.DeclarativeContainer):
     redis_async_pool = providers.Singleton(RedisClientFactory.create_instance, env='test')
     db_engine = providers.Singleton(DatabaseEngineFactory.get_engine, env='test') 
 
-    # --- Repositories ---
-    heroes_repository = providers.Factory(HeroesRepository, engine=db_engine)
-    features_repository = providers.Factory(FeaturesRepository, engine=db_engine)
-    history_repository = providers.Factory(HistoryRepository, engine=db_engine)
-    match_repository = providers.Factory(MatchRepository, engine=db_engine)
-    prediction_repository = providers.Factory(PredictionRepository, engine=db_engine)
 
     # --- Feature Engineering Components ---
-    team_feature_processor = providers.Factory(TeamFeatureProcessor, history_repository=history_repository)
-    player_hero_features_processor = providers.Factory(PlayerHeroFeaturesProcessor, history_repository=history_repository)
+    team_feature_creator = providers.Factory(TeamFeatureCreator)
+    player_hero_features_creator = providers.Factory(PlayerHeroFeaturesCreator)
 
     # --- Inference Components ---
     model_inference_service = providers.Resource(
         ModelInferenceService.initialize_async_service
     )
 
+    # --- Core Pipeline Services ---
     feature_preparation_service = providers.Factory(
         FeaturePreparationService,
-        features_repository=features_repository,
-        heroes_repository=heroes_repository,
         model_inference_service=model_inference_service  
     )
-
-    # --- Core Pipeline Services ---
+    
     redis_service = providers.Resource(
         RedisService.initialize,
         redis_client=redis_async_pool 
@@ -84,49 +84,95 @@ class AppContainer(containers.DeclarativeContainer):
     
     feature_engineering_service = providers.Factory(
         FeatureEngineeringService,
-        team_feature_processor=team_feature_processor,
-        player_hero_processor=player_hero_features_processor,
-        features_repository=features_repository
+        team_feature_creator=team_feature_creator,
+        player_hero_features_creator=player_hero_features_creator
     )
     history_update_service = providers.Factory(
-        HistoryUpdateService,
-        history_repository=history_repository
+        HistoryUpdateService
     )
     match_prediction_service = providers.Factory(
         MatchPredictionService,
         feature_preparation_service=feature_preparation_service,
         model_inference_service=model_inference_service,
-        prediction_repository=prediction_repository
+    )
+    
+    # --- Data Providers ---
+    new_match_data_provider = providers.Factory(
+        NewMatchDataProvider,
+        redis_service=redis_service
+    )
+    
+    feature_engineering_data_provider = providers.Factory(
+        FeatureEngineeringDataProvider,
+        redis_service=redis_service,
+        db_engine=db_engine
+    )
+    
+    prediction_data_provider = providers.Factory(
+        PredictionDataProvider,
+        redis_service=redis_service,
+    )
+    
+    completion_data_provider = providers.Factory(
+        CompletionDataProvider,
+        redis_service=redis_service
+    )
+    
+    
+    # --- Event Processors ---
+    new_match_event_processor = providers.Factory(
+        NewMatchEventProcessor,
+        db_engine=db_engine
+    )
+    
+    feature_engineering_event_processor = providers.Factory(
+        FeatureEngineeringEventProcessor,
+        db_engine=db_engine,
+        feature_engineering_service=feature_engineering_service
+    )
+    
+    prediction_event_processor = providers.Factory(
+        PredictionEventProcessor,
+        db_engine=db_engine,
+        feature_preparation_service=feature_preparation_service,
+        match_prediction_service=match_prediction_service
+    )
+    
+    completion_event_processor = providers.Factory(
+        CompletionEventProcessor,
+        history_update_service=history_update_service,
+        db_engine=db_engine  
     )
 
     # --- Orchestrators ---
     new_match_orchestrator = providers.Factory(
         NewMatchOrchestrator,
         redis_service=redis_service,
-        storage=match_repository,
-        hero_repo=heroes_repository
+        data_provider=new_match_data_provider,
+        event_processor=new_match_event_processor
     )
     feature_engineering_orchestrator = providers.Factory(
         FeatureEngineeringOrchestrator,
-        match_repository=match_repository,
         redis_service=redis_service,
-        feature_engineering_service=feature_engineering_service
+        event_processor=feature_engineering_event_processor,
+        data_provider=feature_engineering_data_provider
     )
     prediction_orchestrator = providers.Factory(
         PredictionOrchestrator,
         redis_service=redis_service,
-        feature_preparation_service=feature_preparation_service, 
-        match_prediction_service=match_prediction_service      
+        event_processor=prediction_event_processor,
+        data_provider=prediction_data_provider     
     )
     completion_orchestrator = providers.Factory(
         CompletionOrchestrator, 
         redis_service=redis_service,
         history_update_service=history_update_service,
-        match_repository=match_repository
+        completion_data_provider=completion_data_provider,
+        completion_event_processor=completion_event_processor
     )
 
-    # --- Top-Level Orchestrator ---
-    match_pipeline_orchestrator = providers.Factory(
+    # --- Root application ---
+    app = providers.Factory(
         MatchPipelineOrchestrator,
         new_match_orchestrator=new_match_orchestrator,
         feature_engineering_orchestrator=feature_engineering_orchestrator,
@@ -135,7 +181,7 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
 # to do: wrap in prefect task or CRON task
-async def run_pipeline():
+async def main():
     container = AppContainer()
     # todo: container.config.from_yaml('config.yml') # Load config if implemented
 
@@ -145,11 +191,11 @@ async def run_pipeline():
         await container.init_resources() # type: ignore
         logger.info("Container resources initialized.")
 
-        # Get the top-level orchestrator after resources are initialized
-        pipeline_orchestrator = container.match_pipeline_orchestrator()
+        # Get the main app after resources are initialized
+        application = container.app()
 
         logger.debug("Running pipeline cycle...")
-        await pipeline_orchestrator.run_cycle()
+        await application.run_cycle()
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
@@ -160,4 +206,4 @@ async def run_pipeline():
         logger.info("Container resources shut down.")
 
 if __name__ == "__main__":
-    asyncio.run(run_pipeline())
+    asyncio.run(main())
