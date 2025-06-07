@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__) 
 
-class TeamFeatureProcessor:
+class TeamFeatureCreator:
 
     async def create_team_features(
             self,
