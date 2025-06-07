@@ -9,7 +9,7 @@ from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
-from dota_oracle.feature_transformation.encoding import encode_hero_features
+from dota_oracle.feature_transformation import FeatureEncoder
 from dota_oracle.inference.model_inference import ModelInferenceService
 
 from dota_oracle.utils.set_logging import get_logger
@@ -131,7 +131,7 @@ class FeaturePreparationService:
             logger.warning("Missing hero_map. Unable to proceed with data encoding.")
             return None
 
-        encoded_hero_df = await encode_hero_features(hero_dataframe, hero_map)
+        encoded_hero_df = await FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
         
         if encoded_hero_df is None or encoded_hero_df.empty:
             return None
