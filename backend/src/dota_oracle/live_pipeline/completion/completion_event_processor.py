@@ -4,6 +4,7 @@ from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.models.match import MatchOutcomeTable
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from dota_oracle.models.pipeline import CompletionWorkItem
+from dota_oracle.models.redis import StreamMatchEventData
 
 logger = get_logger(__name__)
 class CompletionEventProcessor:
@@ -16,12 +17,11 @@ class CompletionEventProcessor:
         self.engine = db_engine
     
     async def process_events(self, work_item: CompletionWorkItem):
-        event_data = work_item.event_data
-        match_outcome = work_item.outcome
-        
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
+                    event_data = work_item.event_data
+                    match_outcome = work_item.outcome
                     # create repository
                     match_repository = MatchRepository(session=session)
                     
