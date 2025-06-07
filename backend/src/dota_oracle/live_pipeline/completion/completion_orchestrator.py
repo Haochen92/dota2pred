@@ -1,7 +1,6 @@
 from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 from dota_oracle.utils.set_logging import get_logger
-from .history_update_service import HistoryUpdateService
-from ..redis_service import RedisService
+from ..services import RedisService, HistoryUpdateService
 from dota_oracle.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from .completion_data_provider import CompletionDataProvider

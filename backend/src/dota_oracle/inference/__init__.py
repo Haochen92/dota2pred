@@ -1,2 +1,2 @@
-from ..live_pipeline.prediction.feature_preparation_service import FeaturePreparationService
+from .feature_preparation_service import FeaturePreparationService
 from .model_inference_service import ModelInferenceService
