@@ -1,138 +1,64 @@
 import asyncio
 import sys
-from typing import TypeVar, Coroutine, Dict, Any, List
+from typing import List
 from .set_logging import get_logger
+from dota_oracle.models.utils import TaskResult, AsyncTask
 
 logger = get_logger(__name__)
 
-T = TypeVar('T') # key variable
-R = TypeVar('R') # return variable
-
-ASYNC_TASK = Coroutine[Any, Any, R]
-
-async def get_outcome_concurrently(
-    keyed_coroutines: Dict[T, ASYNC_TASK]
-) -> Dict[T, R|Exception]:
+class TaskRunner:
     
-    if not keyed_coroutines:
-        return {}
-    
-    keys, values = zip(*keyed_coroutines.items())
-    task_keys = list(keys)
-    coroutines = list(values)
-    
-    res_list = await asyncio.gather(
-        *coroutines, 
-        return_exceptions=True
-    )
-    
-    # Process outcomes
-    outcome_dict: Dict[T, R|Exception] = {}
-    error_count = 0
-    success_count = 0
-    
-    for task_name, task_outcome in zip(task_keys, res_list):
-
-        if isinstance(task_outcome, Exception):
-            logger.error(f"task {task_name} has failed with exception {task_outcome}")
-            outcome_dict[task_name] = task_outcome
-            error_count += 1
-        elif isinstance(task_outcome, BaseException): # other exceptions like keyboard interrupt, system exit
-            logger.critical(f"Task: {task_name} was interrupted by a critical BaseException: {task_outcome}")
-            raise task_outcome
-        else:
-            outcome_dict[task_name] = task_outcome 
-            success_count += 1
+    @staticmethod
+    async def run_concurrently(tasks: List[AsyncTask]) -> List[TaskResult]:
+        '''
+        Run all tasks concurrently using asyncio.gather
+        Always returns a list of TaskResult objects, never raises.
+        Exceptions are captured within the TaskResult object.
+        '''
+        if not tasks:
+            return []
         
-    logger.info(f"tasks run completed with {success_count} completed and {error_count} failed")
-    
-    return outcome_dict
-    
-
-async def get_outcome_as_group(
-    keyed_coroutines: Dict[T, ASYNC_TASK]
-) -> Dict[T, R]:
-    
-    if sys.version_info < (3, 11):
-        raise RuntimeError("asyncio.TaskGroup requires Python 3.11 or newer.")
-    
-    created_tasks: Dict[T, asyncio.Task[R]] = {}
-    
-    async with asyncio.TaskGroup() as tg:
-        for key, coro in keyed_coroutines.items():
-            created_tasks[key] = tg.create_task(coro)
-    
-
-    results_dict: Dict[T, R] = {}
-    for key, task_obj in created_tasks.items():
-        results_dict[key] = await task_obj
+        # Use a dictionary for fast lookup after gather completes
+        task_keys = [task.key for task in tasks]
+        coroutines = [task.coro for task in tasks]
         
-
-    return results_dict
-
-    
-async def run_updates_concurrently(
-    update_coroutines: List[Coroutine[Any, Any, Any]],
-) -> None:
-    """
-    Runs a list of update coroutines concurrently.
-    All coroutines are attempted. Errors are logged.
-    Does not return any values.
-    """
-    if not update_coroutines:
-        return
-
-    results_or_exceptions = await asyncio.gather(
-        *update_coroutines, 
-        return_exceptions=True
-    )
-    
-    success_count = 0
-    
-    exceptions_encountered: List[Exception] = []
-    for i, outcome in enumerate(results_or_exceptions):
-        if isinstance(outcome, Exception):
-            logger.warning(f"Update task at index {i} failed: {type(outcome).__name__} - {outcome}")
-            exceptions_encountered.append(outcome)
-        elif isinstance(outcome, BaseException):
-            logger.critical(f"Task: {i} was interrupted by a critical BaseException: {outcome}")
-            raise outcome
-        else:
-            success_count += 1
-    
-    error_count = len(exceptions_encountered)
+        results_or_exceptions = await asyncio.gather(*coroutines, return_exceptions=True)
         
-    logger.info(f"Update tasks completed. Successful: {success_count}, Failed: {error_count}.")
-    if exceptions_encountered:
-        raise ExceptionGroup(f"{error_count} update tasks failed", exceptions_encountered)
-
-async def run_updates_as_group(
-    update_coroutines: List[Coroutine[Any, Any, Any]]
-) -> None:
-    """
-    Runs a list of update coroutines using asyncio.TaskGroup.
-    If ANY task fails, TaskGroup will raise that task's exception (or an ExceptionGroup),
-    and other tasks in the group will be cancelled. This function allows that exception
-    to propagate.
-    If all succeed, the function completes silently.
-    Requires Python 3.11+.
-    """
-    if sys.version_info < (3, 11):
-        raise RuntimeError("asyncio.TaskGroup requires Python 3.11 or newer.")
+        outcomes: List[TaskResult] = []
+        
+        for i, outcome in enumerate(results_or_exceptions):
+            key = task_keys[i]
+            
+            if isinstance(outcome, Exception):
+                outcomes.append(TaskResult(key=key, exception=outcome))
+            else:
+                outcomes.append(TaskResult(key=key, result=outcome))
+            
+        return outcomes
     
-    if not update_coroutines:
-        return
+    @staticmethod
+    async def run_as_group(tasks: List[AsyncTask]) -> List[TaskResult]:
+        if sys.version_info < (3, 11):
+            raise RuntimeError("TaskGroup requires Python 3.11 or newer.")
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            logger.info(f"TaskGroup active for updates. Creating {len(update_coroutines)} tasks...") # Placeholder
-            for i, coro in enumerate(update_coroutines):
-                tg.create_task(coro) 
-            logger.info("All update tasks created in TaskGroup. Waiting for completion...")
-           
-        logger.info("TaskGroup for updates completed successfully. All updates presumed successful.")
-    except Exception as e:
-        print(f"TaskGroup for updates encountered an error: {type(e).__name__} - {e}")
-        raise 
+        if not tasks:
+            return []
+        
+        task_to_key_map = {}
 
-    
+        try:
+            async with asyncio.TaskGroup() as tg:
+                asyncio_tasks = []
+                for task_model in tasks:
+                    t = tg.create_task(task_model.coro)
+                    asyncio_tasks.append(t)
+                    task_to_key_map[t] = task_model.key
+        except* Exception as eg:
+            logger.error(f"TaskGroup failed with {len(eg.exceptions)} error(s).")
+            raise eg
+            
+        # If we reach here, all tasks succeeded
+        return [
+            TaskResult(key=task_to_key_map[t], result=t.result())
+            for t in asyncio_tasks
+        ]
