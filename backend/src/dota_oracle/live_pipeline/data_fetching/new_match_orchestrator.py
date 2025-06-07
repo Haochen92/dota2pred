@@ -1,111 +1,82 @@
-from typing import Set, Dict, Any, List, Coroutine
 from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.utils.async_utils import run_updates_as_group, get_outcome_concurrently
-from dota_oracle.data_transformation.live_match_parser import parse_live_league_games
-from dota_oracle.data_repository.match_repository import MatchRepository
-from dota_oracle.data_repository.heroes_repository import HeroesRepository
-from dota_oracle.models.match import MatchTable
-from dota_oracle.models.live_games.schema import LiveLeagueGame
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-from ..redis_service import RedisService
-
-# data extraction
-from dota_oracle.data_extraction.fetch_live_leagues import fetch_live_league_games
+from dota_oracle.utils.async_utils import TaskRunner
+from dota_oracle.models.utils import AsyncTask
+from .new_match_data_provider import NewMatchDataProvider
+from .new_match_event_processor import NewMatchEventProcessor
+from dota_oracle.live_pipeline.redis_service import RedisService
 
 logger = get_logger(__name__)
 
 class NewMatchOrchestrator:
-    def __init__(self, redis_service: RedisService, db_engine: AsyncEngine):
+    """Orchestrator for new match discovery and processing pipeline."""
+    
+    def __init__(
+        self,
+        data_provider: NewMatchDataProvider,
+        event_processor: NewMatchEventProcessor,
+        redis_service: RedisService
+    ):
+        self.data_provider = data_provider
+        self.event_processor = event_processor
         self.redis = redis_service
-        self.engine = db_engine
         
-        # Initialization Validation
-        if not all([redis_service, db_engine]):
+        # Validation
+        if not all([data_provider, event_processor, redis_service]):
             raise ValueError("All dependencies must be provided")
+    
+    async def run_new_match_cycle(self) -> int:
+        """
+        Executes one cycle of new match processing.
         
-    async def run_new_match_cycle(self) -> int:   
+        Returns:
+            Number of matches successfully processed
+        """
+        logger.info("Starting new match discovery cycle")
         
-        curr_matches = await self._fetch_current_matches()
-        if not curr_matches:
-            logger.info("there are currently no live matches")
+        # 1. Get work items from data provider
+        work_items = await self.data_provider.get_work_items()
+        if not work_items:
+            logger.debug("No new matches to process")
             return 0
-        logger.info(f"found {len(curr_matches)} new matches...")
         
-        new_matches = await self._filter_new_matches(curr_matches)
+        logger.info(f"Processing {len(work_items)} new matches")
         
-        transformed_new_matches = await self._transform_match_data(new_matches)
+        # 2. Create async concurrent task list
+        concurrent_tasks = []
+        work_item_map = {}
         
-        task_dict: Dict[int, Coroutine[Any, Any, bool]] = {}
+        for work_item in work_items:
+            task = AsyncTask(
+                key=work_item.match_id,
+                coro=self.event_processor.process_event(work_item)
+            )
+            concurrent_tasks.append(task)
+            # 3. Create map for failure handling
+            work_item_map[work_item.match_id] = work_item
         
-        for match_data in transformed_new_matches:
-            match_id = match_data.match_id
-            try:
-                task_dict[match_id] = self._store_and_update_redis(match_data=match_data, match_id=match_id)
-            except Exception as e:
-                logger.error(f"Error encounted while adding match {match_id} to task group, {e}", exc_info=True)
-                continue
+        # 4. Call event processor for each task via TaskRunner
+        results = await TaskRunner.run_concurrently(concurrent_tasks)
+        
+        # 5. Process outcomes
+        count_success = 0
+        count_failure = 0
+        
+        for task_result in results:
+            match_id = task_result.key
+            work_item = work_item_map[match_id]
             
-        outcomes: Dict[int, bool | Exception] = await get_outcome_concurrently(task_dict)
-        
-        success_count = sum(1 for outcome in outcomes.values() if outcome)
-        failure_count = sum(1 for outcome in outcomes.values() if not outcome)
-        
-        logger.info(f"Successfully processed {success_count} new matches, with {failure_count} failures")
-        return success_count
-    
-    async def _fetch_current_matches(self) -> List[LiveLeagueGame]:
-        try:
-            curr_games = await fetch_live_league_games()
-            if not curr_games:
-                return []
-            return curr_games
-        except Exception as e:
-            logger.warning(f"Error fetching matches from API, {e}", exc_info=True)
-            raise
-        
-        
-    async def _transform_match_data(self, live_match_data: List[LiveLeagueGame]) -> List[MatchTable]:
-        if not live_match_data:
-            logger.warning("Empty live_match_data passed to data transformer")
-            return []
-        try:
-            # Create session and fresh repository instance
-            async with AsyncSession(self.engine) as session:
-                hero_repo = HeroesRepository(session=session)
-                transformed_data = await parse_live_league_games(live_match_data, hero_repo)
-                return transformed_data
-        except Exception as e:
-            logger.error(f"Unable to transform live_match_data, error: {e}", exc_info=True)
-            raise
-        
-    async def _filter_new_matches(self, curr_matches: List[LiveLeagueGame]) -> List[LiveLeagueGame]:
-        curr_match_ids = [match.match_id for match in curr_matches]
-        new_match_set: Set[int] = await self.redis.update_live_match_set_and_get_new(curr_match_ids)
-        if not new_match_set:
-            logger.info("No new matches found")
-            return []
-        
-        logger.info(f"Found {len(new_match_set)} new matches...")
-        new_matches = [match for match in curr_matches if match.match_id in new_match_set]
-        return new_matches
-    
-    async def _store_and_update_redis(self, match_data: MatchTable, match_id: int) -> bool:
-        try:
-            # Create session and fresh repository instance
-            async with AsyncSession(self.engine) as session:
-                storage = MatchRepository(session=session)
+            try:
+                result = task_result.get_result()
+                if isinstance(result, Exception):
+                    raise result
+                count_success += 1
+                await self.redis.add_match_for_processing(match_id)
+                logger.debug(f"Successfully processed new match {match_id}")
                 
-                task_group = [
-                    storage.insert_match_details([match_data]),
-                    self.redis.add_match_for_processing(match_id)
-                ]
-                
-                await run_updates_as_group(task_group)
-                return True
-        except ExceptionGroup as eg:
-            for i, exc in enumerate(eg.exceptions):
-                logger.error(f"Exception {i+1}: {type(exc).__name__} - {exc}")
-            return False
-        except Exception as e: # Catch any other exceptions
-            logger.error(f"Unexpected error processing match {match_id}: {e}", exc_info=True)
-            return False
+            except Exception as e:
+                count_failure += 1
+                logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
+                # Note: No failure recording needed for new matches as they're not from Redis streams
+        
+        logger.info(f"New match cycle complete: successful={count_success}, failed={count_failure}")
+        return count_success
