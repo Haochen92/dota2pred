@@ -1,4 +1,4 @@
-from dota_oracle.feature_engineering import TeamFeatureProcessor, PlayerHeroFeaturesProcessor, create_hero_features, preprocess_live_match_data
+from dota_oracle.feature_engineering import TeamFeatureProcessor, PlayerHeroFeaturesProcessor, HeroFeatureProcessor, preprocess_live_match_data
 from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.models.match import MatchTable
 from dota_oracle.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
@@ -30,9 +30,9 @@ class FeatureEngineeringService:
             raise ValueError("Dataframe is empty after processing")
         
         try:
-            hero_features: List[HeroFeaturesTable] = create_hero_features([processed_match_instance])
-            team_features: List[TeamFeaturesTable] = await self.team_feature_processor.create_team_features([processed_match_instance]) 
-            player_hero_features: List[PlayerHeroFeatureTable] = await self.player_hero_processor.create_player_hero_features([processed_match_instance]) 
+            hero_features = HeroFeatureProcessor.create_hero_features([processed_match_instance])
+            team_features = await self.team_feature_processor.create_team_features(session, [processed_match_instance]) 
+            player_hero_features = await self.player_hero_processor.create_player_hero_features(session, [processed_match_instance]) 
         except Exception as e:
             logger.error(f"Error creating features {e}", exc_info=True)
             raise e
