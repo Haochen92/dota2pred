@@ -1,10 +1,9 @@
 from dota_oracle.utils.set_logging import get_logger
-from .history_update_service import HistoryUpdateService
+from ..services import HistoryUpdateService
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.models.match import MatchOutcomeTable
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from dota_oracle.models.pipeline import CompletionWorkItem
-from dota_oracle.models.redis import StreamMatchEventData
 
 logger = get_logger(__name__)
 class CompletionEventProcessor:
