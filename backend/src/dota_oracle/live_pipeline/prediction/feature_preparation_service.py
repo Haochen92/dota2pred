@@ -10,7 +10,7 @@ from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, Pl
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
 from dota_oracle.feature_transformation import FeatureEncoder
-from dota_oracle.inference.model_inference import ModelInferenceService
+from dota_oracle.inference.model_inference_service import ModelInferenceService
 
 from dota_oracle.utils.set_logging import get_logger
 
