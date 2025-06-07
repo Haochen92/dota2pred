@@ -213,7 +213,38 @@ class RedisService:
             return False
 
     # Failed Events management
-    async def record_failure_and_ack(self, failure_record: FailureRecord) -> bool:
+    
+    async def handle_processing_failure(
+        self, 
+        event_data: StreamMatchEventData, 
+        event_id: str, 
+        error: Exception,
+        consumer_group: str,
+        event_stream: str
+    ) -> None:
+        """Handles processing failures by recording them in Redis."""
+        try:
+            failure_record = FailureRecord(
+                original_group=consumer_group,
+                original_event_id=event_id,
+                original_data=event_data,
+                original_stream=event_stream,
+                error_type=type(error).__name__,
+                error_message=str(error),
+                failure_timestamp=get_current_utc_iso_timestamp()
+            )
+            
+            await self._record_failure_and_ack(failure_record)
+            
+            logger.info(f"Recorded failure for event '{event_id}'")
+            
+        except Exception as e:
+            logger.error(
+                f"Failed to record failure for event '{event_id}': {e}",
+                exc_info=True
+            )
+    
+    async def _record_failure_and_ack(self, failure_record: FailureRecord) -> bool:
         """
         Records failure details to DLQ Hash and ACKs original message.
         Simplifies serialization error handling.
