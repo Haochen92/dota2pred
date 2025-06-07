@@ -2,7 +2,7 @@ from dota_oracle.data_repository.history_repository import HistoryRepository
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.utils import get_logger, TaskRunner
 from dota_oracle.utils.time_utils import to_utc_datetime_object
-from typing import List, Coroutine, Any
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from dota_oracle.models.match import MatchTable, MatchOutcomeTable
 from dota_oracle.models.utils import AsyncTask
