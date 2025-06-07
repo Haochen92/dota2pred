@@ -13,7 +13,7 @@ from dota_oracle.constants.redis_constants import (
     FAILED_EVENTS_MAPPING
 )
 
-from dota_oracle.live_pipeline.redis_service import RedisService
+from dota_oracle.live_pipeline.services.redis_service import RedisService
 
 from ...factories.redis_models_factory import StreamMatchEventDataFactory, FailureRecordFactory
 

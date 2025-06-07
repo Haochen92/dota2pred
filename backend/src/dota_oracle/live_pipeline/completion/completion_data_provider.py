@@ -1,7 +1,7 @@
 from dota_oracle.utils.set_logging import get_logger
 from typing import List
-from ..redis_service import RedisService
-from .fetch_outcome_service import FetchOutcomeService
+from ..services.redis_service import RedisService
+from ..services.fetch_outcome_service import FetchOutcomeService
 from dota_oracle.models.pipeline import CompletionWorkItem
 from dota_oracle.constants.redis_constants import STREAM_PENDING_COMPLETION
 

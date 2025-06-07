@@ -3,7 +3,7 @@ from dota_oracle.utils.async_utils import TaskRunner
 from dota_oracle.models.utils import AsyncTask
 from .new_match_data_provider import NewMatchDataProvider
 from .new_match_event_processor import NewMatchEventProcessor
-from dota_oracle.live_pipeline.redis_service import RedisService
+from dota_oracle.live_pipeline.services.redis_service import RedisService
 
 logger = get_logger(__name__)
 

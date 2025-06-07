@@ -4,7 +4,7 @@ from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.models.match import MatchTable
 from dota_oracle.models.redis.schema import StreamMatchEventData
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-from ..redis_service import RedisService
+from ..services.redis_service import RedisService
 from dota_oracle.models.pipeline import FeatureEngineeringWorkItem
 
 logger = get_logger(__name__)
