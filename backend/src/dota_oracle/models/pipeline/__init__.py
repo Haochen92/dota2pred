@@ -1,1 +1,1 @@
-from .schema import CompletionWorkItem
+from .schema import CompletionWorkItem, NewMatchWorkItem, FeatureEngineeringWorkItem, PredictionWorkItem
