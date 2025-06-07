@@ -1,26 +1,21 @@
-from typing import Dict, List, Any, Optional, Coroutine
+from typing import List, Optional
 from dota_oracle.data_repository.history_repository import HistoryRepository 
-from dota_oracle.utils import get_logger, get_outcome_as_group
+from dota_oracle.utils import get_logger
+from dota_oracle.utils.async_utils import TaskRunner
+from dota_oracle.models.utils import AsyncTask
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from datetime import datetime
 from dota_oracle.models.match import MatchTable
 from dota_oracle.models.features import TeamFeaturesTable
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__) 
 
 class TeamFeatureProcessor:
-    def __init__(self, db_engine: AsyncEngine):
-        """
-        Calculates team-level features based on historical data.
-
-        Args:
-            db_engine: AsyncEngine instance for database operations.
-        """
-        self.engine = db_engine
 
     async def create_team_features(
             self,
+            db_session: AsyncSession,
             match_instances: List[MatchTable],
             before_timestamp: Optional[datetime] = None,
             after_timestamp: Optional[datetime] = None,
@@ -43,7 +38,7 @@ class TeamFeatureProcessor:
                 
                 # Validate required data
                 if not match_id:
-                    logger.error(f"Missing match_id for instance, skipping")
+                    logger.error("Missing match_id for instance, skipping")
                     continue
                 
                 if before_timestamp:
@@ -53,35 +48,51 @@ class TeamFeatureProcessor:
                 else:
                     effective_before = get_current_utc_iso_timestamp()
 
-                # Create one session per match for all team calculations
-                async with AsyncSession(self.engine) as session:
-                    # Create tasks with shared session
-                    tasks_dict: Dict[str, Coroutine[Any, Any, float]] = {
-                        'radiant_win_rate': self._calculate_team_win_rate(
-                            session, radiant_team, before=effective_before, 
-                            after=after_timestamp, limit=history_limit
-                        ),
-                        'dire_win_rate': self._calculate_team_win_rate(
-                            session, dire_team, before=effective_before, 
-                            after=after_timestamp, limit=history_limit
-                        ),
-                        'radiant_dire_matchup': self._calculate_matchup_win_rate(
-                            session, radiant_team, dire_team, before=effective_before, 
+                # Create AsyncTask objects for concurrent execution
+                team_tasks = [
+                    AsyncTask(
+                        key='radiant_win_rate',
+                        coro=self._calculate_team_win_rate(
+                            db_session, radiant_team, before=effective_before, 
                             after=after_timestamp, limit=history_limit
                         )
-                    }
-
-                    # Execute all tasks concurrently within the shared session
-                    outcome_dict: Dict[str, float] = await get_outcome_as_group(tasks_dict)
-                    
-                    # Create the feature row
-                    team_features_row = TeamFeaturesTable(
-                        match_id=match_id,
-                        radiant_win_rate=outcome_dict['radiant_win_rate'],
-                        dire_win_rate=outcome_dict['dire_win_rate'],
-                        radiant_dire_matchup=outcome_dict['radiant_dire_matchup']
+                    ),
+                    AsyncTask(
+                        key='dire_win_rate',
+                        coro=self._calculate_team_win_rate(
+                            db_session, dire_team, before=effective_before, 
+                            after=after_timestamp, limit=history_limit
+                        )
+                    ),
+                    AsyncTask(
+                        key='radiant_dire_matchup',
+                        coro=self._calculate_matchup_win_rate(
+                            db_session, radiant_team, dire_team, before=effective_before, 
+                            after=after_timestamp, limit=history_limit
+                        )
                     )
-                    all_match_features.append(team_features_row)
+                ]
+
+                # Execute all tasks concurrently using TaskRunner
+                results = await TaskRunner.run_concurrently(team_tasks)
+                
+                # Extract results from TaskResult objects
+                outcome_dict = {}
+                for task_result in results:
+                    try:
+                        outcome_dict[task_result.key] = task_result.get_result()
+                    except Exception as e:
+                        logger.warning(f"Task {task_result.key} failed for match {match_id}: {e}")
+                        outcome_dict[task_result.key] = 0.5  # Default fallback
+                
+                # Create the feature row
+                team_features_row = TeamFeaturesTable(
+                    match_id=match_id,
+                    radiant_win_rate=outcome_dict.get('radiant_win_rate', 0.5),
+                    dire_win_rate=outcome_dict.get('dire_win_rate', 0.5),
+                    radiant_dire_matchup=outcome_dict.get('radiant_dire_matchup', 0.5)
+                )
+                all_match_features.append(team_features_row)
                 
             except Exception as e:
                 logger.error(f"Unexpected error processing match {getattr(instance, 'match_id', 'unknown')}: {e}", exc_info=True)
