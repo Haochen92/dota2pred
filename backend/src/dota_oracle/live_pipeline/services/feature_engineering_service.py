@@ -1,4 +1,4 @@
-from dota_oracle.feature_engineering import TeamFeatureProcessor, PlayerHeroFeaturesProcessor, HeroFeatureProcessor, preprocess_live_match_data
+from dota_oracle.feature_engineering import TeamFeatureCreator, PlayerHeroFeaturesCreator, HeroesFeatureCreator, preprocess_live_match_data
 from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.models.match import MatchTable
 from dota_oracle.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
@@ -14,11 +14,11 @@ class FeatureEngineeringService:
     
     def __init__(
         self, 
-        team_feature_processor: TeamFeatureProcessor,
-        player_hero_processor: PlayerHeroFeaturesProcessor,
+        team_feature_creator: TeamFeatureCreator,
+        player_hero_feature_creator: PlayerHeroFeaturesCreator,
     ):
-        self.team_feature_processor = team_feature_processor
-        self.player_hero_processor = player_hero_processor
+        self.team_feature_creator = team_feature_creator
+        self.player_hero_feature_creator = player_hero_feature_creator
         
     async def create_and_store_features(self, match_instance: MatchTable, session: AsyncSession) -> None:
         if not match_instance:
@@ -30,9 +30,9 @@ class FeatureEngineeringService:
             raise ValueError("Dataframe is empty after processing")
         
         try:
-            hero_features = HeroFeatureProcessor.create_hero_features([processed_match_instance])
-            team_features = await self.team_feature_processor.create_team_features(session, [processed_match_instance]) 
-            player_hero_features = await self.player_hero_processor.create_player_hero_features(session, [processed_match_instance]) 
+            hero_features = HeroesFeatureCreator.create_hero_features([processed_match_instance])
+            team_features = await self.team_feature_creator.create_team_features(session, [processed_match_instance]) 
+            player_hero_features = await self.player_hero_feature_creator.create_player_hero_features(session, [processed_match_instance]) 
         except Exception as e:
             logger.error(f"Error creating features {e}", exc_info=True)
             raise e

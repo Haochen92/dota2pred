@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
 
-class PlayerHeroFeaturesProcessor:
+class PlayerHeroFeaturesCreator:
     def __init__(self, max_history_length: int = 20):
         self.max_history_length = max_history_length
 

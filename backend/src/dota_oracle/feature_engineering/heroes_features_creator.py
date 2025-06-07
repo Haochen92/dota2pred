@@ -6,7 +6,7 @@ from typing import List
 
 logger = get_logger(__name__)
 
-class HeroFeatureProcessor:
+class HeroesFeatureCreator:
     @staticmethod
     def create_hero_features(match_instances: List[MatchTable]) -> List[HeroFeaturesTable]:
         
