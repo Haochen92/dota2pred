@@ -1,8 +1,7 @@
-from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import StreamMatchEventData
 from dota_oracle.utils.set_logging import get_logger
 from ..services import RedisService, HistoryUpdateService
 from dota_oracle.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
-from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from .completion_data_provider import CompletionDataProvider
 from dota_oracle.utils.async_utils import TaskRunner
 from dota_oracle.models.utils import AsyncTask
@@ -63,10 +62,12 @@ class CompletionOrchestrator:
                 self.redis.mark_match_as_completed
                 count_success += 1
             except Exception as e:
-                await self._handle_processing_failure(
-                        data=event_data,
+                await self.redis.handle_processing_failure(
+                        event_data=event_data,
                         event_id=event_id,
-                        e=e
+                        error=e,
+                        consumer_group=COMPLETION_GROUP,
+                        event_stream=STREAM_PENDING_COMPLETION
                     )
                 count_failure += 1
                 raise e
@@ -74,17 +75,3 @@ class CompletionOrchestrator:
         logger.info(f"Completion Orchestrator: Successfully processed {count_success} and failed {count_failure}")
         
         return count_success
-         
-    async def _handle_processing_failure(self, data: StreamMatchEventData, event_id: str, e: Exception) -> None:
-        data_dict = data.model_dump()
-        logger.error(f"Failed to process predicted matches for event:{event_id}, data: {data_dict}")
-        failure_record = FailureRecord(
-                    original_data=data,
-                    original_group=COMPLETION_GROUP,
-                    original_event_id=event_id,
-                    original_stream=STREAM_PENDING_COMPLETION,
-                    error_type=str(type(e)),
-                    error_message=str(e),
-                    failure_timestamp=get_current_utc_iso_timestamp()
-                )
-        await self.redis.record_failure_and_ack(failure_record)
