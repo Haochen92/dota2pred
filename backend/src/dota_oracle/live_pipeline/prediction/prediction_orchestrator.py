@@ -2,8 +2,7 @@ from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.async_utils import TaskRunner
 from dota_oracle.models.utils import AsyncTask
 from dota_oracle.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
-from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
-from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
+from dota_oracle.models.redis.schema import StreamMatchEventData
 from .prediction_data_provider import PredictionDataProvider
 from .prediction_event_processor import PredictionEventProcessor
 from ..services.redis_service import RedisService
@@ -82,42 +81,15 @@ class PredictionOrchestrator:
                 
             except Exception as e:
                 count_failure += 1
-                await self._handle_processing_failure(
+                await self.redis.handle_processing_failure(
                     event_data=event_data,
                     event_id=event_id,
-                    error=e
+                    error=e,
+                    consumer_group=PREDICTION_GROUP,
+                    event_stream=STREAM_PENDING_PREDICTION
                 )
-        
         logger.info(
             f"PredictionOrchestrator: Finished cycle, with {count_success} successful events, and {count_failure} failures"
         )
         
         return count_success
-    
-    async def _handle_processing_failure(
-        self, 
-        event_data: StreamMatchEventData, 
-        event_id: str, 
-        error: Exception
-    ) -> None:
-        """Handles processing failures by recording them in Redis."""
-        try:
-            failure_record = FailureRecord(
-                original_group=PREDICTION_GROUP,
-                original_event_id=event_id,
-                original_data=event_data,
-                original_stream=STREAM_PENDING_PREDICTION,
-                error_type=type(error).__name__,
-                error_message=str(error),
-                failure_timestamp=get_current_utc_iso_timestamp()
-            )
-            
-            await self.redis.record_failure_and_ack(failure_record)
-            
-            logger.info(f"Recorded failure for event '{event_id}'")
-            
-        except Exception as e:
-            logger.error(
-                f"Failed to record failure for event '{event_id}': {e}",
-                exc_info=True
-            )
