@@ -7,7 +7,7 @@ from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
 from dota_oracle.models.redis.schema import StreamMatchEventData, FailureRecord
 from .feature_engineering_data_provider import FeatureEngineeringDataProvider
 from .feature_engineering_processor import FeatureEngineeringEventProcessor
-from ..redis_service import RedisService
+from ..services.redis_service import RedisService
 
 logger = get_logger(__name__)
 

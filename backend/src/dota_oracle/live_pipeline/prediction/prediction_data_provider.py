@@ -2,7 +2,7 @@ from typing import List, Dict
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.models.redis.schema import StreamMatchEventData
 from dota_oracle.constants.redis_constants import STREAM_PENDING_PREDICTION
-from ..redis_service import RedisService
+from ..services.redis_service import RedisService
 from dota_oracle.models.pipeline import PredictionWorkItem
 
 logger = get_logger(__name__)

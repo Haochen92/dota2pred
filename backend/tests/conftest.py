@@ -12,7 +12,7 @@ from testcontainers.postgres import PostgresContainer
 import redis.asyncio as aioredis
 
 # Services import
-from dota_oracle.live_pipeline.redis_service import RedisService
+from dota_oracle.live_pipeline.services.redis_service import RedisService
 from dota_oracle.utils.set_logging import get_logger
 
 # db base class import

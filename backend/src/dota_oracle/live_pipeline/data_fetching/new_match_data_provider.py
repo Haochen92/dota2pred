@@ -2,7 +2,7 @@ from typing import List, Set
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.models.live_games.schema import LiveLeagueGame
 from dota_oracle.data_extraction.fetch_live_leagues import fetch_live_league_games
-from ..redis_service import RedisService
+from ..services.redis_service import RedisService
 from dota_oracle.models.pipeline import NewMatchWorkItem
 
 logger = get_logger(__name__)
