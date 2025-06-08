@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, Coroutine, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 T_Key = TypeVar("T_Key")
 T_Result = TypeVar("T_Result")
@@ -13,8 +13,7 @@ class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
     key: T_Key
     coro: Coroutine[Any, Any, T_Result]
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 class TaskResult(BaseModel, Generic[T_Key, T_Result]):
     """A uniform way to represent the outcome of a task."""
@@ -29,5 +28,4 @@ class TaskResult(BaseModel, Generic[T_Key, T_Result]):
         
         return self.result
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
