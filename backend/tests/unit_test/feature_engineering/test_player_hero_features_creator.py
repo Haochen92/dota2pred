@@ -141,7 +141,7 @@ async def test_create_features_handles_task_failure_gracefully(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("win_rate_scenario", [
+@pytest.mark.parametrize("history, expected_win_rate", [
     pytest.param([], 0.5, id="no_history_defaults_to_half"),
     pytest.param([True, True], 1.0, id="all_wins_perfect_rate"),
     pytest.param([False, False, False], 0.0, id="all_losses_zero_rate"),
@@ -150,13 +150,13 @@ async def test_create_features_handles_task_failure_gracefully(
 async def test_calculate_win_rate_logic(
     player_hero_features_creator, 
     mocker, 
-    win_rate_scenario
+    history,
+    expected_win_rate
 ):
     """
     Tests the _calculate_win_rate helper method's logic directly.
     """
     # Arrange
-    history, expected_win_rate = win_rate_scenario
     
     mock_session = mocker.AsyncMock()
     # We mock the repository's method to avoid creating a real repo instance
