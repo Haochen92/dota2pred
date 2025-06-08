@@ -1,6 +1,6 @@
 from dota_oracle.data_repository.prediction_repository import PredictionRepository
 from dota_oracle.inference import ModelInferenceService
-from ..services import FeaturePreparationService
+from ..services.feature_preparation_service import FeaturePreparationService
 import numpy as np
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import get_current_utc_iso_timestamp
