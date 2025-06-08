@@ -51,36 +51,32 @@ async def test_create_player_hero_features_success(
     assert feature_row.player_hero_128_win_rate == 0.6
 
 
+# ✅ REWRITTEN: Using pytest.param with clean approach
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    'test_id, input_instance',
-    [
-        (
-            'test_missing_account_id',
-            MatchTableFactory.build(match_id=123, slot_0_account_id=None)
-        ),
-        (
-            'test_missing_hero_id',
-            MatchTableFactory.build(match_id=124, slot_0_hero_id=None)
-        ),
-        (
-            'test_missing_start_time',
-            MatchTableFactory.build(match_id=125, start_time=None)
-        )
-    ]
-)
+@pytest.mark.parametrize("missing_data", [
+    pytest.param(
+        {"match_id": 123, "slot_0_account_id": None}, 
+        id="missing_account_id"
+    ),
+    pytest.param(
+        {"match_id": 124, "slot_0_hero_id": None}, 
+        id="missing_hero_id"
+    ),
+    pytest.param(
+        {"match_id": 125, "start_time": None}, 
+        id="missing_start_time"
+    ),
+])
 async def test_create_features_skips_match_with_missing_data(
     player_hero_features_creator, 
     mocker,
-    test_id: str,
-    input_instance: MatchTable
+    missing_data: dict
 ):
     """
     Tests that a match is skipped if essential data like account_id is missing.
     """
-    # Arrange
-    # Create a match where one player is missing an account_id
-    match_instance = input_instance
+    # Arrange - Factory called at test time, fresh instance each run
+    match_instance = MatchTableFactory.build(**missing_data)
     
     mock_session = mocker.AsyncMock()
     mock_logger_error = mocker.patch(f'{FUNCTION_FP}.logger.error')
@@ -92,9 +88,8 @@ async def test_create_features_skips_match_with_missing_data(
     )
     
     # Assert
-    assert len(result) == 0, f"{test_id}: Expected 0, got {len(result)}"
+    assert len(result) == 0, f"Expected 0 results, got {len(result)}"
     mock_logger_error.assert_called_once()
-
 
 
 @pytest.mark.asyncio
@@ -145,24 +140,24 @@ async def test_create_features_handles_task_failure_gracefully(
     mock_logger_warning.assert_called_once()
 
 
-
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "history, expected_win_rate",
-    [
-        ([], 0.5),                      # No history, default to 0.5
-        ([True, True], 1.0),            # All wins
-        ([False, False, False], 0.0),   # All losses
-        ([True, False, True], 2/3),     # Mixed results
-    ]
-)
+@pytest.mark.parametrize("win_rate_scenario", [
+    pytest.param([], 0.5, id="no_history_defaults_to_half"),
+    pytest.param([True, True], 1.0, id="all_wins_perfect_rate"),
+    pytest.param([False, False, False], 0.0, id="all_losses_zero_rate"),
+    pytest.param([True, False, True], 2/3, id="mixed_results_calculated"),
+])
 async def test_calculate_win_rate_logic(
-    player_hero_features_creator, mocker, history, expected_win_rate
+    player_hero_features_creator, 
+    mocker, 
+    win_rate_scenario
 ):
     """
     Tests the _calculate_win_rate helper method's logic directly.
     """
     # Arrange
+    history, expected_win_rate = win_rate_scenario
+    
     mock_session = mocker.AsyncMock()
     # We mock the repository's method to avoid creating a real repo instance
     mock_repo_instance = mocker.AsyncMock()
