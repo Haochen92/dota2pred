@@ -88,7 +88,7 @@ async def test_missing_feature_raise_error(
     )
     
     # Act
-    with pytest.raises(ValueError, match="Incompelte features, raising"):
+    with pytest.raises(ValueError, match="Incomplete features, raising"):
         await feature_engineering_service.create_and_store_features(
             match_instance=match_instance,
             session=mock_async_session
