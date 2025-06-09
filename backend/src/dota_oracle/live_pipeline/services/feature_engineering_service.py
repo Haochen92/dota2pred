@@ -34,7 +34,13 @@ class FeatureEngineeringService:
             raise e
         
         if not hero_features or not team_features or not player_hero_features:
-            raise ValueError("Features are not created successfully")
+            error_msg = f"""
+                Incomplete features, raising 
+                expected hero_features , got {hero_features}
+                expected team_features , got {team_features}
+                expected player_hero_features , got {player_hero_features}
+            """
+            raise ValueError(error_msg)
         
         # Create repository with the provided session
         features_repository = FeaturesRepository(session=session)
