@@ -6,9 +6,6 @@ from dota_oracle.constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, U
 
 logger = get_logger(__name__)
 
-def preprocess_live_match_data(match_instance: MatchTable):
-    # No additional logic for now
-    return match_instance
 
 def preprocess_batch_match_data(input_df: pd.DataFrame) -> pd.DataFrame:
         """
