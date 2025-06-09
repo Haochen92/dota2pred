@@ -25,14 +25,10 @@ class FeatureEngineeringService:
             logger.warning("no match_instances for data creation")
             return None
         
-        processed_match_instance = preprocess_live_match_data(match_instance)
-        if not processed_match_instance:
-            raise ValueError("Dataframe is empty after processing")
-        
         try:
-            hero_features = HeroesFeatureCreator.create_hero_features([processed_match_instance])
-            team_features = await self.team_feature_creator.create_team_features(session, [processed_match_instance]) 
-            player_hero_features = await self.player_hero_feature_creator.create_player_hero_features(session, [processed_match_instance]) 
+            hero_features = HeroesFeatureCreator.create_hero_features([match_instance])
+            team_features = await self.team_feature_creator.create_team_features(session, [match_instance]) 
+            player_hero_features = await self.player_hero_feature_creator.create_player_hero_features(session, [match_instance]) 
         except Exception as e:
             logger.error(f"Error creating features {e}", exc_info=True)
             raise e
