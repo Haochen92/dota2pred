@@ -36,10 +36,6 @@ class TeamFeatureCreator:
                 dire_team = instance.dire_name
                 current_match_start = instance.start_time
                 
-                # Validate required data
-                if not match_id:
-                    logger.error("Missing match_id for instance, skipping")
-                    continue
                 
                 if before_timestamp:
                     effective_before = before_timestamp
