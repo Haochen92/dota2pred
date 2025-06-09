@@ -1,10 +1,12 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, ANY
+from unittest.mock import AsyncMock, ANY, MagicMock
 
 import pandas as pd
 import numpy as np
 
+
+from dota_oracle.models.match import MatchTable
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
@@ -32,10 +34,6 @@ async def test_prepare_features_for_inference(feature_preparation_service, mock_
     match_id = 123
     mock_df = pd.DataFrame([{"match_id":"12345"}])
     mock_np = np.array([1,2,3,4])
-    
-    # Mock repository
-    mock_match_repo = AsyncMock(spec=MatchRepository)
-    mock_hero_repo = AsyncMock(spec=HeroesRepository)
     
     # Mock database response
     mock_db_response = (
@@ -84,16 +82,45 @@ async def test_prepare_features_for_inference(feature_preparation_service, mock_
     mock_to_numpy.assert_called_once()
 
     
-
-@pytest_asyncio.fixture
-async def model_inference_service():
-    service = ModelInferenceService()
+@pytest.mark.asyncio
+async def test_get_features_from_db(feature_preparation_service, mocker):
+    # Arrange
+    match_id = 123
+    mock_team_features = TeamFeaturesTableFactory.build(match_id=match_id)
+    mock_hero_features = HeroFeaturesTableFactory.build(match_id=match_id)
+    mock_player_hero_features = PlayerHeroFeatureTableFactory.build(match_id=match_id)
+    mock_match_repository = AsyncMock(spec=MatchRepository)
     
-    # Just set the attribute directly - bypass the async initialization
-    service.model_metadata = ModelMetaDataAPIResponseFactory.build()
+     # Create a mock match instance with the required attributes
+    mock_match_instance = MagicMock()
+    mock_match_instance.team_features = mock_team_features
+    mock_match_instance.hero_features = mock_hero_features
+    mock_match_instance.player_hero_features = mock_player_hero_features
     
-    return service
+    
+    mock_get_match_details = mocker.patch.object(
+        mock_match_repository,
+        'get_match_details',
+        return_value=[mock_match_instance]
+    )
+    
+    # Act
+    
+    res = await feature_preparation_service._get_features_from_db(
+        match_id=match_id,
+        match_repository=mock_match_repository
+    )
+    
+    # Assert
+    
+    assert (mock_team_features, mock_hero_features, mock_player_hero_features) == res
+    
+    mock_get_match_details.assert_awaited_once_with(
+        input_id_list=[match_id],
+        relationship_fields=["team_features", "player_hero_features", "hero_features"],
+        limit=1
+    )
+    
 
-@pytest_asyncio.fixture
-async def feature_preparation_service(model_inference_service):
-    return FeaturePreparationService(model_inference_service)
+    
+    
