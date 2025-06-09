@@ -51,7 +51,6 @@ async def test_create_player_hero_features_success(
     assert feature_row.player_hero_128_win_rate == 0.6
 
 
-# ✅ REWRITTEN: Using pytest.param with clean approach
 @pytest.mark.asyncio
 @pytest.mark.parametrize("missing_data", [
     pytest.param(
@@ -159,11 +158,11 @@ async def test_calculate_win_rate_logic(
     # Arrange
     
     mock_session = mocker.AsyncMock()
-    # We mock the repository's method to avoid creating a real repo instance
+
     mock_repo_instance = mocker.AsyncMock()
     mock_repo_instance.get_player_hero_win_history.return_value = history
     
-    # We patch the HistoryRepository class to return our mock instance when instantiated
+    
     mocker.patch(
         f'{FUNCTION_FP}.HistoryRepository',
         return_value=mock_repo_instance
