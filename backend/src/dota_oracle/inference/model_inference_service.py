@@ -10,11 +10,12 @@ class ModelInferenceService:
     def __init__(self):
         self.predict_url = "http://localhost:3333/predict"
         self.metadata_url = "http://localhost:3333/get_metadata"
+        self.model_metadata = None
         
     async def initialize_async_service(self):
         # Initialize async service
         try:
-            self.model_metadata: ModelMetaDataAPIResponse = await self.get_model_metadata()
+            self.model_metadata = await self.get_model_metadata()
         except Exception as e:
             raise e
 
