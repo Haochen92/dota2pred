@@ -4,6 +4,14 @@ from sqlalchemy import BigInteger, Column, String, TIMESTAMP, Boolean, Integer
 from datetime import datetime
 
 class TeamHistoryTable(SQLModel, table=True):
+    """Database table for team match history.
+    
+    Attributes:
+        team_name: Team name (str, primary key)
+        match_id: Match identifier (BigInteger, primary key)
+        win: Whether team won (bool)
+        start_time: Match start with timezone (TIMESTAMP)
+    """
     __tablename__ = 'team_histories' # type: ignore
     
     # Composite Primary Key
@@ -21,6 +29,14 @@ class TeamHistoryTable(SQLModel, table=True):
     )
 
 class TeamMatchupHistoryTable(SQLModel, table=True):
+    """Database table for team vs team matchup history.
+    
+    Attributes:
+        team1_name, team2_name: Team names (str, primary key)
+        match_id: Match identifier (BigInteger, primary key)
+        win: Whether team1 won (bool)
+        start_time: Match start with timezone (TIMESTAMP)
+    """
     __tablename__ = 'team_matchup_histories' # type: ignore
     
     team1_name: str = Field(
@@ -40,6 +56,15 @@ class TeamMatchupHistoryTable(SQLModel, table=True):
     )
 
 class PlayerHeroHistoryTable(SQLModel, table=True):
+    """Database table for player-hero combination history.
+    
+    Attributes:
+        account_id: Player account ID (BigInteger, primary key)
+        hero_id: Hero identifier (Integer, primary key)
+        match_id: Match identifier (BigInteger, primary key)
+        win: Whether player won with this hero (bool)
+        start_time: Match start with timezone (TIMESTAMP)
+    """
     __tablename__ = 'player_hero_histories' #type: ignore
     
     # Composite Primary Key

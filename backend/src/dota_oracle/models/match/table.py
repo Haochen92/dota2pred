@@ -5,6 +5,23 @@ from datetime import datetime
 from .base import Match, MatchOutcome
 
 class MatchTable(Match, table=True):
+    """Database table for match data.
+    
+    Inherits from Match with database-specific field overrides.
+    
+    Attributes:
+        match_id: Primary key match identifier (BigInteger)
+        slot_*_account_id: Player account IDs for all 10 slots (BigInteger)
+        radiant_team_id, dire_team_id: Team identifiers (BigInteger)
+        start_time: Match start with timezone support (TIMESTAMP)
+    
+    Relationships:
+        outcome: Related match outcome (Optional[MatchOutcomeTable])
+        predictions: List of match predictions (List[MatchPredictionTable])
+        team_features: Team-based features (Optional[TeamFeaturesTable])
+        player_hero_features: Player-hero features (Optional[PlayerHeroFeatureTable])
+        hero_features: Hero-based features (Optional[HeroFeaturesTable])
+    """
     __tablename__ = "matches"  # type: ignore
     # Primary Key
     match_id: int = Field(sa_column=Column('match_id', BigInteger, primary_key=True))
@@ -52,6 +69,16 @@ class MatchTable(Match, table=True):
     )
 
 class MatchOutcomeTable(MatchOutcome, table=True):
+    """Database table for match outcomes.
+    
+    Inherits from MatchOutcome with database-specific fields.
+    
+    Attributes:
+        match_id: Foreign key to matches table (BigInteger, primary key)
+    
+    Relationships:
+        match: Related MatchTable instance
+    """
     __tablename__ = 'match_outcomes' # type: ignore
     
     match_id: int = Field(

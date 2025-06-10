@@ -3,6 +3,18 @@ from typing import Optional
 from datetime import datetime
 
 class Match(SQLModel):
+    """Base match model with core match data.
+    
+    Attributes:
+        match_id: Unique match identifier (int)
+        leagueid: League identifier (Optional[int])
+        radiant_name, dire_name: Team names (Optional[str])
+        radiant_team_id, dire_team_id: Team identifiers (int)
+        start_time: Match start time (datetime)
+        duration: Match duration in seconds (Optional[float])
+        slot_*_hero_id: Hero IDs for all 10 player slots (str)
+        slot_*_account_id: Account IDs for all 10 player slots (int)
+    """
     # UUID
     match_id: int
     
@@ -44,10 +56,23 @@ class Match(SQLModel):
     
     
 class MatchOutcome(SQLModel):
+    """Match outcome model.
+    
+    Attributes:
+        match_id: Match identifier (int)
+        radiant_win: Whether radiant team won (bool)
+    """
     match_id: int
     radiant_win: bool
     
     
 class MatchWithOutcome(Match):
+    """Match model combined with outcome data.
+    
+    Inherits from Match and adds outcome information.
+    
+    Attributes:
+        radiant_win: Whether radiant team won (bool)
+    """
     radiant_win: bool
     
