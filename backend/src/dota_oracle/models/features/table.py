@@ -4,6 +4,19 @@ from typing import List
 
 
 class TeamFeaturesTable(SQLModel, table=True):
+    """Database table for team-based features.
+    
+    Links to matches table with computed team features.
+    
+    Attributes:
+        match_id: Primary/foreign key to matches (BigInteger)
+        radiant_dire_matchup: Team matchup strength (float)
+        radiant_win_rate: Radiant team win rate (float)
+        dire_win_rate: Dire team win rate (float)
+    
+    Relationships:
+        match: Related MatchTable instance
+    """
     """
     Feature model for match data with match_id as both primary and foreign key.
     This links to the matches table while storing computed features.
@@ -25,6 +38,15 @@ class TeamFeaturesTable(SQLModel, table=True):
 
 
 class HeroFeaturesTable(SQLModel, table=True):
+    """Database table for hero-based features.
+    
+    Attributes:
+        match_id: Primary/foreign key to matches (BigInteger)
+        hero_picks: List of hero picks stored as JSON (List[str])
+    
+    Relationships:
+        match: Related MatchTable instance
+    """
     __tablename__ = 'hero_features' # type: ignore
     
     # Primary key
@@ -38,6 +60,15 @@ class HeroFeaturesTable(SQLModel, table=True):
     match: "MatchTable" = Relationship(back_populates="hero_features")
 
 class PlayerHeroFeatureTable(SQLModel, table=True):
+    """Database table for player-hero combination features.
+    
+    Attributes:
+        match_id: Primary/foreign key to matches (BigInteger)
+        player_hero_*_win_rate: Win rates for all 10 player-hero combinations (float)
+    
+    Relationships:
+        match: Related MatchTable instance
+    """
     __tablename__ = 'player_hero_features' # type: ignore
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
