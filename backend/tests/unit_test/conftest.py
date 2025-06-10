@@ -26,8 +26,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 @pytest.fixture
 def mock_async_session():
     session = AsyncMock(spec=AsyncSession)
-    session.begin.return_value.__aenter__ = AsyncMock()
-    session.begin.return_value.__aexit__ = AsyncMock()
     return session
 
 @pytest.fixture
