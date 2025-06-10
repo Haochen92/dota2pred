@@ -10,6 +10,7 @@ FUNCTION_FP = 'dota_oracle.feature_engineering.player_hero_features_creator'
 @pytest.mark.asyncio
 async def test_create_player_hero_features_success(
     player_hero_features_creator, 
+    mock_async_session,
     mocker,
     mock_task_result_factory,
 ):
@@ -17,7 +18,6 @@ async def test_create_player_hero_features_success(
     Tests the happy path where a feature row is successfully created for a valid match.
     """
     # Arrange
-    mock_session = mocker.AsyncMock()
     
     match_instance = MatchTableFactory.build(match_id=1001)
     
@@ -35,7 +35,7 @@ async def test_create_player_hero_features_success(
 
     # Act
     result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_session,
+        session=mock_async_session,
         match_instances=[match_instance]
     )
     
@@ -68,6 +68,7 @@ async def test_create_player_hero_features_success(
 ])
 async def test_create_features_skips_match_with_missing_data(
     player_hero_features_creator, 
+    mock_async_session,
     mocker,
     missing_data: dict
 ):
@@ -76,13 +77,11 @@ async def test_create_features_skips_match_with_missing_data(
     """
     # Arrange - Factory called at test time, fresh instance each run
     match_instance = MatchTableFactory.build(**missing_data)
-    
-    mock_session = mocker.AsyncMock()
     mock_logger_error = mocker.patch(f'{FUNCTION_FP}.logger.error')
     
     # Act
     result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_session,
+        session=mock_async_session,
         match_instances=[match_instance]
     )
     
@@ -94,6 +93,7 @@ async def test_create_features_skips_match_with_missing_data(
 @pytest.mark.asyncio
 async def test_create_features_handles_task_failure_gracefully(
     player_hero_features_creator, 
+    mock_async_session,
     mock_task_result_factory, 
     mocker
 ):
@@ -102,7 +102,6 @@ async def test_create_features_handles_task_failure_gracefully(
     and the feature creation for the match still succeeds.
     """
     # Arrange
-    mock_session = mocker.AsyncMock()
     match_instance = MatchTableFactory.build(match_id=789)
     
     # Mock results where one task fails and the others succeed
@@ -122,7 +121,7 @@ async def test_create_features_handles_task_failure_gracefully(
     
     # Act
     result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_session,
+        session=mock_async_session,
         match_instances=[match_instance]
     )
     
@@ -148,6 +147,7 @@ async def test_create_features_handles_task_failure_gracefully(
 ])
 async def test_calculate_win_rate_logic(
     player_hero_features_creator, 
+    mock_async_session,
     mocker, 
     history,
     expected_win_rate
@@ -156,8 +156,6 @@ async def test_calculate_win_rate_logic(
     Tests the _calculate_win_rate helper method's logic directly.
     """
     # Arrange
-    
-    mock_session = mocker.AsyncMock()
 
     mock_repo_instance = mocker.AsyncMock()
     mock_repo_instance.get_player_hero_win_history.return_value = history
@@ -170,7 +168,7 @@ async def test_calculate_win_rate_logic(
     
     # Act
     win_rate = await player_hero_features_creator._calculate_win_rate(
-        session=mock_session,
+        session=mock_async_session,
         account_id=1,
         hero_id=2,
         before=datetime.now(timezone.utc)
