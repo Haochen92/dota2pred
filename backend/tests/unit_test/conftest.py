@@ -17,6 +17,7 @@ from dota_oracle.feature_engineering import (
 # Factories import
 from ..factories.unit_test_factory import ModelMetaDataAPIResponseFactory, ModelPredictionAPIResponseFactory
 
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ================================
 # INFRASTRUCTURE MOCKS
@@ -24,7 +25,7 @@ from ..factories.unit_test_factory import ModelMetaDataAPIResponseFactory, Model
 
 @pytest.fixture
 def mock_async_session():
-    session = AsyncMock()
+    session = AsyncMock(spec=AsyncSession)
     session.begin.return_value.__aenter__ = AsyncMock()
     session.begin.return_value.__aexit__ = AsyncMock()
     return session
