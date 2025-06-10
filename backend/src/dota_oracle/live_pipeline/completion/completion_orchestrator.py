@@ -74,7 +74,7 @@ class CompletionOrchestrator:
                         event_stream=STREAM_PENDING_COMPLETION
                     )
                 count_failure += 1
-                raise e
+                continue
             
         logger.info(f"Completion Orchestrator: Successfully processed {count_success} and failed {count_failure}")
         
