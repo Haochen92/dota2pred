@@ -60,7 +60,10 @@ class CompletionOrchestrator:
             try:    
                 if isinstance(result, Exception):
                     raise result
-                self.redis.mark_match_as_completed
+                await self.redis.mark_match_as_completed(
+                    match_id= event_data.match_id,
+                    event_id_to_ack=event_id
+                )
                 count_success += 1
             except Exception as e:
                 await self.redis.handle_processing_failure(
