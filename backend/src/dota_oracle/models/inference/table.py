@@ -5,6 +5,18 @@ from datetime import datetime
 from .schema import MatchPrediction
 
 class MatchPredictionTable(MatchPrediction, table=True):
+    """Database table for match predictions.
+    
+    Inherits from MatchPrediction with database-specific fields.
+    
+    Attributes:
+        match_id: Foreign key to matches table (int, primary key)
+        predictor_name: Model name used for prediction (str, primary key)
+        prediction_date: Timestamp with timezone support (datetime)
+    
+    Relationships:
+        match: Related MatchTable instance
+    """
     __tablename__ = 'match_predictions' # type: ignore
     
     # Override Composite Primary Key
