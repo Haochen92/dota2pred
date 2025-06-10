@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 from unittest.mock import AsyncMock
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
