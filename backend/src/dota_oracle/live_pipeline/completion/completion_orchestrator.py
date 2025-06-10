@@ -56,8 +56,8 @@ class CompletionOrchestrator:
         for task_result in results:
             event_id: str = task_result.key
             event_data: StreamMatchEventData = work_item_map[event_id]
-            result = task_result.get_result()
-            try:    
+            try:
+                result = task_result.get_result()
                 if isinstance(result, Exception):
                     raise result
                 await self.redis.mark_match_as_completed(
