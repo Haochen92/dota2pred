@@ -4,25 +4,51 @@ from dota_oracle.models.redis.schema import StreamMatchEventData
 from dota_oracle.models.match import MatchTable
 
 class NewMatchWorkItem(SQLModel):
-    """DTO for new match processing work items."""
+    """
+    DTO for new match processing work items.
+    
+    Attributes:
+        live_match_data: LiveLeagueGame -> parsed game data from 
+        match_id: int -> unique identifier for a match
+    """
     live_match_data: LiveLeagueGame
     match_id: int
     
 
 class FeatureEngineeringWorkItem(SQLModel):
-    """DTO for feature engineering work items."""
+    """
+    DTO for feature engineering work items.
+    
+    Attributes:
+        event_id: str -> a string representing event_id from a redis Stream
+        event_data: StreamMatchEventData -> event data from a redis Stream
+        match_details: MatchTable -> MatchTable 
+    """
     event_id: str
     event_data: StreamMatchEventData
     match_details: MatchTable
 
 class PredictionWorkItem(SQLModel):
-    """DTO for prediction work items."""
+    """
+    DTO for prediction work items.
+    
+    Attributes:
+        event_id: str -> a string representing event_id from a redis Stream
+        event_data: StreamMatchEventData -> event data from a redis Stream
+        match_details: MatchTable -> MatchTable
+    """
     event_id: str
     event_data: StreamMatchEventData
     match_id: int
     
 class CompletionWorkItem(SQLModel):
-    """DTO for new match Competion work items."""
+    """
+    DTO for new match Competion work items.
+        Attributes:
+        event_id: str -> a string representing event_id from a redis Stream
+        event_data: StreamMatchEventData -> event data from a redis Stream
+        match_details: MatchTable -> MatchTable
+    """
     event_id: str
     event_data: StreamMatchEventData
     outcome: bool
