@@ -7,13 +7,13 @@ FUNCTION_FP = 'dota_oracle.feature_engineering.team_features_creator'
 @pytest.mark.asyncio
 async def test_team_feature_success(
     team_feature_creator, 
+    mock_async_session,
     mocker,
 ):
     """
     Tests the happy path where a feature row is successfully created for a valid match.
     """
     # Arrange
-    mock_session = mocker.AsyncMock()
     match_instance = MatchTableFactory.build(match_id=1001, radiant_name='Team Liquid', dire_name='Team Secret')
     
     # Mock called methods
@@ -22,7 +22,7 @@ async def test_team_feature_success(
 
     # Act
     result = await team_feature_creator.create_team_features(
-        db_session=mock_session,
+        db_session=mock_async_session,
         match_instances=[match_instance]
     )
     

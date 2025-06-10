@@ -17,9 +17,9 @@ F_PATH = "dota_oracle.live_pipeline.completion.completion_event_processor"
 
 @pytest.mark.asyncio
 async def test_process_events_successfully(
-    mocker, 
+    completion_event_processor: CompletionEventProcessor,
     mock_async_session,
-    completion_event_processor: CompletionEventProcessor):
+    mocker):
     # ARRANGE
     mock_work_item = CompletionWorkItemFactory.build()
     mock_repository = AsyncMock(spec=MatchRepository)
