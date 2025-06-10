@@ -16,6 +16,7 @@ from dota_oracle.models.pipeline.schema import (
     PredictionWorkItem,
     CompletionWorkItem
 )
+from dota_oracle.models.utils import TaskResult, AsyncTask
 
 
 # ================================
@@ -49,3 +50,11 @@ class PredictionWorkItemFactory(ModelFactory[PredictionWorkItem]):
 @register_fixture
 class CompletionWorkItemFactory(ModelFactory[CompletionWorkItem]):
     outcome = Use(lambda: True)
+    
+@register_fixture
+class TaskResultFactory(ModelFactory[TaskResult]):
+    pass
+
+@register_fixture
+class AsyncTaskFactory(ModelFactory[AsyncTask]):
+    pass
