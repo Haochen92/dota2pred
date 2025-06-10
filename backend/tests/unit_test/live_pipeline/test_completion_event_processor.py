@@ -14,17 +14,6 @@ from ...factories.unit_test_factory import CompletionWorkItemFactory
 
 F_PATH = "dota_oracle.live_pipeline.completion.completion_event_processor"
 
-@pytest_asyncio.fixture
-async def completion_event_processor():
-    mock_history_update_service = AsyncMock(spec=HistoryUpdateService)
-    mock_db_engine = AsyncMock(spec=AsyncEngine)
-    processor = CompletionEventProcessor(
-        db_engine=mock_db_engine,
-        history_update_service=mock_history_update_service
-    )
-    
-    return processor
-
 
 @pytest.mark.asyncio
 async def test_process_events_successfully(
