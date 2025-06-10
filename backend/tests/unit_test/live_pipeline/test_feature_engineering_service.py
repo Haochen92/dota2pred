@@ -16,8 +16,8 @@ F_PATH = "dota_oracle.live_pipeline.services.feature_engineering_service"
 
 @pytest.mark.asyncio
 async def test_create_and_store_features_sucessfully(
-    mocker,
     mock_async_session,
+    mocker,
 ):
     # Arrange
     mock_logger = mocker.patch(f"{F_PATH}.logger")
@@ -67,8 +67,8 @@ async def test_create_and_store_features_sucessfully(
     
 @pytest.mark.asyncio
 async def test_missing_feature_raise_error(
-    mocker,
     mock_async_session,
+    mocker,
 ):
     # Arrange
     

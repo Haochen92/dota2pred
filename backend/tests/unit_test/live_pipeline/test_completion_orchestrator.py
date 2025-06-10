@@ -4,8 +4,8 @@ from dota_oracle.constants.redis_constants import COMPLETION_GROUP, STREAM_PENDI
 
 F_PATH = 'dota_oracle.live_pipeline.completion.completion_orchestrator'
 
-pytest.mark.asyncio
-async def test_run_completion_cycle_successfully(mocker, completion_orchestrator):
+@pytest.mark.asyncio
+async def test_run_completion_cycle_successfully(completion_orchestrator, mocker):
     
     # ARRANGE 
     mock_work_items = CompletionWorkItemFactory.build()
@@ -30,7 +30,7 @@ async def test_run_completion_cycle_successfully(mocker, completion_orchestrator
     mock_mark_as_completed.assert_awaited_once()
     
 @pytest.mark.asyncio
-async def test_run_completion_cycle_one_failure(mocker, completion_orchestrator):
+async def test_run_completion_cycle_one_failure(completion_orchestrator, mocker):
     # Arrange
     mock_work_items = CompletionWorkItemFactory.build()
     mock_error = ValueError()
