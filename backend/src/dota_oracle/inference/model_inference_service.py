@@ -10,8 +10,7 @@ class ModelInferenceService:
     def __init__(self):
         self.predict_url = "http://localhost:3333/predict"
         self.metadata_url = "http://localhost:3333/get_metadata"
-        self.model_metadata = None
-        
+
     @classmethod
     async def create(cls):
         # Factory class method to create and initialize service
@@ -64,7 +63,6 @@ class ModelInferenceService:
                     result_dict = await response.json()
                     
                     logger.debug("Successfully fetched metadata")
-                    logger.info(f"Actual metadata from BentoML: {result_dict}")
                     validated_metadata = ModelMetaDataAPIResponse.model_validate(result_dict)
                     
                     if not validated_metadata:
