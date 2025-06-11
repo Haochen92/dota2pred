@@ -23,7 +23,7 @@ class RedisService:
         self.redis: redis.Redis = redis_client
         self._initialized:bool = False
 
-    async def initialize(self):
+    async def initialize_async_service(self):
         if self._initialized:
             return
 
