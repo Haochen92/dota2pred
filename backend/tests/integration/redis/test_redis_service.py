@@ -312,8 +312,8 @@ async def test_record_failure_and_ack(
         )
         
         # test return value
-        actual_return_value = await redis_service_test_subject.record_failure_and_ack(test_failure_record)
-        assert actual_return_value == True, f"Test ID 'test_id': Expected {True} got {actual_return_value}"
+        actual_return_value = await redis_service_test_subject._record_failure_and_ack(test_failure_record)
+        assert actual_return_value is True , f"Test ID 'test_id': Expected {True} got {actual_return_value}"
         
         # test target hash value
         actual_hash_dict = await test_redis_client.hgetall(target_dlq_hash) # type:ignore
@@ -377,7 +377,7 @@ async def test_record_failure_and_ack_serialization_error(
     )
     
     # ACT
-    actual_return_value = await redis_service_test_subject.record_failure_and_ack(test_failure_record)
+    actual_return_value = await redis_service_test_subject._record_failure_and_ack(test_failure_record)
     
     # Assert
     assert actual_return_value == True
