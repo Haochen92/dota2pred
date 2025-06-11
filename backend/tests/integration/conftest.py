@@ -16,7 +16,7 @@ from dota_oracle.live_pipeline.services.redis_service import RedisService
 from dota_oracle.utils.set_logging import get_logger
 
 # db base class import
-from .integration.repositories.base_test_repository import BaseTestRepository
+from .repositories.base_test_repository import BaseTestRepository
 
 
 logger = get_logger(__name__)
@@ -35,8 +35,8 @@ async def test_redis_client(redis_container_instance: RedisContainer):
     host = redis_container_instance.get_container_host_ip()
     port = redis_container_instance.get_exposed_port(6379)
     
-    pool = aioredis.ConnectionPool(host=host, port=int(port))
-    client = aioredis.Redis(connection_pool=pool, decode_responses=True)
+    pool = aioredis.ConnectionPool(host=host, port=int(port), decode_responses=True)
+    client = aioredis.Redis(connection_pool=pool)
     
     await client.ping() # Verify connection
     yield client
@@ -52,8 +52,8 @@ async def redis_service_test_subject(redis_container_instance: RedisContainer):
     host = redis_container_instance.get_container_host_ip()
     port = redis_container_instance.get_exposed_port(6379)
 
-    pool = aioredis.ConnectionPool(hosts=host, port=int(port))
-    service_redis_client = aioredis.Redis(connection_pool=pool, decode_responses=True)
+    pool = aioredis.ConnectionPool(host=host, port=int(port), decode_responses=True)
+    service_redis_client = aioredis.Redis(connection_pool=pool)
 
     # Instantiate your service with this dedicated client
     service = RedisService(redis_client=service_redis_client)
