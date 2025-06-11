@@ -28,9 +28,14 @@ class FeaturePreparationService:
         model_inference_service: ModelInferenceService
     ):
         self.model_inference_service = model_inference_service
-        self.model_feature_names: List[str] = model_inference_service.model_metadata.feature_columns
-        if not self.model_feature_names:
-            raise ValueError("Empty column feature names when initialising service")
+        self.model_feature_names = self._extract_feature_columns()
+        
+    def _extract_feature_columns(self):
+        model_metadata = self.model_inference_service.model_metadata
+        feature_columns = model_metadata.version_metadata.feature_columns
+        
+        if not feature_columns:
+            raise ValueError(f"feature_columns returned invalid value of {feature_columns}")
         
     async def prepare_features_for_inference(self, match_id: int, db_session: AsyncSession) -> Optional[np.ndarray]:
         """
