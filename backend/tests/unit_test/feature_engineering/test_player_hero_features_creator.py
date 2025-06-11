@@ -12,7 +12,6 @@ async def test_create_player_hero_features_success(
     player_hero_features_creator, 
     mock_async_session,
     mocker,
-    mock_task_result_factory,
 ):
     """
     Tests the happy path where a feature row is successfully created for a valid match.
@@ -21,17 +20,8 @@ async def test_create_player_hero_features_success(
     
     match_instance = MatchTableFactory.build(match_id=1001)
     
-    # Mock the TaskRunner to return predictable results for each player
-    mock_results = [
-        mock_task_result_factory(key=f'player_hero_{i}_win_rate', result=0.6)
-        for i in list(range(5)) + list(range(128, 133))
-    ]
-    
-    # Patch the TaskRunner within the module where it's being used
-    mocker.patch(
-        f'{FUNCTION_FP}.TaskRunner.run_concurrently',
-        return_value=mock_results
-    )
+    # Mock the _calculate_win_rate method to return predictable results
+    mocker.patch.object(player_hero_features_creator, '_calculate_win_rate', return_value=0.6)
 
     # Act
     result = await player_hero_features_creator.create_player_hero_features(
@@ -94,7 +84,6 @@ async def test_create_features_skips_match_with_missing_data(
 async def test_create_features_handles_task_failure_gracefully(
     player_hero_features_creator, 
     mock_async_session,
-    mock_task_result_factory, 
     mocker
 ):
     """
@@ -104,19 +93,23 @@ async def test_create_features_handles_task_failure_gracefully(
     # Arrange
     match_instance = MatchTableFactory.build(match_id=789)
     
-    # Mock results where one task fails and the others succeed
-    mock_results = [
-        mock_task_result_factory(key='player_hero_0_win_rate', result=0.75),
-        mock_task_result_factory(key='player_hero_1_win_rate', exception=ValueError("Calculation failed!")),
-    ] + [
-        mock_task_result_factory(key=f'player_hero_{i}_win_rate', result=0.6)
-        for i in list(range(2, 5)) + list(range(128, 133))
-    ]
+    # Mock _calculate_win_rate to simulate task failure with side effects
+    def mock_calculate_win_rate(*args, **kwargs):
+        # Simulate a failure for the second call (player 1)
+        if mock_calculate_win_rate.call_count == 2:
+            raise ValueError("Calculation failed!")
+        elif mock_calculate_win_rate.call_count == 1:
+            return 0.75
+        else:
+            return 0.6
     
-    mocker.patch(
-        f'{FUNCTION_FP}.TaskRunner.run_concurrently',
-        return_value=mock_results
-    )
+    mock_calculate_win_rate.call_count = 0
+    
+    def side_effect(*args, **kwargs):
+        mock_calculate_win_rate.call_count += 1
+        return mock_calculate_win_rate(*args, **kwargs)
+    
+    mocker.patch.object(player_hero_features_creator, '_calculate_win_rate', side_effect=side_effect)
     mock_logger_warning = mocker.patch(f'{FUNCTION_FP}.logger.warning')
     
     # Act
