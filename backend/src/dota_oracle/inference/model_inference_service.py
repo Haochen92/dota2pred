@@ -55,8 +55,9 @@ class ModelInferenceService:
     async def get_model_metadata(self) -> ModelMetaDataAPIResponse:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(
+                async with session.post(
                     self.metadata_url,
+                    json={},
                     headers={"Accept": "application/json"}
                 ) as response:
                     response.raise_for_status()
