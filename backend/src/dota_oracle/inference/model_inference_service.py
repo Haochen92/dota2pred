@@ -64,6 +64,7 @@ class ModelInferenceService:
                     result_dict = await response.json()
                     
                     logger.debug("Successfully fetched metadata")
+                    logger.info(f"Actual metadata from BentoML: {result_dict}")
                     validated_metadata = ModelMetaDataAPIResponse.model_validate(result_dict)
                     
                     if not validated_metadata:
