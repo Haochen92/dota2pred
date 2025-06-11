@@ -12,6 +12,13 @@ class ModelInferenceService:
         self.metadata_url = "http://localhost:3333/get_metadata"
         self.model_metadata = None
         
+    @classmethod
+    async def create(cls):
+        # Factory class method to create and initialize service
+        instance = cls()
+        await instance.initialize_async_service()
+        return instance
+        
     async def initialize_async_service(self):
         # Initialize async service
         try:
