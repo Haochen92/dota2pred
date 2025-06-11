@@ -35,7 +35,7 @@ async def test_initialize_redis_service(
     redis_service_test_subject: RedisService,
     test_redis_client: AIORedis
 ):
-    await redis_service_test_subject.initialize()
+    await redis_service_test_subject.initialize_async_service()
     
     expected_streams_and_groups = [
         (STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP),
@@ -52,7 +52,7 @@ async def test_initialize_redis_service(
         assert await test_redis_client.exists(stream_name), f"Stream '{stream_name}' was not created."
 
     # Verify idempotency (calling initialize again should not fail)
-    await redis_service_test_subject.initialize()
+    await redis_service_test_subject.initialize_async_service()
     # Re-check one group to be sure
     groups_info = await test_redis_client.xinfo_groups(STREAM_NEW_MATCHES)
     assert any(group_info['name'] == FEATURE_ENGINEER_GROUP for group_info in groups_info), \
