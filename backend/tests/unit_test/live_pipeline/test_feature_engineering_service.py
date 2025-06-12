@@ -6,10 +6,6 @@ from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.utils import TaskRunner
 
 from dota_oracle.live_pipeline.services.feature_engineering_service import FeatureEngineeringService
-from ...factories.repository_factories import (
-    TeamFeaturesTableFactory, PlayerHeroFeatureTableFactory,
-    HeroFeaturesTableFactory, MatchTableFactory
-)
 
 F_PATH = "dota_oracle.live_pipeline.services.feature_engineering_service"
 
@@ -17,6 +13,10 @@ F_PATH = "dota_oracle.live_pipeline.services.feature_engineering_service"
 @pytest.mark.asyncio
 async def test_create_and_store_features_sucessfully(
     mock_async_session,
+    match_table_factory,
+    hero_features_table_factory,
+    team_features_table_factory,
+    player_hero_feature_table_factory,
     mocker,
 ):
     # Arrange
@@ -24,16 +24,16 @@ async def test_create_and_store_features_sucessfully(
     mock_store_features = mocker.patch.object(FeaturesRepository, 'store_features')
     mock_task_runner = mocker.patch.object(TaskRunner, 'run_as_group')
     
-    match_instance = MatchTableFactory.build(match_id=123)
+    match_instance = match_table_factory.build(match_id=123)
     
     # Mock static method
     mock_heroes_creator = mocker.patch(f'{F_PATH}.HeroesFeatureCreator.create_hero_features')
-    mock_heroes_creator.return_value = [HeroFeaturesTableFactory.build(match_id=123)]
+    mock_heroes_creator.return_value = [hero_features_table_factory.build(match_id=123)]
     
     mock_team_feature_creator = AsyncMock()
-    mock_team_feature_creator.create_team_features.return_value = [TeamFeaturesTableFactory.build(match_id=123)]
+    mock_team_feature_creator.create_team_features.return_value = [team_features_table_factory.build(match_id=123)]
     mock_player_hero_feature_creator = AsyncMock()
-    mock_player_hero_feature_creator.create_player_hero_features.return_value = [PlayerHeroFeatureTableFactory.build(match_id=123)]
+    mock_player_hero_feature_creator.create_player_hero_features.return_value = [player_hero_feature_table_factory.build(match_id=123)]
     
     feature_engineering_service = FeatureEngineeringService(
         team_feature_creator=mock_team_feature_creator,
@@ -68,20 +68,23 @@ async def test_create_and_store_features_sucessfully(
 @pytest.mark.asyncio
 async def test_missing_feature_raise_error(
     mock_async_session,
+    match_table_factory,
+    team_features_table_factory,
+    player_hero_feature_table_factory,
     mocker,
 ):
     # Arrange
     
-    match_instance = MatchTableFactory.build(match_id=123)
+    match_instance = match_table_factory.build(match_id=123)
     
     # Mock static method
     mock_heroes_creator = mocker.patch(f'{F_PATH}.HeroesFeatureCreator.create_hero_features')
     mock_heroes_creator.return_value = None
     
     mock_team_feature_creator = AsyncMock()
-    mock_team_feature_creator.create_team_features.return_value = TeamFeaturesTableFactory.build(match_id=123)
+    mock_team_feature_creator.create_team_features.return_value = team_features_table_factory.build(match_id=123)
     mock_player_hero_feature_creator = AsyncMock()
-    mock_player_hero_feature_creator.create_player_hero_features.return_value = PlayerHeroFeatureTableFactory.build(match_id=123)
+    mock_player_hero_feature_creator.create_player_hero_features.return_value = player_hero_feature_table_factory.build(match_id=123)
     
     feature_engineering_service = FeatureEngineeringService(
         team_feature_creator=mock_team_feature_creator,

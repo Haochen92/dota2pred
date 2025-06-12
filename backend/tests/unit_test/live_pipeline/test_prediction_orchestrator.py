@@ -1,16 +1,15 @@
 import pytest
-from ...factories.unit_test_factory import PredictionWorkItemFactory, TaskResultFactory
 from dota_oracle.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
 
 F_PATH = 'dota_oracle.live_pipeline.prediction.prediction_orchestrator'
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_successfully(prediction_orchestrator, mocker):
+async def test_run_prediction_cycle_successfully(prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker):
     # ARRANGE 
     mock_work_items = [
-        PredictionWorkItemFactory.build(),
-        PredictionWorkItemFactory.build()
+        prediction_work_item_factory.build(),
+        prediction_work_item_factory.build()
     ]
     
     mock_get_work_items = mocker.patch.object(
@@ -23,7 +22,7 @@ async def test_run_prediction_cycle_successfully(prediction_orchestrator, mocker
     async def mock_run_concurrently(tasks):
         results = []
         for task in tasks:
-            result = TaskResultFactory.build(key=task.key, exception=None)
+            result = task_result_factory.build(key=task.key, exception=None)
             results.append(result)
         return results
     
@@ -62,11 +61,11 @@ async def test_run_prediction_cycle_no_work_items(prediction_orchestrator, mocke
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_one_failure(prediction_orchestrator, mocker):
+async def test_run_prediction_cycle_one_failure(prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker):
     # ARRANGE
     mock_work_items = [
-        PredictionWorkItemFactory.build(),
-        PredictionWorkItemFactory.build()
+        prediction_work_item_factory.build(),
+        prediction_work_item_factory.build()
     ]
     mock_error = ValueError("Prediction failed")
     
@@ -81,9 +80,9 @@ async def test_run_prediction_cycle_one_failure(prediction_orchestrator, mocker)
         results = []
         for i, task in enumerate(tasks):
             if i == 0:  # First task succeeds
-                result = TaskResultFactory.build(key=task.key, exception=None)
+                result = task_result_factory.build(key=task.key, exception=None)
             else:  # Second task fails
-                result = TaskResultFactory.build(key=task.key, exception=mock_error)
+                result = task_result_factory.build(key=task.key, exception=mock_error)
             results.append(result)
         return results
     
@@ -106,20 +105,20 @@ async def test_run_prediction_cycle_one_failure(prediction_orchestrator, mocker)
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_all_failures(prediction_orchestrator, mocker):
+async def test_run_prediction_cycle_all_failures(prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker):
     # ARRANGE
     mock_work_items = [
-        PredictionWorkItemFactory.build(),
-        PredictionWorkItemFactory.build()
+        prediction_work_item_factory.build(),
+        prediction_work_item_factory.build()
     ]
     mock_error1 = ValueError("First prediction failed")
     mock_error2 = RuntimeError("Second prediction failed")
     mock_task_results = [
-        TaskResultFactory.build(
+        task_result_factory.build(
             key=mock_work_items[0].event_id,
             exception=mock_error1
         ),
-        TaskResultFactory.build(
+        task_result_factory.build(
             key=mock_work_items[1].event_id,
             exception=mock_error2
         )
@@ -163,9 +162,9 @@ async def test_run_prediction_cycle_all_failures(prediction_orchestrator, mocker
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_creates_correct_async_tasks(prediction_orchestrator, mocker):
+async def test_run_prediction_cycle_creates_correct_async_tasks(prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker):
     # ARRANGE
-    mock_work_items = [PredictionWorkItemFactory.build()]
+    mock_work_items = [prediction_work_item_factory.build()]
     
     mock_get_work_items = mocker.patch.object(
         prediction_orchestrator.data_provider, 
@@ -177,7 +176,7 @@ async def test_run_prediction_cycle_creates_correct_async_tasks(prediction_orche
     captured_tasks = []
     async def capture_tasks(tasks):
         captured_tasks.extend(tasks)
-        return [TaskResultFactory.build(key=mock_work_items[0].event_id, exception=None)]
+        return [task_result_factory.build(key=mock_work_items[0].event_id, exception=None)]
     
     mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=capture_tasks)
     mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, 'advance_match_to_pending_completion')

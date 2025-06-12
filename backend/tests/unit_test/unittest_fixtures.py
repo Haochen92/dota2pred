@@ -6,13 +6,12 @@ MVP version - includes all core pipeline component mocks.
 import pytest
 from unittest.mock import AsyncMock
 
-# Core imports
+# Core ML Pipeline Imports
 from dota_oracle.feature_engineering import (
     PlayerHeroFeaturesCreator, 
     TeamFeatureCreator, 
     HeroesFeatureCreator
 )
-
 from dota_oracle.inference import ModelInferenceService
 
 # Repository imports
@@ -21,6 +20,7 @@ from dota_oracle.data_repository.features_repository import FeaturesRepository
 from dota_oracle.data_repository.history_repository import HistoryRepository
 from dota_oracle.data_repository.match_repository import MatchRepository
 from dota_oracle.data_repository.prediction_repository import PredictionRepository
+
 
 # Pipeline Services Import
 from dota_oracle.live_pipeline.services.feature_engineering_service import FeatureEngineeringService
@@ -357,3 +357,9 @@ def feature_preparation_service(mock_model_inference_service)-> FeaturePreparati
     mock_model_inference_service.model_metadata = ModelMetaDataAPIResponseFactory.build()
     
     return FeaturePreparationService(mock_model_inference_service)
+
+
+@pytest.fixture
+async def model_inference_service() -> ModelInferenceService:
+    service = await ModelInferenceService.create()
+    return service
