@@ -6,11 +6,6 @@ import pytest_asyncio
 from typing import Dict, Any, Type, List
 
 from dota_oracle.data_repository.features_repository import FeaturesRepository
-from ....factories.repository_factories import (
-    PlayerHeroFeatureTableFactory,
-    TeamFeaturesTableFactory,
-    HeroFeaturesTableFactory,
-)
 from dota_oracle.models.features import (
     PlayerHeroFeatureTable,
     TeamFeaturesTable,
@@ -26,26 +21,24 @@ class TestStoreFeatures:
     """Test storing different types of features to database."""
     
     @pytest.mark.parametrize(
-        "test_scenario,feature_instances,table_class",
+        "test_scenario,factory_name,match_ids,table_class",
         [
             (
                 "store_single_hero_feature_new",
-                [HeroFeaturesTableFactory.build(match_id=1011)], # seeded match only
+                "hero_features_table_factory",
+                1011, # seeded match only
                 HeroFeaturesTable,
             ),
             (
                 "store_multiple_team_feature_new",
-                [
-                    TeamFeaturesTableFactory.build(match_id=1011), # seeded match only
-                    TeamFeaturesTableFactory.build(match_id=1012),
-                ],
+                "team_features_table_factory", 
+                [1011, 1012], # seeded match only
                 TeamFeaturesTable,
             ),
             (
                 "store_player_hero_features_on_conflict_update",
-                [
-                    PlayerHeroFeatureTableFactory.build(match_id=1001), # seeded match and feature
-                ],
+                "player_hero_feature_table_factory",
+                1001, # seeded match and feature
                 PlayerHeroFeatureTable,
             ),
         ]
@@ -56,11 +49,18 @@ class TestStoreFeatures:
         test_repository: BaseTestRepository,
         seed_features_data: Dict[str, Dict[int, Any]],
         test_scenario: str,
-        feature_instances: List[T],
+        factory_name: str,
+        match_ids: Any,
         table_class: Type[T],
+        request,
     ):
         """Test storing various types of features successfully."""
         # Arrange
+        factory = request.getfixturevalue(factory_name)
+        if isinstance(match_ids, list):
+            feature_instances = [factory.build(match_id=mid) for mid in match_ids]
+        else:
+            feature_instances = [factory.build(match_id=match_ids)]
         expected_instance_dict = {instance.match_id: instance for instance in feature_instances}
         
         # Act

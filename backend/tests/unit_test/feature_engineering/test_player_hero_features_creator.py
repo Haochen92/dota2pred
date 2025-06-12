@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import ANY
 from datetime import datetime, timezone
 from dota_oracle.models.features import PlayerHeroFeatureTable
-from ...factories.repository_factories import MatchTableFactory
 from dota_oracle.models.match import MatchTable
 
 FUNCTION_FP = 'dota_oracle.feature_engineering.player_hero_features_creator'
@@ -11,6 +10,7 @@ FUNCTION_FP = 'dota_oracle.feature_engineering.player_hero_features_creator'
 async def test_create_player_hero_features_success(
     player_hero_features_creator, 
     mock_async_session,
+    match_table_factory,
     mocker,
 ):
     """
@@ -18,7 +18,7 @@ async def test_create_player_hero_features_success(
     """
     # Arrange
     
-    match_instance = MatchTableFactory.build(match_id=1001)
+    match_instance = match_table_factory.build(match_id=1001)
     
     # Mock the _calculate_win_rate method to return predictable results
     mocker.patch.object(player_hero_features_creator, '_calculate_win_rate', return_value=0.6)
@@ -59,6 +59,7 @@ async def test_create_player_hero_features_success(
 async def test_create_features_skips_match_with_missing_data(
     player_hero_features_creator, 
     mock_async_session,
+    match_table_factory,
     mocker,
     missing_data: dict
 ):
@@ -66,7 +67,7 @@ async def test_create_features_skips_match_with_missing_data(
     Tests that a match is skipped if essential data like account_id is missing.
     """
     # Arrange - Factory called at test time, fresh instance each run
-    match_instance = MatchTableFactory.build(**missing_data)
+    match_instance = match_table_factory.build(**missing_data)
     mock_logger_error = mocker.patch(f'{FUNCTION_FP}.logger.error')
     
     # Act
@@ -84,6 +85,7 @@ async def test_create_features_skips_match_with_missing_data(
 async def test_create_features_handles_task_failure_gracefully(
     player_hero_features_creator, 
     mock_async_session,
+    match_table_factory,
     mocker
 ):
     """
@@ -91,7 +93,7 @@ async def test_create_features_handles_task_failure_gracefully(
     and the feature creation for the match still succeeds.
     """
     # Arrange
-    match_instance = MatchTableFactory.build(match_id=789)
+    match_instance = match_table_factory.build(match_id=789)
     
     # Mock _calculate_win_rate to simulate task failure with side effects
     def mock_calculate_win_rate(*args, **kwargs):

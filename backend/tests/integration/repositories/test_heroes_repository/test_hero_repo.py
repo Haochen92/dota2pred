@@ -2,7 +2,6 @@ import pytest
 from ..base_test_repository import BaseTestRepository
 
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
-from ....factories.repository_factories import HeroDataTableFactory
 from dota_oracle.models.heroes import HeroDataTable
 from dota_oracle.utils import get_logger 
 
@@ -20,12 +19,13 @@ class TestStoreHeroData:
         self,
         hero_repository_test_subject: HeroesRepository,
         test_repository: BaseTestRepository,
+        hero_data_table_factory,
     ):
         """Test storing new hero data successfully inserts records."""
         # ARRANGE
         input_data = {
-            'anti-mage': HeroDataTableFactory.build(id=10, localized_name='anti-mage'),
-            'lina': HeroDataTableFactory.build(id=11, localized_name='lina')
+            'anti-mage': hero_data_table_factory.build(id=10, localized_name='anti-mage'),
+            'lina': hero_data_table_factory.build(id=11, localized_name='lina')
         }
         
         # ACT
@@ -62,10 +62,11 @@ class TestStoreHeroData:
         self,
         hero_repository_test_subject: HeroesRepository,
         test_repository: BaseTestRepository,
+        hero_data_table_factory,
     ):
         """Test updating existing hero data modifies records correctly."""
         # ARRANGE
-        initial_data = {'Sven': HeroDataTableFactory.build(id=13, localized_name='Sven', base_armor=5.3)}
+        initial_data = {'Sven': hero_data_table_factory.build(id=13, localized_name='Sven', base_armor=5.3)}
         
         # ACT - Initial insert
         await hero_repository_test_subject.store_hero_data(initial_data)
@@ -98,7 +99,7 @@ class TestStoreHeroData:
             )
         
         # ACT - Update with modified data
-        reinsert_data = {'Sven': HeroDataTableFactory.build(id=13, localized_name='Sven', base_armor=10.6)}
+        reinsert_data = {'Sven': hero_data_table_factory.build(id=13, localized_name='Sven', base_armor=10.6)}
         await hero_repository_test_subject.store_hero_data(reinsert_data)
         
         # Fetch updated data
