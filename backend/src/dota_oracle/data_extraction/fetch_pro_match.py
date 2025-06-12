@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 async def fetch_pro_match(max_match_id: int, min_match_id: int) -> List[ProMatchOutcome]:
     output_list = []
     
-    while max_match_id >= min_match_id:
+    while max_match_id > min_match_id:
         try:
             res = await fetch_opendota(
                 endpoint="/proMatches",
