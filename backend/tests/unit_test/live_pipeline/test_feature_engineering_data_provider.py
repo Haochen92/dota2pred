@@ -1,14 +1,11 @@
 import pytest
-from ...factories.redis_models_factory import StreamMatchEventDataFactory
-from ...factories.repository_factories import MatchTableFactory
-
 F_PATH = 'dota_oracle.live_pipeline.feature_engineering.feature_engineering_data_provider'
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(feature_engineering_data_provider, mocker):
+async def test_get_work_items_successfully(feature_engineering_data_provider, mocker, stream_match_event_data_factory, match_table_factory):
     
-    stream_event_data_1 = StreamMatchEventDataFactory.build()
-    stream_event_data_2 = StreamMatchEventDataFactory.build()
+    stream_event_data_1 = stream_match_event_data_factory.build()
+    stream_event_data_2 = stream_match_event_data_factory.build()
     
     mock_events_dict = {
         'event_1': stream_event_data_1,
@@ -19,8 +16,8 @@ async def test_get_work_items_successfully(feature_engineering_data_provider, mo
     match_id_2 = stream_event_data_2.match_id
     
     mock_data_lookup = {
-        match_id_1: MatchTableFactory.build(match_id=match_id_1),
-        match_id_2: MatchTableFactory.build(match_id=match_id_2)
+        match_id_1: match_table_factory.build(match_id=match_id_1),
+        match_id_2: match_table_factory.build(match_id=match_id_2)
     }
     
     # Mock methods
@@ -55,10 +52,12 @@ async def test_get_work_items_successfully(feature_engineering_data_provider, mo
 async def test_fetch_match_details_successfully(
     feature_engineering_data_provider, 
     mock_match_repository, 
-    mocker
+    mocker,
+    stream_match_event_data_factory,
+    match_table_factory
 ):
-    stream_event_data_1 = StreamMatchEventDataFactory.build()
-    stream_event_data_2 = StreamMatchEventDataFactory.build()
+    stream_event_data_1 = stream_match_event_data_factory.build()
+    stream_event_data_2 = stream_match_event_data_factory.build()
     
     mock_events_dict = {
         'event_1': stream_event_data_1,
@@ -66,8 +65,8 @@ async def test_fetch_match_details_successfully(
     }
     
     mock_match_details_list = [
-        MatchTableFactory.build(match_id=stream_event_data_1.match_id),
-        MatchTableFactory.build(match_id=stream_event_data_2.match_id)
+        match_table_factory.build(match_id=stream_event_data_1.match_id),
+        match_table_factory.build(match_id=stream_event_data_2.match_id)
     ]
     
     mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)

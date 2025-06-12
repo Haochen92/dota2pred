@@ -1,6 +1,5 @@
 import pytest
 
-from ....factories.repository_factories import MatchPredictionTableFactory
 from dota_oracle.data_repository.prediction_repository import PredictionRepository
 
 from ..base_test_repository import BaseTestRepository
@@ -22,9 +21,10 @@ class TestStoreMatchPrediction:
         test_repository: BaseTestRepository,
         prediction_db_fetcher: PredictorFetcherClass,
         seed_prediction_data,
+        match_prediction_table_factory,
     ):
         # Arrange
-        test_instance = MatchPredictionTableFactory.build(
+        test_instance = match_prediction_table_factory.build(
             match_id = 1004, # new prediction data
             predictor_name = 'random_model' # primary key
         )
@@ -48,10 +48,11 @@ class TestStoreMatchPrediction:
         test_repository: BaseTestRepository,
         prediction_db_fetcher: PredictorFetcherClass,
         seed_prediction_data,
+        match_prediction_table_factory,
     ):
         # Arrange
-        original_instance = MatchPredictionTableFactory.build(match_id=1005, predictor_name='model_1')
-        new_instance = MatchPredictionTableFactory.build(match_id=1005, predictor_name='model_1')
+        original_instance = match_prediction_table_factory.build(match_id=1005, predictor_name='model_1')
+        new_instance = match_prediction_table_factory.build(match_id=1005, predictor_name='model_1')
         
         # Act
         await prediction_repository_test_subject.store_match_prediction(original_instance)
