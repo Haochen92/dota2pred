@@ -68,7 +68,7 @@ class AppContainer(containers.DeclarativeContainer):
 
     # --- Inference Components ---
     model_inference_service = providers.Resource(
-        ModelInferenceService.initialize_async_service
+        ModelInferenceService.create
     )
 
     # --- Core Pipeline Services ---
@@ -78,21 +78,21 @@ class AppContainer(containers.DeclarativeContainer):
     )
     
     redis_service = providers.Resource(
-        RedisService.initialize,
+        RedisService.create,
         redis_client=redis_async_pool 
     )
     
     feature_engineering_service = providers.Factory(
         FeatureEngineeringService,
         team_feature_creator=team_feature_creator,
-        player_hero_features_creator=player_hero_features_creator
+        player_hero_feature_creator=player_hero_features_creator
     )
     history_update_service = providers.Factory(
         HistoryUpdateService
     )
     match_prediction_service = providers.Factory(
         MatchPredictionService,
-        feature_preparation_service=feature_preparation_service,
+        features_preparation_service=feature_preparation_service,
         model_inference_service=model_inference_service,
     )
     
@@ -179,6 +179,7 @@ class AppContainer(containers.DeclarativeContainer):
         prediction_orchestrator=prediction_orchestrator,
         completion_orchestrator=completion_orchestrator
     )
+    
 
 # to do: wrap in prefect task or CRON task
 async def main():
