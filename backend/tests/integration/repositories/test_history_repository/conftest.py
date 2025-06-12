@@ -18,15 +18,6 @@ pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 @pytest_asyncio.fixture(scope="function")
-async def history_repository_test_subject(db_session: AsyncSession) -> HistoryRepository:
-    """Create HistoryRepository instance for testing."""
-    return HistoryRepository(session=db_session)
-
-@pytest_asyncio.fixture(scope='function')
-async def test_repository(db_session: AsyncSession) -> BaseHistoryRepositoryTest:
-    return BaseHistoryRepositoryTest(session=db_session)
-
-@pytest_asyncio.fixture(scope="function")
 async def seed_history_data(db_session: AsyncSession, player_hero_history_table_factory, team_history_table_factory, team_matchup_history_table_factory):
     """Seeds data for history repository read operations tests."""
     

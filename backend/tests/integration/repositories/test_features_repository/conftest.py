@@ -23,11 +23,6 @@ pytestmark = pytest.mark.asyncio(loop_scope='session')
 # FIXTURES
 # ========================
 
-@pytest_asyncio.fixture(scope="function")
-async def features_repository_test_subject(db_session: AsyncSession) -> FeaturesRepository:
-    """Create FeaturesRepository instance for testing."""
-    return FeaturesRepository(session=db_session)
-
 
 @pytest_asyncio.fixture(scope='function')
 async def seed_prerequisite_match_ids_fk(db_session: AsyncSession, match_table_factory):

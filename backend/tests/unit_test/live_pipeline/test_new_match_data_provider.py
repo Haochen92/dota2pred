@@ -4,18 +4,19 @@ from unittest.mock import AsyncMock
 @pytest.mark.asyncio
 async def test_get_work_items_successfully(new_match_data_provider, ongoing_league_game_factory, mocker):
     # mock live_league_games
-    mock_list_current_matches = ongoing_league_game_factory.batch(3)
+    mock_list_ongoing_matches = ongoing_league_game_factory.batch(3)
     
+    new_match_data_provider._fetch_ongoing_matches
     mock_fetch_current_matches = mocker.patch.object(
         new_match_data_provider, 
-        '_fetch_current_matches', 
-        return_value=mock_list_current_matches
+        '_fetch_ongoing_matches', 
+        return_value=mock_list_ongoing_matches
     )
     
     mock_filter_new_matches = mocker.patch.object(
         new_match_data_provider,
         '_filter_new_matches',
-        return_value=mock_list_current_matches[:2] # filter the first 2 values
+        return_value=mock_list_ongoing_matches[:2] # filter the first 2 values
     )
     
     # ACT
@@ -25,7 +26,7 @@ async def test_get_work_items_successfully(new_match_data_provider, ongoing_leag
     assert len(actual_work_items) == 2
     
     mock_fetch_current_matches.assert_awaited_once()
-    mock_filter_new_matches.assert_awaited_once_with(mock_list_current_matches)
+    mock_filter_new_matches.assert_awaited_once_with(mock_list_ongoing_matches)
     
 
 @pytest.mark.asyncio
