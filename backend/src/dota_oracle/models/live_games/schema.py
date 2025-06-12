@@ -60,9 +60,26 @@ class LiveLeagueGame(BaseModel):
     match_id: int
     league_id: int
     start_time: float = Field(default_factory=lambda: dt.now().timestamp())
+    radiant_team: TeamData = Field(default_factory=lambda: TeamData())
+    dire_team: TeamData = Field(default_factory=lambda: TeamData())
+    scoreboard: ScoreBoard = Field(default_factory=lambda: ScoreBoard())
+    
+class OngoingLeagueGame(LiveLeagueGame):
+    """Live Games which have finished ban/pick phase
+    
+    Attributes:
+        match_id: Unique match identifier (int)
+        league_id: League identifier (int)
+        start_time: Game start timestamp (float)
+        radiant_team: Radiant team data (TeamData)
+        dire_team: Dire team data (TeamData)
+        scoreboard: Current game scoreboard (ScoreBoard)
+    """
     radiant_team: TeamData
     dire_team: TeamData
     scoreboard: ScoreBoard
+    
+    
 
 class ResultData(BaseModel):
     """Container for live games list.
