@@ -55,7 +55,7 @@ class TestAddPlayerHeroMatchOutcome:
         self,
         history_repository_test_subject: HistoryRepository,
         seed_history_data,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         test_scenario: str,
         account_id: int,
         hero_id: int,
@@ -77,15 +77,15 @@ class TestAddPlayerHeroMatchOutcome:
         )
         
         # Assert
-        records = await test_repository._get_player_hero_records(
+        records = await history_test_repository._get_player_hero_records(
             account_id, hero_id, match_id
         )
         
-        test_repository._assert_record_count_equals(expected_count, records, test_scenario)
+        history_test_repository._assert_record_count_equals(expected_count, records, test_scenario)
         
         if expected_count > 0:
             record = records[0]
-            test_repository._assert_player_hero_record_equals(
+            history_test_repository._assert_player_hero_record_equals(
                 record, account_id, hero_id, match_id, 
                 expected_win, expected_start_time, test_scenario
             )
@@ -133,7 +133,7 @@ class TestAddTeamMatchOutcome:
         self,
         history_repository_test_subject: HistoryRepository,
         seed_history_data,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         test_scenario: str,
         team_name: str,
         match_id: int,
@@ -153,15 +153,15 @@ class TestAddTeamMatchOutcome:
         )
         
         # Assert
-        records = await test_repository._get_team_history_records(
+        records = await history_test_repository._get_team_history_records(
             team_name, match_id
         )
         
-        test_repository._assert_record_count_equals(expected_count, records, test_scenario)
+        history_test_repository._assert_record_count_equals(expected_count, records, test_scenario)
         
         if expected_count > 0:
             record = records[0]
-            test_repository._assert_team_history_record_equals(
+            history_test_repository._assert_team_history_record_equals(
                 record, team_name, match_id, expected_win, expected_start_time, test_scenario
             )
 
@@ -230,7 +230,7 @@ class TestAddTeamMatchUpOutcome:
         self,
         history_repository_test_subject: HistoryRepository,
         seed_history_data,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         test_scenario: str,
         team_one: str,
         team_two: str,
@@ -254,15 +254,15 @@ class TestAddTeamMatchUpOutcome:
         )
         
         # Assert
-        records = await test_repository._get_team_matchup_records(
+        records = await history_test_repository._get_team_matchup_records(
             expected_team1, expected_team2, match_id
         )
         
-        test_repository._assert_record_count_equals(expected_count, records, test_scenario)
+        history_test_repository._assert_record_count_equals(expected_count, records, test_scenario)
         
         if expected_count > 0:
             record = records[0]
-            test_repository._assert_team_matchup_record_equals(
+            history_test_repository._assert_team_matchup_record_equals(
                 record, expected_team1, expected_team2, match_id, 
                 expected_win, expected_start_time, test_scenario
             )
