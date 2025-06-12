@@ -1,18 +1,10 @@
 """
-Contract Testing - Verify external API mocks match real API responses.
-
-This module tests that our mocked API responses match the actual structure 
-and behavior of external APIs (Steam, OpenDota).
+Contract Testing - Validate External Api response structure against pydantic models
 """
 import pytest
-import aiohttp
-import json
-from unittest.mock import patch
-from typing import Dict, Any
 
 # import api endpoints
 from dota_oracle.data_extraction import fetch_hero_data, fetch_league_data, fetch_live_league_games, fetch_pro_match, fetch_match_details
-from dota_oracle.inference.model_inference_service import ModelInferenceService
 
 # import pydantic api_models
 from dota_oracle.models.heroes import HeroesAPIResponse
