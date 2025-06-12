@@ -46,6 +46,9 @@ async def redis_service_test_subject(redis_container_instance: RedisContainer):
 
     # Instantiate your service with this dedicated client
     service = RedisService(redis_client=service_redis_client)
+    
+    # Initialize the service to create consumer groups
+    await service.initialize_async_service()
 
     yield service
     # Clean up the client used by the service

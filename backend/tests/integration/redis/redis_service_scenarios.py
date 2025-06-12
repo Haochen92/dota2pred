@@ -6,8 +6,6 @@ from dota_oracle.constants.redis_constants import (
     FAILED_EVENTS_MAPPING
 )
 
-from ...factories.redis_models_factory import StreamMatchEventDataFactory, MatchStatusValueFactory, FailureRecordFactory
-
 
 # Scenarios for update_live
 UPDATE_LIVE_MATCH_SCENARIOS_ARGS = [
@@ -82,7 +80,7 @@ ADVANCE_MATCH_TO_NEXT_ARG_NAMES = [
     'from_consumer_group',
     'expected_match_status',
     'test_match_id',
-    'prev_event_dict',
+    'prev_event_match_id',  # Changed from prev_event_dict to just match_id data
     'expected_return_val'
 ]
 
@@ -95,7 +93,7 @@ ADVANCE_MATCH_TO_NEXT_SCENARIOS =[
         FEATURE_ENGINEER_GROUP,
         MatchProcessingStatus.PENDING_PREDICTION,
         123,
-        StreamMatchEventDataFactory.build(match_id=123).model_dump(),
+        123,  # match_id for building StreamMatchEventData
         True,
     ),
     (
@@ -106,7 +104,7 @@ ADVANCE_MATCH_TO_NEXT_SCENARIOS =[
         FEATURE_ENGINEER_GROUP,
         None,
         "123abc",
-        StreamMatchEventDataFactory.build(match_id=123).model_dump(),
+        123,  # match_id for building StreamMatchEventData
         False,
     ),
     (
@@ -117,7 +115,7 @@ ADVANCE_MATCH_TO_NEXT_SCENARIOS =[
         PREDICTION_GROUP,
         MatchProcessingStatus.PENDING_COMPLETION,
         754,
-        StreamMatchEventDataFactory.build(match_id=754).model_dump(),
+        754,  # match_id for building StreamMatchEventData
         True,   
     ),
     (
@@ -128,7 +126,7 @@ ADVANCE_MATCH_TO_NEXT_SCENARIOS =[
         PREDICTION_GROUP,
         None,
         "table123",
-        StreamMatchEventDataFactory.build(match_id=754).model_dump(),
+        754,  # match_id for building StreamMatchEventData
         False,   
     ),
 ]
@@ -139,7 +137,7 @@ FETCH_MATCHES_SCENARIOS_ARGS = [
     "method_to_call",
     "stream_to_fetch_from",
      "consumer_group",
-     "input_list",
+     "input_match_ids",  # Changed from input_list to just match_ids
      "consumer_name",
      "fetch_count",
      "expected_match_ids"
@@ -150,7 +148,7 @@ FETCH_MATCHES_SCENARIOS = [
         "fetch_new_matches_for_feature_eng", # method_to_call
         STREAM_NEW_MATCHES, # Stream_to_fetch_from
         FEATURE_ENGINEER_GROUP, # consumer_group
-        [StreamMatchEventDataFactory.build(match_id=100).model_dump()], # input_list of dict
+        [100], # input_match_ids to build StreamMatchEventData
         "test_consumer_fe", # Consumer_name
         1, # fetch_count for number of events to fetch
         {100} # expected_match_ids set of match_ids expected back 
@@ -160,11 +158,7 @@ FETCH_MATCHES_SCENARIOS = [
         "fetch_new_matches_for_feature_eng",
         STREAM_NEW_MATCHES,
         FEATURE_ENGINEER_GROUP,
-        [
-            StreamMatchEventDataFactory.build(match_id=101).model_dump(),
-            StreamMatchEventDataFactory.build(match_id=102).model_dump(),
-            StreamMatchEventDataFactory.build(match_id=103).model_dump()
-        ],
+        [101, 102, 103], # input_match_ids to build StreamMatchEventData
         "test_consumer_fe",
         10,
         {101, 102, 103}
@@ -174,7 +168,7 @@ FETCH_MATCHES_SCENARIOS = [
         "fetch_matches_pending_prediction",
         STREAM_PENDING_PREDICTION,
         PREDICTION_GROUP,
-        [StreamMatchEventDataFactory.build(match_id=104).model_dump()],
+        [104], # input_match_ids to build StreamMatchEventData
         "test_consumer_pred",
         1,
         {104}
@@ -184,7 +178,7 @@ FETCH_MATCHES_SCENARIOS = [
         "fetch_matches_pending_completion",
         STREAM_PENDING_COMPLETION,
         COMPLETION_GROUP,
-        [],
+        [], # empty input
         "test_consumer_completion",
         10,
         set(),
