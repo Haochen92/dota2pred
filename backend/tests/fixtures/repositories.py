@@ -53,3 +53,26 @@ def mock_prediction_repository() -> PredictionRepository:
 @pytest_asyncio.fixture(scope="function")
 async def test_repository(db_session: AsyncSession) -> BaseTestRepository:
     return BaseTestRepository(session=db_session)
+
+
+
+@pytest_asyncio.fixture(scope="function")
+async def features_repository_test_subject(db_session: AsyncSession) -> FeaturesRepository:
+    """Create FeaturesRepository instance for testing."""
+    return FeaturesRepository(session=db_session)
+
+
+@pytest_asyncio.fixture(scope='function')
+async def hero_repository_test_subject(db_session: AsyncSession) -> HeroesRepository:
+    return HeroesRepository(session=db_session)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def history_repository_test_subject(db_session: AsyncSession) -> HistoryRepository:
+    """Create HistoryRepository instance for testing."""
+    return HistoryRepository(session=db_session)
+
+
+@pytest_asyncio.fixture(scope='function')
+async def match_repository_test_subject(db_session: AsyncSession):
+    return MatchRepository(session=db_session)
