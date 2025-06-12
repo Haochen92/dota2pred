@@ -20,9 +20,6 @@ pytestmark = pytest.mark.asyncio(loop_scope='session')
 # FIXTURES
 # ========================
 
-@pytest_asyncio.fixture(scope='function')
-async def match_repository_test_subject(db_session: AsyncSession):
-    return MatchRepository(session=db_session)
 
 
 @pytest_asyncio.fixture(scope='function')

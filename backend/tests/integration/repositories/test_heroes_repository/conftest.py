@@ -12,9 +12,6 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
-@pytest_asyncio.fixture(scope='function')
-async def hero_repository_test_subject(db_session: AsyncSession) -> HeroesRepository:
-    return HeroesRepository(session=db_session)
     
     
 @pytest_asyncio.fixture(scope='function')
