@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock
 
-from ...factories.unit_test_factory import LiveLeagueGameFactory, NewMatchWorkItemFactory
+from ...factories.unit_test_factory import OngoingLeagueGameFactory, NewMatchWorkItemFactory
 
 @pytest.mark.asyncio
 async def test_get_work_items_successfully(new_match_data_provider, mocker):
     # mock live_league_games
-    mock_list_current_matches = LiveLeagueGameFactory.batch(3)
+    mock_list_current_matches = OngoingLeagueGameFactory.batch(3)
     
     mock_fetch_current_matches = mocker.patch.object(
         new_match_data_provider, 
@@ -32,7 +32,7 @@ async def test_get_work_items_successfully(new_match_data_provider, mocker):
 
 @pytest.mark.asyncio
 async def test_filter_new_matches_with_values(new_match_data_provider, mocker):
-    mock_current_matches = LiveLeagueGameFactory.batch(5)
+    mock_current_matches = OngoingLeagueGameFactory.batch(5)
     mock_new_match_set = {match.match_id for match in mock_current_matches if match.match_id % 2 == 0}
     
     mock_get_new_match_set = mocker.patch.object(

@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel
-from dota_oracle.models.live_games.schema import LiveLeagueGame
+from dota_oracle.models.live_games.schema import OngoingLeagueGame
 from dota_oracle.models.redis.schema import StreamMatchEventData
 from dota_oracle.models.match import MatchTable
 
@@ -8,10 +8,10 @@ class NewMatchWorkItem(SQLModel):
     DTO for new match processing work items.
     
     Attributes:
-        live_match_data: LiveLeagueGame -> parsed game data from 
+        live_match_data: OngoingLeagueGame -> live games which have started (after ban/pick phase)
         match_id: int -> unique identifier for a match
     """
-    live_match_data: LiveLeagueGame
+    live_match_data: OngoingLeagueGame
     match_id: int
     
 
