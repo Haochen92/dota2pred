@@ -15,6 +15,7 @@ from dota_oracle.data_repository.prediction_repository import PredictionReposito
 
 # Test base classes
 from ..integration.repositories.base_test_repository import BaseTestRepository
+from ..integration.repositories.test_history_repository.base_history_repo import BaseHistoryRepositoryTest
 
 
 # ================================
@@ -53,6 +54,12 @@ def mock_prediction_repository() -> PredictionRepository:
 @pytest_asyncio.fixture(scope="function")
 async def test_repository(db_session: AsyncSession) -> BaseTestRepository:
     return BaseTestRepository(session=db_session)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def history_test_repository(db_session: AsyncSession) -> BaseHistoryRepositoryTest:
+    """Create BaseHistoryRepositoryTest instance for history repository testing."""
+    return BaseHistoryRepositoryTest(session=db_session)
 
 
 

@@ -54,7 +54,7 @@ class TestGetPlayerHeroWinHistory:
     async def test_get_player_hero_win_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         seed_history_data,
         test_scenario: str,
         account_id: int,
@@ -73,7 +73,7 @@ class TestGetPlayerHeroWinHistory:
         )
         
         # Assert
-        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
 
@@ -116,7 +116,7 @@ class TestGetTeamHistory:
     async def test_get_team_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         seed_history_data,
         test_scenario: str,
         team_name: str,
@@ -133,7 +133,7 @@ class TestGetTeamHistory:
         )
         
         # Assert
-        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
 
@@ -229,7 +229,7 @@ class TestGetTeamMatchupHistory:
     async def test_get_team_matchup_history_scenarios(
         self,
         history_repository_test_subject: HistoryRepository,
-        test_repository: BaseHistoryRepositoryTest,
+        history_test_repository: BaseHistoryRepositoryTest,
         seed_history_data,
         test_scenario: str,
         team1_name: str,
@@ -248,7 +248,7 @@ class TestGetTeamMatchupHistory:
         )
         
         # Assert
-        test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
     
     
     async def test_team_order_independence(
