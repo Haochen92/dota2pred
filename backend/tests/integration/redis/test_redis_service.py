@@ -15,8 +15,6 @@ from dota_oracle.constants.redis_constants import (
 
 from dota_oracle.live_pipeline.services.redis_service import RedisService
 
-from ...factories.redis_models_factory import StreamMatchEventDataFactory, FailureRecordFactory
-
 from .redis_service_scenarios import (
     UPDATE_LIVE_MATCH_SCENARIOS_ARGS, UPDATE_LIVE_MATCH_SCENARIOS,
     ADD_NEW_MATCH_SCENARIOS_ARGS, ADD_NEW_MATCH_SCENARIOS,
@@ -156,6 +154,7 @@ Test advancing match to next stage
 async def test_advance_match_to_next(
     redis_service_test_subject: RedisService,
     test_redis_client: AIORedis,
+    stream_match_event_data_factory,
     test_id: str,
     method_to_call: str,
     from_stream: str,
@@ -163,7 +162,7 @@ async def test_advance_match_to_next(
     from_consumer_group: str,
     expected_match_status: str,
     test_match_id: Any,
-    prev_event_dict: Dict[str, Any],
+    prev_event_match_id: int,  # Changed from prev_event_dict
     expected_return_val: bool
 ):
     match_status_key = f"{MATCH_STATUS}:{test_match_id}"
@@ -171,6 +170,10 @@ async def test_advance_match_to_next(
     await test_redis_client.delete(match_status_key)
     await test_redis_client.xtrim(from_stream, maxlen=0)
     await test_redis_client.xtrim(to_stream, maxlen=0)
+    
+    # Build event data using fixture
+    prev_event_data = stream_match_event_data_factory.build(match_id=prev_event_match_id)
+    prev_event_dict = prev_event_data.model_dump()
     
     # seeding inputs:
     await test_redis_client.xadd(from_stream, prev_event_dict) #type:ignore
@@ -240,19 +243,23 @@ Test Fetch Events
 async def test_fetch_events(
     redis_service_test_subject: RedisService,
     test_redis_client:AIORedis,
+    stream_match_event_data_factory,
     test_id: str,
     method_to_call: str,
     stream_to_fetch_from: str,
     consumer_group: str,
-    input_list: List[Dict[str,Any]],
+    input_match_ids: List[int],  # Changed from input_list
     consumer_name: str,
     fetch_count: int,
     expected_match_ids: Set[int]
 ):
     # clear state and add inputs
     await test_redis_client.xtrim(stream_to_fetch_from, maxlen=0)
-    if input_list:
-        for event_data_dict in input_list:
+    if input_match_ids:
+        for match_id in input_match_ids:
+            # Build event data using fixture
+            event_data = stream_match_event_data_factory.build(match_id=match_id)
+            event_data_dict = event_data.model_dump()
             await test_redis_client.xadd(stream_to_fetch_from, event_data_dict) #type: ignore
     
     # read events
@@ -261,8 +268,8 @@ async def test_fetch_events(
         count=fetch_count
     )
     
-    assert len(fetched_events) == len(input_list), \
-        f"Test {test_id}: expected {len(input_list)} events but got {len(fetched_events)} events"
+    assert len(fetched_events) == len(input_match_ids), \
+        f"Test {test_id}: expected {len(input_match_ids)} events but got {len(fetched_events)} events"
     
     actual_match_ids = set()
     for event_id, data in fetched_events.items():
@@ -285,6 +292,8 @@ Test Failure Acknowledgement
 async def test_record_failure_and_ack(
     redis_service_test_subject: RedisService,
     test_redis_client: AIORedis,
+    stream_match_event_data_factory,
+    failure_record_factory,
     test_id: str,
     test_stream_input: str,
     test_original_group: str
@@ -292,7 +301,9 @@ async def test_record_failure_and_ack(
     # Set up
     original_stream = test_stream_input
     original_group = test_original_group
-    original_data = StreamMatchEventDataFactory.build(match_id=123).model_dump()
+    # Build event data using fixture
+    original_event_data = stream_match_event_data_factory.build(match_id=123)
+    original_data = original_event_data.model_dump()
     target_dlq_hash = FAILED_EVENTS_MAPPING.get(original_stream) 
     
     if target_dlq_hash:
@@ -304,7 +315,8 @@ async def test_record_failure_and_ack(
             id='*' 
         )
         
-        test_failure_record = FailureRecordFactory.build(
+        # Build failure record using fixture
+        test_failure_record = failure_record_factory.build(
             original_group=original_group,
             original_stream=original_stream,
             original_data=original_data,
@@ -345,12 +357,16 @@ async def test_record_failure_and_ack(
 async def test_record_failure_and_ack_serialization_error(
     redis_service_test_subject: RedisService,
     test_redis_client: AIORedis,
+    stream_match_event_data_factory,
+    failure_record_factory,
     mocker
 ):
     # arrange
     original_stream = STREAM_PENDING_PREDICTION
     original_group = PREDICTION_GROUP
-    original_data = StreamMatchEventDataFactory.build(match_id=123).model_dump()
+    # Build event data using fixture
+    original_event_data = stream_match_event_data_factory.build(match_id=123)
+    original_data = original_event_data.model_dump()
     target_dlq_hash = FAILED_EVENTS_MAPPING[original_stream]
     
     # set up
@@ -362,7 +378,8 @@ async def test_record_failure_and_ack_serialization_error(
         id='*' 
     )
     
-    test_failure_record = FailureRecordFactory.build(
+    # Build failure record using fixture
+    test_failure_record = failure_record_factory.build(
         original_group=original_group,
         original_stream=original_stream,
         original_data=original_data,
