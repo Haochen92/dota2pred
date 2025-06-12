@@ -1,5 +1,5 @@
 from typing import List
-from dota_oracle.models.live_games.schema import LiveLeagueGame
+from dota_oracle.models.live_games.schema import OngoingLeagueGame
 from dota_oracle.models.match import MatchTable
 from dota_oracle.utils.set_logging import get_logger
 from dota_oracle.utils.time_utils import to_utc_datetime_object
@@ -7,7 +7,7 @@ from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
 logger = get_logger(__name__)
 
-async def parse_live_league_games(raw_live_games: List[LiveLeagueGame], hero_repo: HeroesRepository) -> List[MatchTable]:
+async def parse_live_league_games(raw_live_games: List[OngoingLeagueGame], hero_repo: HeroesRepository) -> List[MatchTable]:
     parsed_live_league_games = []
     
     hero_map = await hero_repo.get_hero_id_map()
