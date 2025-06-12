@@ -4,8 +4,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlmodel import delete
-
-from ....factories.repository_factories import MatchPredictionTableFactory, MatchTableFactory
 from dota_oracle.models.inference import MatchPredictionTable
 from dota_oracle.data_repository.prediction_repository import PredictionRepository
 
@@ -24,16 +22,16 @@ async def prediction_repository_test_subject(db_session: AsyncSession):
 
     
 @pytest_asyncio.fixture(scope='function')
-async def seed_prediction_data(db_session) -> List[MatchPredictionTable]:
+async def seed_prediction_data(db_session, match_table_factory, match_prediction_table_factory) -> List[MatchPredictionTable]:
     
     match_ids = [i for i in range(1001, 1010)] # seed 9 datapoints
-    match_data = [MatchTableFactory.build(match_id=id) for id in match_ids]
+    match_data = [match_table_factory.build(match_id=id) for id in match_ids]
     
     prediction_data = [
-        MatchPredictionTableFactory.build(match_id=1001, predictor_name='random_forest'),
-        MatchPredictionTableFactory.build(match_id=1001, predictor_name='xg_boost'), # Same match, different model
-        MatchPredictionTableFactory.build(match_id=1002, predictor_name='random_forest'),
-        MatchPredictionTableFactory.build(match_id=1003, predictor_name='random_forest'),
+        match_prediction_table_factory.build(match_id=1001, predictor_name='random_forest'),
+        match_prediction_table_factory.build(match_id=1001, predictor_name='xg_boost'), # Same match, different model
+        match_prediction_table_factory.build(match_id=1002, predictor_name='random_forest'),
+        match_prediction_table_factory.build(match_id=1003, predictor_name='random_forest'),
     ]
     
     db_session.add_all(match_data + prediction_data)

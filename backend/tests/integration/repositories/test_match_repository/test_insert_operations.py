@@ -1,10 +1,7 @@
 import pytest
 
-from ....factories.repository_factories import MatchTableFactory, MatchOutcomeTableFactory
 from dota_oracle.models.match import MatchOutcomeTable, MatchTable
 from dota_oracle.data_repository.match_repository import MatchRepository
-
-
 
 from typing import Tuple, Any
 
@@ -25,9 +22,10 @@ class TestInsertMatchDetails:
         self,
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
+        match_table_factory,
     ):
         # Arrange
-        input_instance = MatchTableFactory.build(match_id=2001)
+        input_instance = match_table_factory.build(match_id=2001)
         
         # Act
         await match_repository_test_subject.insert_match_details([input_instance])
@@ -41,10 +39,11 @@ class TestInsertMatchDetails:
         self,
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
+        match_table_factory,
     ):
         # Arrange
-        original_instance = MatchTableFactory.build(match_id=12345)
-        conflicting_instance = MatchTableFactory.build(match_id=12345)  # Same ID, different data
+        original_instance = match_table_factory.build(match_id=12345)
+        conflicting_instance = match_table_factory.build(match_id=12345)  # Same ID, different data
         
         # Act - Insert original
         await match_repository_test_subject.insert_match_details([original_instance])
@@ -94,9 +93,10 @@ class TestInsertMatchOutcome:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         seed_test_data,
+        match_outcome_table_factory,
     ):
         # Arrange
-        input_instance = MatchOutcomeTableFactory.build(match_id=1005) # seeded match but not match_outcome
+        input_instance = match_outcome_table_factory.build(match_id=1005) # seeded match but not match_outcome
         
         # Act
         await match_repository_test_subject.insert_match_outcome([input_instance])
@@ -114,10 +114,11 @@ class TestInsertMatchOutcome:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         seed_test_data,
+        match_outcome_table_factory,
     ):
         # Arrange
-        original_instance = MatchOutcomeTableFactory.build(match_id=1006, radiant_win=True) # seeded match but not outcome
-        update_instance = MatchOutcomeTableFactory.build(match_id=1006, radiant_win=False)
+        original_instance = match_outcome_table_factory.build(match_id=1006, radiant_win=True) # seeded match but not outcome
+        update_instance = match_outcome_table_factory.build(match_id=1006, radiant_win=False)
         
         # Act - Insert original
         await match_repository_test_subject.insert_match_outcome([original_instance])

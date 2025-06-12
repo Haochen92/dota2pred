@@ -14,19 +14,14 @@ from dota_oracle.feature_transformation import FeatureEncoder
 from dota_oracle.inference.model_inference_service import ModelInferenceService
 
 
-from ...factories.repository_factories import (
-    TeamFeaturesTableFactory, PlayerHeroFeatureTableFactory,
-    HeroFeaturesTableFactory, MatchTableFactory
-)
 
 from dota_oracle.live_pipeline.services.feature_preparation_service import FeaturePreparationService
 
-from ...factories.unit_test_factory import ModelMetaDataAPIResponseFactory, ModelPredictionAPIResponseFactory
 
 F_PATH = "dota_oracle.live_pipeline.services.feature_preparation_service"
 
 @pytest.mark.asyncio
-async def test_prepare_features_for_inference(feature_preparation_service, mock_async_session, mocker):
+async def test_prepare_features_for_inference(feature_preparation_service, mock_async_session, mocker, team_features_table_factory, hero_features_table_factory, player_hero_feature_table_factory):
     
     # Arrange
     
@@ -37,9 +32,9 @@ async def test_prepare_features_for_inference(feature_preparation_service, mock_
     
     # Mock database response
     mock_db_response = (
-        TeamFeaturesTableFactory.build(match_id=match_id),
-        HeroFeaturesTableFactory.build(match_id=match_id),
-        PlayerHeroFeatureTableFactory.build(match_id=match_id)
+        team_features_table_factory.build(match_id=match_id),
+        hero_features_table_factory.build(match_id=match_id),
+        player_hero_feature_table_factory.build(match_id=match_id)
     )
     
     mock_get_features = mocker.patch.object(
@@ -83,12 +78,12 @@ async def test_prepare_features_for_inference(feature_preparation_service, mock_
 
     
 @pytest.mark.asyncio
-async def test_get_features_from_db(feature_preparation_service, mocker):
+async def test_get_features_from_db(feature_preparation_service, mocker, team_features_table_factory, hero_features_table_factory, player_hero_feature_table_factory):
     # Arrange
     match_id = 123
-    mock_team_features = TeamFeaturesTableFactory.build(match_id=match_id)
-    mock_hero_features = HeroFeaturesTableFactory.build(match_id=match_id)
-    mock_player_hero_features = PlayerHeroFeatureTableFactory.build(match_id=match_id)
+    mock_team_features = team_features_table_factory.build(match_id=match_id)
+    mock_hero_features = hero_features_table_factory.build(match_id=match_id)
+    mock_player_hero_features = player_hero_feature_table_factory.build(match_id=match_id)
     mock_match_repository = AsyncMock(spec=MatchRepository)
     
      # Create a mock match instance with the required attributes
