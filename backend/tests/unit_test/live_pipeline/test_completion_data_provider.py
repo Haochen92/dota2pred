@@ -1,17 +1,16 @@
 import pytest
 import pytest_asyncio
 
-from ...factories.redis_models_factory import StreamMatchEventDataFactory
 from dota_oracle.live_pipeline.completion.completion_data_provider import CompletionDataProvider
 
 F_PATH = "dota_oracle.live_pipeline.completion.completion_data_provider"
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(mock_redis_service, mocker):
+async def test_get_work_items_successfully(mock_redis_service, stream_match_event_data_factory, mocker):
     # ARRANGE
     match_id = 12345
     event_id = "event_123"
-    event_data = StreamMatchEventDataFactory.build(match_id=match_id)
+    event_data = stream_match_event_data_factory.build(match_id=match_id)
     mock_outcome = True
     
     # Mock methods

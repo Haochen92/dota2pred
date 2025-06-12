@@ -1,0 +1,55 @@
+"""
+Repository-related fixtures for tests.
+"""
+import pytest
+import pytest_asyncio
+from unittest.mock import AsyncMock
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Repository imports
+from dota_oracle.data_repository.heroes_repository import HeroesRepository
+from dota_oracle.data_repository.features_repository import FeaturesRepository
+from dota_oracle.data_repository.history_repository import HistoryRepository
+from dota_oracle.data_repository.match_repository import MatchRepository
+from dota_oracle.data_repository.prediction_repository import PredictionRepository
+
+# Test base classes
+from ..integration.repositories.base_test_repository import BaseTestRepository
+
+
+# ================================
+# REPOSITORY MOCKS
+# ================================
+
+@pytest.fixture
+def mock_match_repository() -> MatchRepository:
+    return AsyncMock(spec=MatchRepository)
+
+
+@pytest.fixture
+def mock_features_repository() -> FeaturesRepository:
+    return AsyncMock(spec=FeaturesRepository)
+
+
+@pytest.fixture
+def mock_heroes_repository() -> HeroesRepository:
+    return AsyncMock(spec=HeroesRepository)
+
+
+@pytest.fixture
+def mock_history_repository() -> HistoryRepository:
+    return AsyncMock(spec=HistoryRepository)
+
+
+@pytest.fixture
+def mock_prediction_repository() -> PredictionRepository:
+    return AsyncMock(spec=PredictionRepository)
+
+
+# ================================
+# REPOSITORY TEST SUBJECTS
+# ================================
+
+@pytest_asyncio.fixture(scope="function")
+async def test_repository(db_session: AsyncSession) -> BaseTestRepository:
+    return BaseTestRepository(session=db_session)

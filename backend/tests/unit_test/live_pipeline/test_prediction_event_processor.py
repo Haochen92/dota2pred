@@ -2,14 +2,12 @@ import pytest
 import numpy as np
 from unittest.mock import AsyncMock
 
-from ...factories.unit_test_factory import PredictionWorkItemFactory
-
 F_PATH = "dota_oracle.live_pipeline.prediction.prediction_event_processor"
 
 
 @pytest.mark.asyncio
-async def test_process_event_successfully(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_successfully(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
     
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
@@ -40,8 +38,8 @@ async def test_process_event_successfully(prediction_event_processor, mock_async
 
 
 @pytest.mark.asyncio
-async def test_process_event_feature_preparation_returns_none(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_feature_preparation_returns_none(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
     mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
@@ -67,8 +65,8 @@ async def test_process_event_feature_preparation_returns_none(prediction_event_p
 
 
 @pytest.mark.asyncio
-async def test_process_event_feature_preparation_returns_empty_array(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_feature_preparation_returns_empty_array(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     empty_array = np.array([])
     
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
@@ -95,8 +93,8 @@ async def test_process_event_feature_preparation_returns_empty_array(prediction_
 
 
 @pytest.mark.asyncio
-async def test_process_event_feature_preparation_service_raises_exception(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_feature_preparation_service_raises_exception(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     feature_error = Exception("Feature preparation failed")
     
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
@@ -123,8 +121,8 @@ async def test_process_event_feature_preparation_service_raises_exception(predic
 
 
 @pytest.mark.asyncio
-async def test_process_event_prediction_service_raises_exception(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_prediction_service_raises_exception(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
     prediction_error = Exception("Prediction failed")
     
@@ -157,8 +155,8 @@ async def test_process_event_prediction_service_raises_exception(prediction_even
 
 
 @pytest.mark.asyncio
-async def test_process_event_session_transaction_handling(prediction_event_processor, mock_async_session, mocker):
-    work_item = PredictionWorkItemFactory.build()
+async def test_process_event_session_transaction_handling(prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker):
+    work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
     
     # Mock session context manager
