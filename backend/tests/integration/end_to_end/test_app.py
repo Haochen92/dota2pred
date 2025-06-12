@@ -3,7 +3,7 @@ import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from dota_oracle.live_pipeline.app_container import AppContainer
 from tests.factories.unit_test_factory import (
-    LiveLeagueGameFactory, 
+    OngoingLeagueGameFactory, 
     ModelPredictionAPIResponseFactory
 )
 from tests.factories.repository_factories import MatchTableFactory
@@ -46,7 +46,7 @@ class TestComprehensiveE2EWiring:
     @pytest_asyncio.fixture(scope='function')
     async def mock_live_games_data(self):
         """Generate realistic live games data using polyfactory."""
-        live_games = LiveLeagueGameFactory.batch(2)
+        live_games = OngoingLeagueGameFactory.batch(2)
         return LiveLeagueAPIResponse(
             result=ResultData(games=live_games)
         )

@@ -8,7 +8,7 @@ from tests.factories.repository_factories import MatchTableFactory
 
 
 # Model imports for factories
-from dota_oracle.models.live_games.schema import LiveLeagueGame
+from dota_oracle.models.live_games.schema import OngoingLeagueGame
 from dota_oracle.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
 from dota_oracle.models.pipeline.schema import (
     NewMatchWorkItem,
@@ -24,7 +24,7 @@ from dota_oracle.models.utils import TaskResult, AsyncTask
 # ================================
 
 @register_fixture
-class LiveLeagueGameFactory(ModelFactory[LiveLeagueGame]):
+class OngoingLeagueGameFactory(ModelFactory[OngoingLeagueGame]):
     pass
 
 @register_fixture
