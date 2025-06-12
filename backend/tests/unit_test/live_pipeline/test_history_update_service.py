@@ -10,12 +10,10 @@ from dota_oracle.models.match import MatchTable, MatchOutcomeTable
 from dota_oracle.models.utils import AsyncTask
 
 from dota_oracle.live_pipeline.services.history_update_service import HistoryUpdateService
-from ...factories.repository_factories import MatchTableFactory, MatchOutcomeTableFactory
-
 F_PATH = "dota_oracle.live_pipeline.services.history_update_service"
 
 @pytest.mark.asyncio
-async def test_update_histories(mock_async_session, mocker):
+async def test_update_histories(mock_async_session, mocker, match_table_factory, match_outcome_table_factory):
     
     # ARRANGE
     
@@ -23,8 +21,8 @@ async def test_update_histories(mock_async_session, mocker):
     mock_history_repo = AsyncMock(spec=HistoryRepository)
     
     # Mock instances
-    match_details = MatchTableFactory.build(match_id=1001)
-    setattr(match_details, 'outcome', MatchOutcomeTableFactory.build(match_id=1001))
+    match_details = match_table_factory.build(match_id=1001)
+    setattr(match_details, 'outcome', match_outcome_table_factory.build(match_id=1001))
     match_outcome = match_details.outcome
     
     # Create test_subject
