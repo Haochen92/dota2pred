@@ -2,10 +2,6 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from polyfactory import Use
 from polyfactory.pytest_plugin import register_fixture
 
-# Import your existing factories
-from tests.factories.redis_models_factory import StreamMatchEventDataFactory
-from tests.factories.repository_factories import MatchTableFactory
-
 
 # Model imports for factories
 from dota_oracle.models.live_games.schema import OngoingLeagueGame
