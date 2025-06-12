@@ -10,8 +10,6 @@ from dota_oracle.models.match import MatchOutcomeTable
 from dota_oracle.models.pipeline import CompletionWorkItem
 from dota_oracle.live_pipeline.completion.completion_event_processor import CompletionEventProcessor
 
-from ...factories.unit_test_factory import CompletionWorkItemFactory
-
 F_PATH = "dota_oracle.live_pipeline.completion.completion_event_processor"
 
 
@@ -19,9 +17,10 @@ F_PATH = "dota_oracle.live_pipeline.completion.completion_event_processor"
 async def test_process_events_successfully(
     completion_event_processor: CompletionEventProcessor,
     mock_async_session,
-    mocker):
+    mocker,
+    completion_work_item_factory):
     # ARRANGE
-    mock_work_item = CompletionWorkItemFactory.build()
+    mock_work_item = completion_work_item_factory.build()
     mock_repository = AsyncMock(spec=MatchRepository)
     
     mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_repository)

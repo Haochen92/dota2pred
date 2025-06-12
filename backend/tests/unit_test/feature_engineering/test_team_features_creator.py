@@ -1,6 +1,5 @@
 import pytest
 from dota_oracle.models.features import TeamFeaturesTable
-from ...factories.repository_factories import MatchTableFactory
 
 FUNCTION_FP = 'dota_oracle.feature_engineering.team_features_creator'
 
@@ -9,12 +8,13 @@ async def test_team_feature_success(
     team_feature_creator, 
     mock_async_session,
     mocker,
+    match_table_factory,
 ):
     """
     Tests the happy path where a feature row is successfully created for a valid match.
     """
     # Arrange
-    match_instance = MatchTableFactory.build(match_id=1001, radiant_name='Team Liquid', dire_name='Team Secret')
+    match_instance = match_table_factory.build(match_id=1001, radiant_name='Team Liquid', dire_name='Team Secret')
     
     # Mock called methods
     mocker.patch.object(team_feature_creator, '_calculate_team_win_rate', return_value=0.6) # version 3.8 auto creates asyncMock

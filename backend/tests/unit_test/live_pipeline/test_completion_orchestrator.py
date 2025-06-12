@@ -1,15 +1,14 @@
 import pytest
-from ...factories.unit_test_factory import CompletionWorkItemFactory, TaskResultFactory
 from dota_oracle.constants.redis_constants import COMPLETION_GROUP, STREAM_PENDING_COMPLETION
 
 F_PATH = 'dota_oracle.live_pipeline.completion.completion_orchestrator'
 
 @pytest.mark.asyncio
-async def test_run_completion_cycle_successfully(completion_orchestrator, mocker):
+async def test_run_completion_cycle_successfully(completion_orchestrator, mocker, completion_work_item_factory, task_result_factory):
     
     # ARRANGE 
-    mock_work_items = CompletionWorkItemFactory.build()
-    mock_task_results = TaskResultFactory.build(
+    mock_work_items = completion_work_item_factory.build()
+    mock_task_results = task_result_factory.build(
         key=mock_work_items.event_id,
         exception=None
     )
@@ -30,11 +29,11 @@ async def test_run_completion_cycle_successfully(completion_orchestrator, mocker
     mock_mark_as_completed.assert_awaited_once()
     
 @pytest.mark.asyncio
-async def test_run_completion_cycle_one_failure(completion_orchestrator, mocker):
+async def test_run_completion_cycle_one_failure(completion_orchestrator, mocker, completion_work_item_factory, task_result_factory):
     # Arrange
-    mock_work_items = CompletionWorkItemFactory.build()
+    mock_work_items = completion_work_item_factory.build()
     mock_error = ValueError()
-    mock_task_results = TaskResultFactory.build(
+    mock_task_results = task_result_factory.build(
         key=mock_work_items.event_id,
         exception=mock_error
     )
