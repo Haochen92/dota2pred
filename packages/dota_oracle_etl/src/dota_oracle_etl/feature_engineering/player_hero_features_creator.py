@@ -2,7 +2,7 @@ from typing import List, Optional
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
-from dota_oracle_common.data_repository.history_repository import HistoryRepository
+from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import PlayerHeroFeatureTable
 from datetime import datetime
