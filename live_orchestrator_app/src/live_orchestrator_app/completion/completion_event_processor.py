@@ -1,5 +1,5 @@
 from dota_oracle_common.utils.set_logging import get_logger
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
+from ..services.history_update_service import HistoryUpdateService
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchOutcomeTable
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession

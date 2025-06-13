@@ -3,7 +3,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "pipeline-service"
+name = "live_orchestrator_app"
 version = "0.1.0"
 description = "Main pipeline orchestration service for Dota Oracle"
 authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
@@ -11,8 +11,8 @@ packages = [{include = "*", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
-dota-oracle-etl = {path = "../../packages/dota_oracle_etl", develop = true}
+dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
+dota-oracle-etl = {path = "../packages/dota_oracle_etl", develop = true}
 prefect = ">=3.0"
 prefect-aws = "*"
 prefect-sqlalchemy = "*"
