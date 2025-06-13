@@ -23,7 +23,7 @@ pre-commit = "*"
 
 # Workspace configuration
 [tool.poetry.group.workspace]
-optional = true
+optional = false
 
 [tool.poetry.group.workspace.dependencies]
 # Local workspace packages
