@@ -97,11 +97,11 @@ services:
     networks:
       - dota-pred
 
-  pipeline-service:
+  live-orchestrator-app:
     build:
       context: .
-      dockerfile: ./services/pipeline_service/Dockerfile
-    container_name: pipeline-service
+      dockerfile: ./live_orchestrator_app/Dockerfile
+    container_name: live-orchestrator-app
     environment:
       - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
       - REDIS_URL=redis://redis:6379

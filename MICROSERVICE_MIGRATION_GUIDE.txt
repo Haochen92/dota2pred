@@ -1,0 +1,422 @@
+===============================================================================
+MICROSERVICE MIGRATION GUIDE - DETAILED TECHNICAL DOCUMENTATION
+===============================================================================
+
+📋 COMPLETE MIGRATION OVERVIEW
+
+The migration transformed a monolithic backend into a distributed microservice 
+architecture with shared packages, proper dependency management, and 
+containerized deployment.
+
+===============================================================================
+🏗️ STAGE 1: SHARED PACKAGE ARCHITECTURE
+===============================================================================
+
+CREATING MULTIPLE PYPROJECT.TOML FILES
+
+We created a multi-package structure with separate pyproject.toml files for 
+different concerns:
+
+packages/
+├── dota_oracle_common/pyproject.toml    # Shared models, repos, utils
+├── dota_oracle_etl/pyproject.toml       # ETL and feature engineering
+services/
+├── api_service/pyproject.toml           # FastAPI gateway
+├── prediction_service/pyproject.toml    # BentoML ML service
+└── pipeline_service/pyproject.toml      # Prefect orchestration
+
+PACKAGE STRUCTURE DESIGN
+
+1. packages/dota_oracle_common/pyproject.toml:
+[tool.poetry]
+name = "dota-oracle-common"
+version = "0.1.0"
+description = "Shared models, repositories, and utilities"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+sqlalchemy = "*"
+sqlmodel = "*"
+pydantic = ">=2.0"
+psycopg2-binary = "*"
+redis = "*"
+aiohttp = "*"
+alembic = "*"
+python-dotenv = "*"
+
+This contains:
+- Database models and schemas
+- Repository patterns
+- Redis client factory
+- PostgreSQL connection utilities
+- Common constants and utilities
+
+2. packages/dota_oracle_etl/pyproject.toml:
+[tool.poetry]
+name = "dota-oracle-etl"
+version = "0.1.0"
+description = "ETL and feature engineering components"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+pandas = "*"
+numpy = "*"
+scikit-learn = "*"
+joblib = "*"
+
+This contains:
+- Data extraction from APIs
+- Feature engineering pipelines
+- Data transformation logic
+- ML preprocessing utilities
+
+===============================================================================
+🎯 STAGE 2: MICROSERVICE CREATION
+===============================================================================
+
+SERVICE-SPECIFIC PYPROJECT.TOML FILES
+
+Each service has its own pyproject.toml with specific dependencies and 
+references to shared packages:
+
+1. API Service (services/api_service/pyproject.toml):
+[tool.poetry]
+name = "api-service"
+version = "0.1.0"
+package-mode = false  # Key: Only dependency management, not packaging
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
+fastapi = "*"
+uvicorn = "*"
+httpx = "*"
+pydantic = "*"
+python-dotenv = "*"
+
+2. Prediction Service (services/prediction_service/pyproject.toml):
+[tool.poetry]
+name = "prediction-service"
+version = "0.1.0"
+package-mode = false  # Key: Disables package creation
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
+bentoml = "*"
+scikit-learn = "*"
+numpy = "*"
+pandas = "*"
+pydantic = ">=2.0"
+
+3. Pipeline Service (services/pipeline_service/pyproject.toml):
+[tool.poetry]
+name = "pipeline-service"
+version = "0.1.0"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
+dota-oracle-etl = {path = "../../packages/dota_oracle_etl", develop = true}
+prefect = ">=3.0"
+dependency-injector = "*"
+redis = "*"
+requests = "*"
+
+===============================================================================
+🐳 STAGE 3: DOCKER & POETRY INTEGRATION
+===============================================================================
+
+WHY POETRY INSTEAD OF PIP?
+
+1. Dependency Resolution: Poetry resolves version conflicts automatically
+2. Lock Files: poetry.lock ensures reproducible builds
+3. Virtual Environment Management: Better isolation
+4. Development Dependencies: Clear separation of dev vs production deps
+5. Package Management: Handles local package dependencies elegantly
+
+DOCKER BUILD PROCESS BREAKDOWN
+
+Let's examine the prediction service Dockerfile in detail:
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 1. Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install poetry
+RUN pip install poetry
+
+# 3. Configure poetry: don't create virtual env, install deps to system python
+RUN poetry config virtualenvs.create false
+
+# 4. Copy shared packages first and install them
+COPY packages/ ./packages/
+RUN cd packages/dota_oracle_common && poetry install --only=main --no-interaction
+
+# 5. Copy service poetry files and install dependencies
+COPY services/prediction_service/pyproject.toml services/prediction_service/pyproject.toml
+RUN cd services/prediction_service && poetry install --only=main --no-interaction
+
+# 6. Copy application code
+COPY services/prediction_service/src/ ./src/
+COPY services/prediction_service/models/ ./models/
+COPY services/prediction_service/requirements.txt ./requirements.txt
+COPY services/prediction_service/save_model.py ./save_model.py
+
+# 7. Set Python path to include shared packages
+ENV PYTHONPATH=/app/packages/dota_oracle_common/src:/app/src
+
+# 8. Save the model to BentoML store
+RUN python save_model.py
+
+EXPOSE 3000
+CMD ["bentoml", "serve", "src.service:svc", "--host", "0.0.0.0", "--port", "3000"]
+
+INSTALLATION SEQUENCE ANALYSIS
+
+Step-by-Step Installation Process:
+
+1. Base Image Setup
+   FROM python:3.11-slim
+   WORKDIR /app
+
+2. System Dependencies
+   RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+   - gcc: Required for compiling Python packages with C extensions
+   - Clean up apt cache to reduce image size
+
+3. Poetry Installation
+   RUN pip install poetry
+   RUN poetry config virtualenvs.create false
+   - Install Poetry globally with pip
+   - Disable virtual environment creation (install directly to system Python)
+
+4. Shared Package Installation
+   COPY packages/ ./packages/
+   RUN cd packages/dota_oracle_common && poetry install --only=main --no-interaction
+   - Copy shared packages first (better Docker layer caching)
+   - Install shared dependencies before service-specific ones
+   - --only=main: Skip development dependencies
+   - --no-interaction: Non-interactive mode for CI/CD
+
+5. Service-Specific Dependencies
+   COPY services/prediction_service/pyproject.toml services/prediction_service/pyproject.toml
+   RUN cd services/prediction_service && poetry install --only=main --no-interaction
+   - Copy service pyproject.toml to correct relative path context
+   - Install service dependencies (including references to shared packages)
+
+===============================================================================
+🔧 STAGE 4: DEPENDENCY RESOLUTION & PATH MANAGEMENT
+===============================================================================
+
+PATH REFERENCE RESOLUTION
+
+The key challenge was handling relative paths in pyproject.toml within Docker context:
+
+Problem:
+# This path is relative to the service directory
+dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
+
+Solution:
+# Copy to maintain directory structure
+COPY services/prediction_service/pyproject.toml services/prediction_service/pyproject.toml
+
+# Change to service directory to maintain relative paths
+RUN cd services/prediction_service && poetry install --only=main --no-interaction
+
+PYTHONPATH CONFIGURATION
+
+ENV PYTHONPATH=/app/packages/dota_oracle_common/src:/app/src
+
+This ensures Python can find:
+- Shared packages: from dota_oracle_common.models import ...
+- Service code: from api_service.main import ...
+
+===============================================================================
+📦 STAGE 5: PACKAGE MODE CONFIGURATION
+===============================================================================
+
+THE PACKAGE-MODE = FALSE SETTING
+
+This was crucial for services that don't need to be packaged themselves:
+
+[tool.poetry]
+name = "prediction-service"
+package-mode = false  # Only dependency management, not packaging
+
+Why this was needed:
+- Services are applications, not libraries
+- We only want dependency management, not package creation
+- Avoids Poetry trying to find package source code during poetry install
+- Prevents "No file/folder found for package" errors
+
+===============================================================================
+🤖 STAGE 6: BENTOML MODEL INTEGRATION
+===============================================================================
+
+MODEL MANAGEMENT PIPELINE
+
+1. Model Saving Script (services/prediction_service/save_model.py):
+import bentoml
+from joblib import load
+from dota_oracle_common.models.inference.schema import ModelMetaData
+
+def load_and_save_model():
+    # Load from joblib file
+    model = load("models/random_forest_model.joblib")
+    
+    # Create metadata using shared schemas
+    metadata = ModelMetaData(
+        name="rf_model",
+        version="0.0.1",
+        trained_date=dt.now(),
+        version_metadata=version_data
+    )
+    
+    # Save to BentoML store
+    saved_model = bentoml.sklearn.save_model(
+        name="rf_model",
+        model=model,
+        metadata=metadata.model_dump()
+    )
+
+2. Docker Integration:
+# Copy model saving script
+COPY services/prediction_service/save_model.py ./save_model.py
+
+# Save model during build (not runtime)
+RUN python save_model.py
+
+3. Service Definition:
+@bentoml.service(name='match_prediction', image=my_image)
+class MatchPredictionService:
+    rf_model = BentoModel('rf_model:latest')  # References saved model
+    
+    def __init__(self):
+        self.model = bentoml.sklearn.load_model(self.rf_model)
+
+===============================================================================
+🏢 STAGE 7: DOCKER COMPOSE ORCHESTRATION
+===============================================================================
+
+SERVICE CONFIGURATION
+
+services:
+  api-service:
+    build:
+      context: .  # Root context for shared packages
+      dockerfile: ./services/api_service/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+      - prediction-service
+
+Key Aspects:
+- Build Context: Root directory (.) so Dockerfiles can access packages/
+- Service Dependencies: Proper startup order
+- Environment Variables: Database and Redis connection strings
+- Port Mapping: External access to services
+
+===============================================================================
+🎯 STAGE 8: PROBLEM RESOLUTION & SOLUTIONS
+===============================================================================
+
+COMMON ISSUES ENCOUNTERED & SOLUTIONS
+
+1. Path Resolution in Docker:
+Problem: Path /packages/dota_oracle_common for dota-oracle-common does not exist
+Solution: Maintain directory structure in Docker context
+COPY services/prediction_service/pyproject.toml services/prediction_service/pyproject.toml
+RUN cd services/prediction_service && poetry install
+
+2. Package Mode Issues:
+Problem: "No file/folder found for package prediction-service"
+Solution: Add package-mode = false to pyproject.toml
+
+3. PostgreSQL Dependencies:
+Problem: psycopg2 build failure
+Solution: Add system dependencies
+RUN apt-get update && apt-get install -y libpq-dev
+
+4. BentoML Service Definition:
+Problem: AttributeError: 'MatchPredictionService' object has no attribute 'name'
+Solution: Use class reference, not instance
+svc = MatchPredictionService  # Not MatchPredictionService()
+
+===============================================================================
+📊 FINAL ARCHITECTURE BENEFITS
+===============================================================================
+
+DEPENDENCY MANAGEMENT IMPROVEMENTS
+
+Before (pip):
+- Manual dependency resolution
+- requirements.txt files
+- Version conflicts
+- No development/production separation
+
+After (Poetry):
+- Automatic dependency resolution
+- Lock files for reproducibility
+- Clear dev/prod separation
+- Local package management
+- Virtual environment handling
+
+MICROSERVICE BENEFITS
+
+1. Separation of Concerns: Each service has specific responsibility
+2. Independent Scaling: Scale services based on load
+3. Technology Flexibility: Different tech stacks per service
+4. Shared Code Reuse: Common functionality in packages
+5. Container Optimization: Smaller, focused images
+
+DEVELOPMENT WORKFLOW
+
+# Root level commands
+make build-all          # Build all services
+docker-compose up -d    # Start full stack
+
+# Service-specific development
+cd services/api_service
+poetry install          # Install dependencies
+poetry run python -m api_service.main  # Run locally
+
+# Shared package development
+cd packages/dota_oracle_common
+poetry install          # Install for development
+
+===============================================================================
+FINAL SERVICE ARCHITECTURE
+===============================================================================
+
+RUNNING SERVICES:
+✅ API Service (port 8000): FastAPI gateway with Swagger UI
+✅ Prediction Service (port 3000): BentoML with proper model (139 features)
+✅ Pipeline Service: Prefect orchestration for data workflows
+✅ Infrastructure: PostgreSQL + Redis + pgAdmin
+
+ENDPOINTS AVAILABLE:
+- http://localhost:8000/docs - API Gateway Swagger UI
+- http://localhost:8000/health - API health check
+- http://localhost:3000/ - BentoML Prediction Service UI
+- http://localhost:3000/readyz - Prediction service health
+- http://localhost:3000/get_metadata - Model metadata
+- http://localhost:5050 - pgAdmin database interface
+
+This migration created a robust, scalable architecture that maintains code 
+reusability while enabling independent service development and deployment!
+
+===============================================================================
+END OF MIGRATION GUIDE
+===============================================================================

@@ -3,13 +3,14 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "dota-prediction-monorepo"
+name = "dota_oracle_root"
 version = "0.1.0"
 description = "A microservice monorepo for Dota 2 match predictions"
 authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "3.11.12"
+python = ">=3.11,<3.12"
 
 [tool.poetry.group.dev.dependencies]
 # Common dev dependencies for the entire monorepo
@@ -28,9 +29,9 @@ optional = true
 # Local workspace packages
 dota-oracle-common = {path = "packages/dota_oracle_common", develop = true}
 dota-oracle-etl = {path = "packages/dota_oracle_etl", develop = true}
-training-pipeline = {path = "pipelines/training_pipeline", develop = true}
+model-factory = {path = "model_factory", develop = true}
 prediction-service = {path = "services/prediction_service", develop = true}
-pipeline-service = {path = "services/pipeline_service", develop = true}
+live-orchestrator-app = {path = "live_orchestrator_app", develop = true}
 api-service = {path = "services/api_service", develop = true}
 
 [tool.ruff]
