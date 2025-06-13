@@ -1,9 +1,9 @@
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, patch
-from dota_oracle.live_pipeline.app_container import AppContainer
+from live_orchestrator_app.app_container import AppContainer
 
-from dota_oracle.models.live_games.schema import LiveLeagueAPIResponse, ResultData
+from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
