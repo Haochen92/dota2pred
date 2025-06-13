@@ -1,8 +1,8 @@
 import pandas as pd
-from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.models.match import MatchTable
+from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.models.match import MatchTable
 from typing import List, Dict
-from dota_oracle.constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, UUID_COL
+from dota_oracle_common.constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, UUID_COL
 
 logger = get_logger(__name__)
 

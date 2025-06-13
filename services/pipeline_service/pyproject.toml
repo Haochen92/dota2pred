@@ -7,7 +7,7 @@ name = "pipeline-service"
 version = "0.1.0"
 description = "Main pipeline orchestration service for Dota Oracle"
 authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
-package-mode = false
+packages = [{include = "*", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
