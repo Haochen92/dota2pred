@@ -13,7 +13,7 @@ from typing import List
 
 logger = get_logger(__name__)
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 @pytest_asyncio.fixture(scope='function')
