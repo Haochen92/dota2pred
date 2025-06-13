@@ -1,1 +1,1 @@
-from live_orchestrator_app.constants.match_constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, LABEL_COL, UUID_COL
+from .match_constants import DRAFT_COLS, PLAYER_COLS, TEAM_COL, TIME_COL, LABEL_COL, UUID_COL
