@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 MatchWithOutcome = Tuple[MatchTable, MatchOutcomeTable]
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 class TestInsertMatchDetails:

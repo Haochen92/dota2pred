@@ -23,7 +23,7 @@ from .redis_service_scenarios import (
     FAILURE_RECORD_SCENARIO_ARGS, FAILURE_RECORD_SCENARIO
 )
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 '''
 Test Service initialization

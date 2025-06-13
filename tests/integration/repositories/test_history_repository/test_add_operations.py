@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from dota_oracle_common.repositories.history_repository import HistoryRepository
 from .base_history_repo import BaseHistoryRepositoryTest
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 class TestAddPlayerHeroMatchOutcome:

@@ -14,7 +14,7 @@ from dota_oracle_common.models.features import (
 
 from ..base_test_repository import BaseTestRepository, T
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 @pytest.mark.usefixtures('seed_features_data')
 class TestStoreFeatures:
