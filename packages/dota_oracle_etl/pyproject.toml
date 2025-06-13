@@ -1,0 +1,26 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "dota-oracle-etl"
+version = "0.1.0"
+description = "ETL and feature engineering library for Dota Oracle"
+authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+packages = [{include = "dota_oracle_etl", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../dota_oracle_common", develop = true}
+scikit-learn = "*"
+numpy = "*"
+pandas = "*"
+requests = "*"
+aiohttp = "*"
+pydantic = ">=2.0"
+python-dotenv = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-mock = "*"
+mypy = "*"
