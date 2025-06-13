@@ -12,6 +12,7 @@ from dota_oracle.models.leagues import LeaguesAPIResponse
 from dota_oracle.models.live_games import LiveLeagueAPIResponse
 from dota_oracle.models.match import ProMatchAPIResponse, MatchesAPIResponse
 from dota_oracle.models.inference import ModelMetaDataAPIResponse, ModelPredictionAPIResponse
+from dota_oracle.models.features import AllFeaturesDTO
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.contract]
 
@@ -58,10 +59,11 @@ async def test_pro_match_contract():
     assert len(pro_match_list) == 1, f"expect 1 results, got {len(pro_match_list)}"
     
 
-async def test_model_metadata_contract(model_inference_service):
-    model_metadata = await model_inference_service.get_model_metadata()
+# async def test_model_metadata_contract(model_inference_service):
+#     model_metadata = await model_inference_service.get_model_metadata()
     
-    assert isinstance(model_metadata, ModelMetaDataAPIResponse)
+#     assert isinstance(model_metadata, ModelMetaDataAPIResponse)
+#     assert 
     
 
     

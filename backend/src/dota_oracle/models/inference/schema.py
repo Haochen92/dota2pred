@@ -29,8 +29,8 @@ class VersionMetaData(BaseModel):
     performance_metrics: PerformanceMetrics = Field(default_factory=PerformanceMetrics)
     feature_columns: List[str] = []
     
-class ModelMetaDataAPIResponse(BaseModel):
-    """API response for model metadata information.
+class ModelMetaData(BaseModel):
+    """Model Metadata Schema.
     
     Attributes:
         name: Model name (str)
@@ -45,6 +45,20 @@ class ModelMetaDataAPIResponse(BaseModel):
     trained_date: datetime
     previous_version : str = ""
     version_metadata: VersionMetaData = Field(default_factory=VersionMetaData)
+    
+class ModelMetaDataAPIResponse(ModelMetaData):
+    """API response for model metadata information.
+    
+    Attributes:
+        name: Model name (str)
+        version: Current version (str)
+        trained_date: Model training date (datetime)
+        feature_columns: List of feature column names (List[str])
+        previous_version: Previous model version (str)
+        version_metadata: Version-specific metadata (VersionMetaData)
+    """
+    
+    
     
 class ModelPredictionAPIResponse(BaseModel):
     """API response for model predictions.

@@ -15,8 +15,6 @@ from dota_oracle.live_pipeline.services.match_prediction_service import MatchPre
 # ML/Inference imports
 from dota_oracle.inference import ModelInferenceService
 
-# Factory imports
-from ..factories.unit_test_factory import ModelMetaDataAPIResponseFactory
 
 
 # ================================
@@ -58,8 +56,8 @@ def mock_fetch_outcome_service() -> FetchOutcomeService:
 # ================================
 
 @pytest.fixture
-def feature_preparation_service(mock_model_inference_service) -> FeaturePreparationService:
-    mock_model_inference_service.model_metadata = ModelMetaDataAPIResponseFactory.build()
+def feature_preparation_service(mock_model_inference_service, model_meta_data_api_response_factory) -> FeaturePreparationService:
+    mock_model_inference_service.model_metadata = model_meta_data_api_response_factory.build()
     
     return FeaturePreparationService(mock_model_inference_service)
 
