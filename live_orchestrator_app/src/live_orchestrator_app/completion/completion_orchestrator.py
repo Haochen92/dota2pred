@@ -1,12 +1,12 @@
 from dota_oracle_common.models.redis.schema import StreamMatchEventData
 from dota_oracle_common.utils.set_logging import get_logger
-from ..services.redis_service import RedisService
-from ..services.history_update_service import HistoryUpdateService
+from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
-from .completion_data_provider import CompletionDataProvider
+from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
-from .completion_event_processor import CompletionEventProcessor
+from live_orchestrator_app.completion.completion_event_processor import CompletionEventProcessor
 
 logger = get_logger(__name__)
 

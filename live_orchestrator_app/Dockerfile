@@ -11,16 +11,12 @@ RUN apt-get update && apt-get install -y \
 
 # Install poetry
 RUN pip install poetry
-
-# Configure poetry: don't create virtual env, install deps to system python
 RUN poetry config virtualenvs.create false
 
-# Copy shared packages first
+# Copy and install shared packages properly
 COPY packages/ ./packages/
-
-# Install shared packages
-RUN cd packages/dota_oracle_common && poetry install --only=main --no-interaction
-RUN cd packages/dota_oracle_etl && poetry install --only=main --no-interaction
+RUN pip install -e ./packages/dota_oracle_common
+RUN pip install -e ./packages/dota_oracle_etl
 
 # Copy service poetry files and install dependencies
 COPY live_orchestrator_app/pyproject.toml live_orchestrator_app/pyproject.toml
@@ -31,14 +27,9 @@ COPY live_orchestrator_app/src/ ./src/
 COPY live_orchestrator_app/entrypoint.sh ./
 COPY live_orchestrator_app/deploy_flow.py ./
 
-# Ensure that entrypoint.sh is executable
 RUN chmod +x /app/entrypoint.sh
 
-# Set Python path to include shared packages
-ENV PYTHONPATH=/app/packages/dota_oracle_common/src:/app/packages/dota_oracle_etl/src:/app/src
+ENV PYTHONPATH=/app/src
 
-# Expose the port your app runs on
 EXPOSE 8000
-
-# Run the entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]

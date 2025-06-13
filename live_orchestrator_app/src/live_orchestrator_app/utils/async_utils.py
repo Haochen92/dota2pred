@@ -1,7 +1,7 @@
 import asyncio
 import sys
 from typing import List
-from .set_logging import get_logger
+from live_orchestrator_app.utils.set_logging import get_logger
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
 
 logger = get_logger(__name__)
