@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel
-from ..models.live_games.schema import OngoingLeagueGame
-from ..models.redis.schema import StreamMatchEventData
-from ..models.match import MatchTable
+from ..live_games.schema import OngoingLeagueGame
+from ..redis.schema import StreamMatchEventData
+from ..match import MatchTable
 
 class NewMatchWorkItem(SQLModel):
     """
