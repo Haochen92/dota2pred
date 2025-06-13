@@ -10,7 +10,7 @@ from typing import Dict
 
 logger = get_logger(__name__)
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
     
     
