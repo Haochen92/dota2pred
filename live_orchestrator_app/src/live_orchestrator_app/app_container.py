@@ -13,7 +13,7 @@ from dota_oracle_etl.feature_engineering.team_features_creator import TeamFeatur
 from dota_oracle_etl.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
 
 # --- Inference Components ---
-from inference.model_inference_service import ModelInferenceService
+from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .services.redis_service import RedisService 

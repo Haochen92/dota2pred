@@ -1,6 +1,6 @@
 from dota_oracle_common.utils.set_logging import get_logger
-from ..services.feature_preparation_service import FeaturePreparationService
-from ..services.match_prediction_service import MatchPredictionService
+from live_orchestrator_app.services.feature_preparation_service import FeaturePreparationService
+from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
 from dota_oracle_common.models.pipeline import PredictionWorkItem
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
