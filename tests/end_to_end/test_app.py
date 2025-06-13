@@ -5,7 +5,7 @@ from live_orchestrator_app.app_container import AppContainer
 
 from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 @pytest_asyncio.fixture(scope='function')

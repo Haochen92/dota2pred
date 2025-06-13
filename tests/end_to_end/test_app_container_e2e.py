@@ -8,7 +8,7 @@ from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchO
 from dota_oracle_etl.data_extraction.fetch_hero_data import fetch_hero_data
 from sqlmodel import select
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 class TestLivePipelineE2E:
