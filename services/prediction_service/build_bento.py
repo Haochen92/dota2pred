@@ -1,4 +1,4 @@
-from ...backend.bentoml.build_service import main
+from .build_service import main
 import subprocess
 
 def docker_compose_up():
