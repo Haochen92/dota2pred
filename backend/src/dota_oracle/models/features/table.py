@@ -24,7 +24,7 @@ class TeamFeaturesTable(TeamFeatures, table=True):
     """
     __tablename__ = 'team_features' # type: ignore
 
-    # Overrides
+    # Primary Key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id")
 
@@ -45,7 +45,6 @@ class HeroFeaturesTable(HeroFeatures, table=True):
     """
     __tablename__ = 'hero_features' # type: ignore
     
-    # Overrides
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id")
@@ -67,7 +66,6 @@ class PlayerHeroFeatureTable(PlayerHeroFeature, table=True):
     """
     __tablename__ = 'player_hero_features' # type: ignore
     
-    # Overrides
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id") 
