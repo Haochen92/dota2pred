@@ -2,7 +2,7 @@ from typing import List, Set
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
 from dota_oracle_etl.data_extraction.fetch_live_leagues import fetch_live_league_games
-from ..services.redis_service import RedisService
+from live_orchestrator_app.services.redis_service import RedisService
 from dota_oracle_common.models.pipeline import NewMatchWorkItem
 from pydantic import ValidationError
 
