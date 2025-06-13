@@ -1,10 +1,10 @@
 from typing import List, Optional
-from dota_oracle.utils import get_logger
-from dota_oracle.utils.async_utils import TaskRunner
-from dota_oracle.models.utils import AsyncTask
-from dota_oracle.data_repository.history_repository import HistoryRepository
-from dota_oracle.models.match import MatchTable
-from dota_oracle.models.features import PlayerHeroFeatureTable
+from dota_oracle_common.utils import get_logger
+from dota_oracle_common.utils.async_utils import TaskRunner
+from dota_oracle_common.models.utils import AsyncTask
+from dota_oracle_common.data_repository.history_repository import HistoryRepository
+from dota_oracle_common.models.match import MatchTable
+from dota_oracle_common.models.features import PlayerHeroFeatureTable
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 

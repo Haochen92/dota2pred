@@ -1,9 +1,9 @@
 from .api_clients.opendota_api import fetch_opendota
-from dota_oracle.models.leagues.schema import LeaguesAPIResponse, LeagueItem
+from dota_oracle_common.models.leagues.schema import LeaguesAPIResponse, LeagueItem
 import asyncio
 from typing import List
 from pydantic import ValidationError
-from dota_oracle.utils.set_logging import get_logger
+from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
 

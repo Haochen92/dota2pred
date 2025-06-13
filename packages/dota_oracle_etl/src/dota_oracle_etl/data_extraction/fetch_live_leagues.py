@@ -1,8 +1,8 @@
 from .api_clients.steam_api import fetch_steam_data
 from typing import List
 import asyncio
-from dota_oracle.utils.set_logging import get_logger
-from dota_oracle.models.live_games.schema import LiveLeagueAPIResponse, LiveLeagueGame
+from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, LiveLeagueGame
 from pydantic import ValidationError
 
 logger = get_logger(__name__)

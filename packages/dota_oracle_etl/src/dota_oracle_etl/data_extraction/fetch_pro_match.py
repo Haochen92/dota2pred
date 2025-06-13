@@ -1,6 +1,6 @@
 from .api_clients.opendota_api import fetch_opendota
-from dota_oracle.models.match import ProMatchAPIResponse, ProMatchOutcome
-from dota_oracle.utils.set_logging import get_logger
+from dota_oracle_common.models.match import ProMatchAPIResponse, ProMatchOutcome
+from dota_oracle_common.utils.set_logging import get_logger
 from typing import List
 from pydantic import ValidationError
 import aiohttp
