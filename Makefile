@@ -7,9 +7,9 @@ install-deps: ## Install all dependencies for the monorepo
 	poetry install
 	cd packages/dota_oracle_common && poetry install
 	cd packages/dota_oracle_etl && poetry install
-	cd pipelines/training_pipeline && poetry install
+	cd model_factory && poetry install
 	cd services/prediction_service && poetry install
-	cd services/pipeline_service && poetry install
+	cd live_orchestrator_app && poetry install
 	cd services/api_service && poetry install
 	cd frontend && npm install
 
@@ -19,9 +19,9 @@ build: ## Build all Docker images
 test: ## Run all tests
 	cd packages/dota_oracle_common && poetry run pytest
 	cd packages/dota_oracle_etl && poetry run pytest
-	cd pipelines/training_pipeline && poetry run pytest
+	cd model_factory && poetry run pytest
 	cd services/prediction_service && poetry run pytest
-	cd services/pipeline_service && poetry run pytest
+	cd live_orchestrator_app && poetry run pytest
 	cd services/api_service && poetry run pytest
 
 test-e2e: ## Run end-to-end tests
@@ -30,17 +30,17 @@ test-e2e: ## Run end-to-end tests
 lint: ## Run linting for all Python packages
 	cd packages/dota_oracle_common && poetry run ruff check . && poetry run mypy .
 	cd packages/dota_oracle_etl && poetry run ruff check . && poetry run mypy .
-	cd pipelines/training_pipeline && poetry run ruff check . && poetry run mypy .
+	cd model_factory && poetry run ruff check . && poetry run mypy .
 	cd services/prediction_service && poetry run ruff check . && poetry run mypy .
-	cd services/pipeline_service && poetry run ruff check . && poetry run mypy .
+	cd live_orchestrator_app && poetry run ruff check . && poetry run mypy .
 	cd services/api_service && poetry run ruff check . && poetry run mypy .
 
 format: ## Format all Python code
 	cd packages/dota_oracle_common && poetry run black .
 	cd packages/dota_oracle_etl && poetry run black .
-	cd pipelines/training_pipeline && poetry run black .
+	cd model_factory && poetry run black .
 	cd services/prediction_service && poetry run black .
-	cd services/pipeline_service && poetry run black .
+	cd live_orchestrator_app && poetry run black .
 	cd services/api_service && poetry run black .
 
 start: ## Start all services with Docker Compose

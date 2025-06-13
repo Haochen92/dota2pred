@@ -1,7 +1,6 @@
-backend/models/
 projects.git
 data
 logs
 dota2pred
 dota2
-.vscode
+.assistant
