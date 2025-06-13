@@ -3,7 +3,7 @@ import pytest_asyncio
 import logging
 from testcontainers.compose import DockerCompose
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from dota_oracle import models
+from dota_oracle_common import models
 from sqlmodel import SQLModel
 import redis.asyncio as aioredis
 
@@ -37,6 +37,42 @@ def e2e_environment():
             "prediction_api_url": prediction_url,
         }
     logger.info("E2E environment has been shut down.")
+
+@pytest_asyncio.fixture(scope='module')
+async def e2e_postgres_engine(e2e_environment: dict):
+    async_db_url = e2e_environment.get("db_url")
+    if not async_db_url:
+        raise ValueError("Missing async_db_url")
+    
+    engine = create_async_engine(async_db_url)
+    logger.info(f"Test DB engine created for: {async_db_url}")
+    
+    yield engine
+    
+    logger.info("Disposing Test DB engine.")
+    await engine.dispose()
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def create_e2e_db_tables(e2e_postgres_engine):
+    app_metadata_to_create = SQLModel.metadata
+    
+    async with e2e_postgres_engine.begin() as conn:
+        logger.info("Dropping existing tables for a clean state")
+        await conn.run_sync(SQLModel.metadata.drop_all)
+        logger.info("Creating all tables in test database")
+        await conn.run_sync(app_metadata_to_create.create_all)
+        
+    logger.info("Database tables created in test PostgreSQL container.")
+    
+
+@pytest_asyncio.fixture(scope='module')
+async def e2e_redis_client(e2e_environment: dict):
+    client = aioredis.from_url(e2e_environment["redis_url"], decode_responses=True)
+    await client.ping()
+    yield client
+    
+    # Clean up
+    client.connection_pool.disconnect
 
 @pytest_asyncio.fixture(scope='module')
 async def e2e_postgres_engine(e2e_environment: dict):
