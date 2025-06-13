@@ -10,7 +10,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
 class TestStoreMatchPrediction:
