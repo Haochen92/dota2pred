@@ -3,12 +3,6 @@ import pytest_asyncio
 from unittest.mock import AsyncMock, patch
 from dota_oracle.live_pipeline.app_container import AppContainer
 
- # to fix
-from tests.factories.unit_test_factory import (
-    OngoingLeagueGameFactory, 
-    ModelPredictionAPIResponseFactory
-)
-from tests.factories.repository_factories import MatchTableFactory
 from dota_oracle.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
@@ -46,22 +40,22 @@ class TestComprehensiveE2EWiring:
     """Comprehensive E2E test validating complete AppContainer wiring with realistic mock data."""
     
     @pytest_asyncio.fixture(scope='function')
-    async def mock_live_games_data(self):
+    async def mock_live_games_data(self, ongoing_league_game_factory):
         """Generate realistic live games data using polyfactory."""
-        live_games = OngoingLeagueGameFactory.batch(2)
+        live_games = ongoing_league_game_factory.batch(2)
         return LiveLeagueAPIResponse(
-            result=ResultData(games=live_games)
+            result=ResultData(games=live_games) # type: ignore
         )
     
     @pytest.fixture(scope='function') 
-    def mock_match_details_data(self):
+    def mock_match_details_data(self, match_table_factory):
         """Generate realistic match details using polyfactory."""
-        return MatchTableFactory.batch(2)
+        return match_table_factory.batch(2)
     
     @pytest.fixture(scope='function')
-    def mock_prediction_response(self):
+    def mock_prediction_response(self, model_prediction_api_response_factory):
         """Generate realistic prediction response using polyfactory."""
-        return ModelPredictionAPIResponseFactory()
+        return model_prediction_api_response_factory()
     
     async def test_complete_pipeline_wiring_with_realistic_data(
         self,
