@@ -3,7 +3,7 @@ import pytest_asyncio
 import logging
 from testcontainers.compose import DockerCompose
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from dota_oracle import models
+from dota_oracle_common import models
 from sqlmodel import SQLModel
 import redis.asyncio as aioredis
 
