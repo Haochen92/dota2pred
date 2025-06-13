@@ -1,0 +1,1 @@
+"""FastAPI gateway service for Dota Oracle."""
