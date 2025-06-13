@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 from sqlmodel import SQLModel
-from dota_oracle import models
+from dota_oracle_common import models
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
