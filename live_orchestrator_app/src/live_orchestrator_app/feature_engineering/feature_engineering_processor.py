@@ -1,5 +1,5 @@
 from dota_oracle_common.utils.set_logging import get_logger
-from ..services.feature_engineering_service import FeatureEngineeringService
+from live_orchestrator_app.services.feature_engineering_service import FeatureEngineeringService
 from dota_oracle_common.models.pipeline import FeatureEngineeringWorkItem
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 

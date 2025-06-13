@@ -1,9 +1,9 @@
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
-from .new_match_data_provider import NewMatchDataProvider
-from .new_match_event_processor import NewMatchEventProcessor
-from ..services.redis_service import RedisService
+from live_orchestrator_app.data_fetching.new_match_data_provider import NewMatchDataProvider
+from live_orchestrator_app.data_fetching.new_match_event_processor import NewMatchEventProcessor
+from live_orchestrator_app.services.redis_service import RedisService
 
 logger = get_logger(__name__)
 
