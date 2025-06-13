@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from dota_oracle.data_repository.match_repository import MatchRepository
-from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
+from dota_oracle.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable, AllFeaturesDTO
 from dota_oracle.data_repository.heroes_repository import HeroesRepository
 
 from dota_oracle.feature_transformation import FeatureEncoder
@@ -60,6 +60,8 @@ class FeaturePreparationService:
             team_df = pd.DataFrame([team_features.model_dump(exclude={'match'})])
             hero_df = pd.DataFrame([hero_features.model_dump(exclude={'match'})])
             player_hero_df = pd.DataFrame([player_hero_features.model_dump(exclude={'match'})])
+            
+            
             
             # Encode hero_df
             encoded_hero_df = await self._encode_hero_feature(heroes_repository, hero_df)

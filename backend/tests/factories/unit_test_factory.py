@@ -6,6 +6,7 @@ from polyfactory.pytest_plugin import register_fixture
 # Model imports for factories
 from dota_oracle.models.live_games.schema import OngoingLeagueGame
 from dota_oracle.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
+from dota_oracle.models.match.schema import MatchesAPIResponse, ProMatchOutcome
 from dota_oracle.models.pipeline.schema import (
     NewMatchWorkItem,
     FeatureEngineeringWorkItem, 
@@ -21,6 +22,10 @@ from dota_oracle.models.utils import TaskResult, AsyncTask
 
 @register_fixture
 class OngoingLeagueGameFactory(ModelFactory[OngoingLeagueGame]):
+    pass
+
+@register_fixture
+class MatchesAPIResponseFactory(ModelFactory[MatchesAPIResponse]):
     pass
 
 @register_fixture

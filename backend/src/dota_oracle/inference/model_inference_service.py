@@ -7,14 +7,14 @@ from pydantic import ValidationError
 logger = get_logger(__name__)
 
 class ModelInferenceService:
-    def __init__(self):
-        self.predict_url = "http://localhost:3333/predict"
-        self.metadata_url = "http://localhost:3333/get_metadata"
+    def __init__(self, base_url: str = "http://localhost:3333"):
+        self.predict_url = f"{base_url}/predict"
+        self.metadata_url = f"{base_url}/get_metadata"
 
     @classmethod
-    async def create(cls):
+    async def create(cls, base_url: str = "http://localhost:3333"):
         # Factory class method to create and initialize service
-        instance = cls()
+        instance = cls(base_url)
         await instance.initialize_async_service()
         return instance
         
@@ -28,7 +28,7 @@ class ModelInferenceService:
     async def get_prediction(self, input_features: np.ndarray) -> ModelPredictionAPIResponse:
         
         logger.info("calling model endpoint for prediction...")
-        request_data = {"input_data": {"features": input_features.tolist()}}
+        request_data = {"input_features": input_features.tolist()}
         
         try:
             async with aiohttp.ClientSession() as session:
