@@ -23,13 +23,13 @@ RUN cd packages/dota_oracle_common && poetry install --only=main --no-interactio
 RUN cd packages/dota_oracle_etl && poetry install --only=main --no-interaction
 
 # Copy service poetry files and install dependencies
-COPY services/pipeline_service/pyproject.toml services/pipeline_service/pyproject.toml
-RUN cd services/pipeline_service && poetry install --only=main --no-interaction
+COPY live_orchestrator_app/pyproject.toml live_orchestrator_app/pyproject.toml
+RUN cd live_orchestrator_app && poetry install --only=main --no-interaction
 
 # Copy service application code
-COPY services/pipeline_service/src/ ./src/
-COPY services/pipeline_service/entrypoint.sh ./
-COPY services/pipeline_service/deploy_flow.py ./
+COPY live_orchestrator_app/src/ ./src/
+COPY live_orchestrator_app/entrypoint.sh ./
+COPY live_orchestrator_app/deploy_flow.py ./
 
 # Ensure that entrypoint.sh is executable
 RUN chmod +x /app/entrypoint.sh
