@@ -1,0 +1,48 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "dota-prediction-monorepo"
+version = "0.1.0"
+description = "A microservice monorepo for Dota 2 match predictions"
+authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+
+[tool.poetry.dependencies]
+python = "3.11.12"
+
+[tool.poetry.group.dev.dependencies]
+# Common dev dependencies for the entire monorepo
+pytest = "*"
+pytest-mock = "*"
+mypy = "*"
+ruff = "*"
+black = "*"
+pre-commit = "*"
+
+# Workspace configuration
+[tool.poetry.group.workspace]
+optional = true
+
+[tool.poetry.group.workspace.dependencies]
+# Local workspace packages
+dota-oracle-common = {path = "packages/dota_oracle_common", develop = true}
+dota-oracle-etl = {path = "packages/dota_oracle_etl", develop = true}
+training-pipeline = {path = "pipelines/training_pipeline", develop = true}
+prediction-service = {path = "services/prediction_service", develop = true}
+pipeline-service = {path = "services/pipeline_service", develop = true}
+api-service = {path = "services/api_service", develop = true}
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
