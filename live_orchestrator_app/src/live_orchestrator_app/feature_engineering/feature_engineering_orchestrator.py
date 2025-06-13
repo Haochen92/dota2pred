@@ -4,9 +4,9 @@ from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
 from dota_oracle_common.constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
 from dota_oracle_common.models.redis.schema import StreamMatchEventData
-from live_orchestrator_app.feature_engineering.feature_engineering_data_provider import FeatureEngineeringDataProvider
-from live_orchestrator_app.feature_engineering.feature_engineering_processor import FeatureEngineeringEventProcessor
-from live_orchestrator_app.services.redis_service import RedisService
+from .feature_engineering_data_provider import FeatureEngineeringDataProvider
+from .feature_engineering_processor import FeatureEngineeringEventProcessor
+from ..services.redis_service import RedisService
 
 logger = get_logger(__name__)
 
