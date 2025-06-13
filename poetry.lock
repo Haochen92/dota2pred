@@ -1773,6 +1773,32 @@ tornado = ">=5.0.2"
 test = ["coverage", "flake8", "gevent", "mock", "pytest", "pytest-cov", "pyyaml", "tox"]
 
 [[package]]
+name = "live-orchestrator-app"
+version = "0.1.0"
+description = "Main pipeline orchestration service for Dota Oracle"
+optional = false
+python-versions = ">=3.11,<3.12"
+groups = ["workspace"]
+files = []
+develop = true
+
+[package.dependencies]
+aiohttp = "*"
+dependency-injector = "*"
+dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
+dota-oracle-etl = {path = "../packages/dota_oracle_etl", develop = true}
+prefect = ">=3.0"
+prefect-aws = "*"
+prefect-github = "*"
+prefect-sqlalchemy = "*"
+redis = "*"
+requests = "*"
+
+[package.source]
+type = "directory"
+url = "live_orchestrator_app"
+
+[[package]]
 name = "mako"
 version = "1.3.10"
 description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
@@ -1915,6 +1941,28 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+
+[[package]]
+name = "model-factory"
+version = "0.1.0"
+description = "Model training pipeline for Dota Oracle"
+optional = false
+python-versions = ">=3.11,<3.12"
+groups = ["workspace"]
+files = []
+develop = true
+
+[package.dependencies]
+bentoml = "*"
+dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
+dota-oracle-etl = {path = "../packages/dota_oracle_etl", develop = true}
+numpy = "*"
+pandas = "*"
+scikit-learn = "*"
+
+[package.source]
+type = "directory"
+url = "model_factory"
 
 [[package]]
 name = "multidict"
@@ -2640,32 +2688,6 @@ pyparsing = "*"
 [package.extras]
 docs = ["Sphinx (>=3.3.1)", "doc8 (>=0.8.1)", "sphinx-rtd-theme (>=0.5.0)"]
 testing = ["aboutcode-toolkit (>=6.0.0)", "black", "pytest (>=6,!=7.0.0)", "pytest-xdist (>=2)"]
-
-[[package]]
-name = "pipeline-service"
-version = "0.1.0"
-description = "Main pipeline orchestration service for Dota Oracle"
-optional = false
-python-versions = ">=3.11,<3.12"
-groups = ["workspace"]
-files = []
-develop = true
-
-[package.dependencies]
-aiohttp = "*"
-dependency-injector = "*"
-dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
-dota-oracle-etl = {path = "../../packages/dota_oracle_etl", develop = true}
-prefect = ">=3.0"
-prefect-aws = "*"
-prefect-github = "*"
-prefect-sqlalchemy = "*"
-redis = "*"
-requests = "*"
-
-[package.source]
-type = "directory"
-url = "services/pipeline_service"
 
 [[package]]
 name = "platformdirs"
@@ -4617,28 +4639,6 @@ files = [
 ]
 
 [[package]]
-name = "training-pipeline"
-version = "0.1.0"
-description = "Model training pipeline for Dota Oracle"
-optional = false
-python-versions = ">=3.11,<3.12"
-groups = ["workspace"]
-files = []
-develop = true
-
-[package.dependencies]
-bentoml = "*"
-dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
-dota-oracle-etl = {path = "../../packages/dota_oracle_etl", develop = true}
-numpy = "*"
-pandas = "*"
-scikit-learn = "*"
-
-[package.source]
-type = "directory"
-url = "pipelines/training_pipeline"
-
-[[package]]
 name = "typer"
 version = "0.16.0"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
@@ -5308,4 +5308,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "4272215fff03dbc8181c2dc60c3bc2e0d5903db9924538f3a7388b01d7c08a55"
+content-hash = "14b71ee7c093f9702feac2849d80ed1751981fb13682d513634c3bea1f7cc1d4"
