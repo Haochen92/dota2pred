@@ -4,3 +4,4 @@ logs
 dota2pred
 dota2
 .claude
+services/prediction_service/models/*.joblib
