@@ -1,9 +1,9 @@
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship
 from sqlalchemy import BigInteger, Column, JSON
-from typing import List
+from .schema import TeamFeatures, PlayerHeroFeature, HeroFeatures
 
 
-class TeamFeaturesTable(SQLModel, table=True):
+class TeamFeaturesTable(TeamFeatures, table=True):
     """Database table for team-based features.
     
     Links to matches table with computed team features.
@@ -23,21 +23,16 @@ class TeamFeaturesTable(SQLModel, table=True):
     """
     __tablename__ = 'team_features' # type: ignore
 
+    # Overrides
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id")
 
-    
-    # Feature columns
-    radiant_dire_matchup: float
-    radiant_win_rate: float
-    dire_win_rate: float
-    
     # Relationships
     match: "MatchTable" = Relationship(back_populates="team_features")
 
 
 
-class HeroFeaturesTable(SQLModel, table=True):
+class HeroFeaturesTable(HeroFeatures, table=True):
     """Database table for hero-based features.
     
     Attributes:
@@ -49,17 +44,17 @@ class HeroFeaturesTable(SQLModel, table=True):
     """
     __tablename__ = 'hero_features' # type: ignore
     
+    # Overrides
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id")
     
-    # Feature columns
     hero_picks: List[str] = Field(sa_column=Column(JSON))
-
+    
     # Relationship
     match: "MatchTable" = Relationship(back_populates="hero_features")
 
-class PlayerHeroFeatureTable(SQLModel, table=True):
+class PlayerHeroFeatureTable(PlayerHeroFeature, table=True):
     """Database table for player-hero combination features.
     
     Attributes:
@@ -70,21 +65,11 @@ class PlayerHeroFeatureTable(SQLModel, table=True):
         match: Related MatchTable instance
     """
     __tablename__ = 'player_hero_features' # type: ignore
+    
+    # Overrides
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
-                          foreign_key="matches.match_id")
-    
-    # Features
-    player_hero_0_win_rate: float
-    player_hero_1_win_rate: float
-    player_hero_2_win_rate: float
-    player_hero_3_win_rate: float
-    player_hero_4_win_rate: float
-    player_hero_128_win_rate: float
-    player_hero_129_win_rate: float
-    player_hero_130_win_rate: float
-    player_hero_131_win_rate: float
-    player_hero_132_win_rate: float    
+                          foreign_key="matches.match_id") 
 
     # Relationship
     match: "MatchTable" = Relationship(back_populates="player_hero_features")
