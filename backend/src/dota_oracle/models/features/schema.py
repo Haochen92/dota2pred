@@ -1,5 +1,5 @@
 from typing import List
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 
 class TeamFeatures(SQLModel):
     """Base Model for team-based features.
@@ -13,8 +13,6 @@ class TeamFeatures(SQLModel):
         dire_win_rate: Dire team win rate (float)
     
     """
-
-    match_id: int 
     
     # Feature columns
     radiant_dire_matchup: float
@@ -34,9 +32,6 @@ class HeroFeatures(SQLModel):
     
     """
     
-    # Primary key
-    match_id: int 
-    
     # Feature columns
     hero_picks: List[str]
 
@@ -49,8 +44,6 @@ class PlayerHeroFeature(SQLModel):
         player_hero_*_win_rate: Win rates for all 10 player-hero combinations (float)
 
     """
-    # Primary key
-    match_id: int 
     
     # Features
     player_hero_0_win_rate: float
@@ -73,7 +66,6 @@ class AllFeaturesDTO(TeamFeatures, HeroFeatures, PlayerHeroFeature):
     """
     # By re-declaring the fields here, we enforce a specific order.
     # The types and other metadata are inherited from the parent classes.
-
     
     # 1. Team Features
     radiant_win_rate: float
