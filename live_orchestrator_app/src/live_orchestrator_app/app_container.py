@@ -9,8 +9,8 @@ from dota_oracle_common.redis_component.redis_client_factory import RedisClientF
 from dota_oracle_common.postgresql import DatabaseEngineFactory
 
 # --- Feature Engineering Components ---
-from dota_oracle_etl.feature_engineering.team_features_creator import TeamFeatureCreator
-from dota_oracle_etl.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
+from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamFeatureCreator
+from dota_oracle_pipeline.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
 
 # --- Inference Components ---
 from live_orchestrator_app.inference.model_inference_service import ModelInferenceService

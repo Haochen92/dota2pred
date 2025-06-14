@@ -4,7 +4,7 @@ Feature engineering component fixtures for tests.
 import pytest
 
 # Core ML Pipeline Imports
-from dota_oracle_etl.feature_engineering import (
+from dota_oracle_pipeline.feature_engineering import (
     PlayerHeroFeaturesCreator, 
     TeamFeatureCreator, 
     HeroesFeatureCreator

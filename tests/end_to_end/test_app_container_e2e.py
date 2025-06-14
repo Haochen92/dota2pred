@@ -5,7 +5,7 @@ from dependency_injector import providers
 from live_orchestrator_app.app_container import AppContainer
 from dota_oracle_common.models.live_games.schema import OngoingLeagueGame
 from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchOutcome
-from dota_oracle_etl.data_extraction.fetch_hero_data import fetch_hero_data
+from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from sqlmodel import select
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
