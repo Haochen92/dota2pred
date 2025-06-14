@@ -1,11 +1,12 @@
 from sklearn.preprocessing import MultiLabelBinarizer
 import pandas as pd
+from scipy import sparse
 
 from typing import Dict
 
 class FeatureEncoder:
     @staticmethod
-    async def encode_hero_features(hero_features: pd.DataFrame, hero_map: Dict[int, str]) -> pd.DataFrame:
+    def encode_hero_features(hero_features: pd.DataFrame, hero_map: Dict[int, str]) -> pd.DataFrame:
     
         if hero_features.empty:
             raise ValueError("Input dataframe is empty")
@@ -19,9 +20,10 @@ class FeatureEncoder:
         mlb = MultiLabelBinarizer(classes=list(hero_classes)) 
         
         hero_matrix = mlb.fit_transform(hero_features['hero_picks'])
+        hero_matrix_sparse = sparse.csr_matrix(hero_matrix)  # convert to sparse matrix
         
-        features = pd.DataFrame.sparse.from_spmatrix( # Use sparse arrays
-            data=hero_matrix,
+        features = pd.DataFrame.sparse.from_spmatrix(
+            data=hero_matrix_sparse,
             columns=mlb.classes_,
             index=hero_features.index
         )
