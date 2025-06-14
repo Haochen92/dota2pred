@@ -38,3 +38,7 @@ htmlcov/
 .coverage
 .coverage.*
 .nox/
+
+
+# Environment Variables
+.env
