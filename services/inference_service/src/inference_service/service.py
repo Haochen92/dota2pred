@@ -15,7 +15,7 @@ my_image = bentoml.images.Image(python_version='3.11', distro='debian') \
 @bentoml.service(name='match_prediction', image=my_image)
 class MatchPredictionService:
     
-    rf_model = BentoModel('rf_model:latest')
+    rf_model = BentoModel('rf_model:latest') # bentoml use this tag to load the saved model
     
     def __init__(self):
         self.model = bentoml.sklearn.load_model(self.rf_model)
