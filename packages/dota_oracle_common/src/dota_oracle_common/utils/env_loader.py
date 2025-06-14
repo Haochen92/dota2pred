@@ -12,6 +12,3 @@ def load_workspace_env():
         logger.warning("unable to find environment file")
         return False
 
-
-# Auto load when imported
-load_workspace_env()
