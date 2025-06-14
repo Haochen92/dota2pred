@@ -4,6 +4,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 def build_bento() -> bentoml.Bento:
+    """_summary_
+    Builds a Bento, which is a standardized, versioned blueprint of the ML service.
+    
+    Returns:
+        bentoml.Bento: _description_
+    """
     logger.info("building bento... ")
     try:
         bento = bentoml.build(
@@ -16,6 +22,9 @@ def build_bento() -> bentoml.Bento:
         raise
 
 def containerize_bento(bento: bentoml.Bento):
+    """
+    Build a docker image using a Bento
+    """
     logger.info("Building containerized environment for bento...")
     try:
         container = bentoml.container.build(
