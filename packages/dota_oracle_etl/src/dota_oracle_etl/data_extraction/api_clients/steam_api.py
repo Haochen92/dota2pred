@@ -1,9 +1,9 @@
 import os
 import aiohttp
 from typing import Optional, Dict
-from dotenv import load_dotenv
+from dota_oracle_common.utils import load_workspace_env
 
-load_dotenv()
+load_workspace_env()
 
 STEAM_URL = 'http://api.steampowered.com/'
 API_KEY: str | None = os.getenv('STEAM_API')
