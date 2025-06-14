@@ -9,7 +9,7 @@ from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable, AllFeaturesDTO
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
-from dota_oracle_etl.feature_transformation import FeatureEncoder
+from dota_oracle_pipeline.feature_transformation import FeatureEncoder
 from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
 
 from dota_oracle_common.utils.set_logging import get_logger

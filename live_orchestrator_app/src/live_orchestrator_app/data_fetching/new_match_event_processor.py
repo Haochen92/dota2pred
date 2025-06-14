@@ -1,5 +1,5 @@
 from dota_oracle_common.utils.set_logging import get_logger
-from dota_oracle_etl.data_transformation.live_match_parser import parse_live_league_games
+from dota_oracle_pipeline.data_transformation.live_match_parser import parse_live_league_games
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.match import MatchTable

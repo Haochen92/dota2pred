@@ -5,7 +5,7 @@ from dependency_injector import providers
 from live_orchestrator_app.app_container import AppContainer
 from dota_oracle_common.models.live_games.schema import OngoingLeagueGame
 from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchOutcome
-from dota_oracle_etl.data_extraction.fetch_hero_data import fetch_hero_data
+from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from sqlmodel import select
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
@@ -348,9 +348,9 @@ class TestLivePipelineE2E:
         async def mock_fetch_match_details(match_id: int):
             return match_details_responses.get(match_id)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle1_live_games
             mock_pro_match.return_value = []  # No completed matches yet
@@ -389,9 +389,9 @@ class TestLivePipelineE2E:
         print("CYCLE 2: One new match + existing matches in completion")
         print("="*60)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle2_live_games
             mock_pro_match.return_value = []  # Still no completed matches
@@ -431,9 +431,9 @@ class TestLivePipelineE2E:
         print("CYCLE 3: Match 1 completes → outcome recorded, tracking removed")
         print("="*60)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             # Match 1 no longer in live games (completed)
             mock_live_games.return_value = cycle3_live_games
@@ -481,9 +481,9 @@ class TestLivePipelineE2E:
         async def mock_fetch_match_details(match_id: int):
             return match_details_responses.get(match_id)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle1_live_games
             mock_pro_match.return_value = []
@@ -515,7 +515,7 @@ class TestLivePipelineE2E:
         
         app = await configured_test_container.app()
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games:
             
             # Simulate API failure
             mock_live_games.side_effect = Exception("Steam API temporarily unavailable")

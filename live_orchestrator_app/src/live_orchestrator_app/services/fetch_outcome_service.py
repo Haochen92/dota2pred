@@ -1,6 +1,6 @@
 from typing import Dict, List
 from dota_oracle_common.utils.set_logging import get_logger
-from dota_oracle_etl.data_extraction.fetch_pro_match import fetch_pro_match
+from dota_oracle_pipeline.data_extraction.fetch_pro_match import fetch_pro_match
 
 # Config logging
 logger = get_logger(__name__)

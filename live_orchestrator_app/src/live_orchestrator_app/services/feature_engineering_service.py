@@ -1,4 +1,4 @@
-from dota_oracle_etl.feature_engineering import TeamFeatureCreator, PlayerHeroFeaturesCreator, HeroesFeatureCreator
+from dota_oracle_pipeline.feature_engineering import TeamFeatureCreator, PlayerHeroFeaturesCreator, HeroesFeatureCreator
 from dota_oracle_common.repositories.features_repository import FeaturesRepository
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
