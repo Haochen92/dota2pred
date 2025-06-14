@@ -4,6 +4,7 @@ from sqlalchemy.engine.url import URL
 from dota_oracle_common.utils.env_loader import load_workspace_env
 import os
 
+load_workspace_env()
 logger = logging.getLogger(__name__)
 
 class DatabaseEngineFactory:
@@ -11,21 +12,31 @@ class DatabaseEngineFactory:
     Provides a singleton SQLAlchemy AsyncEngine instance per environment ('prod' or 'test')
     using baked-in configuration settings. Access via class method get_engine().
     """
-    _engine: AsyncEngine
+    _engine: AsyncEngine | None = None
 
-    # --- Baked-in Configuration ---
-    _BASE_CONFIG = {
-        "drivername": "postgresql+asyncpg",
-        "username": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "host": "localhost",
-        "database": os.getenv("DB_NAME"),
-        "port": os.getenv("DB_PORT"),
-        "pool_size": 5,
-        "max_overflow": 2,
-        "pool_recycle": 1800,
-    }
+    @classmethod
+    def _get_config(cls) -> dict:
+        """Get current database configuration from environment variables"""
+        return {
+            "drivername": "postgresql+asyncpg",
+            "username": os.getenv("DB_USER"),
+            "password": os.getenv("DB_PASSWORD"),
+            "host": os.getenv("DB_HOST", "localhost"),
+            "database": os.getenv("DB_NAME"),
+            "port": int(os.getenv("DB_PORT", "5432")),  # Convert to int
+            "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "2")),
+            "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
+        }
     
+    @classmethod
+    def _validate_config(cls, config: dict) -> None:
+        """Validate that all required configuration is present"""
+        required_fields = ["username", "password", "database"]
+        missing = [field for field in required_fields if not config.get(field)]
+        if missing:
+            raise ValueError(f"Missing required database configuration: {missing}")
+
 
     @classmethod
     def get_engine(cls) -> AsyncEngine:
@@ -38,33 +49,36 @@ class DatabaseEngineFactory:
         Raises:
             ValueError: If the provided env is invalid.
         """
+        if cls._engine is not None:
+            return cls._engine
 
         try:
+            config = cls._get_config()
+            cls._validate_config(config)
+            
             # Create URL
             url_object = URL.create(
-                drivername=cls._BASE_CONFIG["drivername"],
-                username=cls._BASE_CONFIG["username"],
-                password=cls._BASE_CONFIG["password"],
-                host=cls._BASE_CONFIG["host"],
-                port=cls._BASE_CONFIG["port"],
-                database=cls._BASE_CONFIG["database"]
+                drivername=config["drivername"],
+                username=config["username"],
+                password=config["password"],
+                host=config["host"],
+                port=config["port"],
+                database=config["database"]
             )
 
             # Create engine
-            engine = create_async_engine(
+            cls._engine = create_async_engine(
                 url_object,
-                pool_size=cls._BASE_CONFIG["pool_size"],
-                max_overflow=cls._BASE_CONFIG["max_overflow"],
-                pool_recycle=cls._BASE_CONFIG["pool_recycle"],
+                pool_size=config["pool_size"],
+                max_overflow=config["max_overflow"],
+                pool_recycle=config["pool_recycle"],
             )
             
-            cls._engines = engine
             logger.info(
-                "Successfully created engine, "
-                f"database name: {cls._BASE_CONFIG['database']}, "
-                f"at {cls._BASE_CONFIG['host']}:{cls._BASE_CONFIG['port']}"
+                f"Successfully created engine for database '{config['database']}' "
+                f"at {config['host']}:{config['port']}"
             )
-            return engine
+            return cls._engine
 
         except Exception as e:
             logger.error(f"Failed to create engine: {e}", exc_info=True)
@@ -77,6 +91,7 @@ class DatabaseEngineFactory:
         if engine:
             logger.info("Closing engine instance")
             await engine.dispose()
+            cls._engine = None
             logger.info("Successfully closed engine")
         else:
             logger.info("No active engine to close")
