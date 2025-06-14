@@ -1,0 +1,24 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "batch-service"
+version = "0.1.0"
+description = "Service which runs routine batch jobs"
+authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+packages = [{include = "batch_service", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../../packages/dota_oracle_common", develop = true}
+dota-oracle-pipeline = {path = "../../packages/dota_oracle_pipeline", develop = true}
+scikit-learn = "*"
+numpy = "*"
+pandas = "*"
+pydantic = ">=2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-mock = "*"
+mypy = "*"
