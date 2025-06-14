@@ -25,7 +25,7 @@ aioredis = "^2.0.1"
 asyncpg = "^0.30.0"
 alembic = "^1.16.1"
 dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
-dota-oracle-etl = {path = "../packages/dota_oracle_etl", develop = true}
+dota-oracle-pipeline = {path = "../packages/dota_oracle_pipeline", develop = true}
 live-orchestrator-app = {path = "../live_orchestrator_app", develop = true}
 
 [tool.poetry.group.dev.dependencies]

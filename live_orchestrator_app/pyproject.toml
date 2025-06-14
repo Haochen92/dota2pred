@@ -12,7 +12,7 @@ packages = [{include = "*", from = "src"}]
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
-dota-oracle-etl = {path = "../packages/dota_oracle_etl", develop = true}
+dota-oracle-pipeline = {path = "../packages/dota_oracle_pipeline", develop = true}
 prefect = ">=3.0"
 prefect-aws = "*"
 prefect-sqlalchemy = "*"
