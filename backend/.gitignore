@@ -1,8 +1,0 @@
-**/.DS_Store
-.env
-Miniconda3-latest-Linux-x86_64.sh
-bentoml/models/
-__pycache__/
-*.pyc
-logs
-.venv
