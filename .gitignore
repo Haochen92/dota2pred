@@ -40,5 +40,8 @@ htmlcov/
 .nox/
 
 
+# lock files
+*.lock
+
 # Environment Variables
 .env
