@@ -4,7 +4,7 @@ Contract Testing - Validate External Api response structure against pydantic mod
 import pytest
 
 # import api endpoints
-from dota_oracle_etl.data_extraction import fetch_hero_data, fetch_league_data, fetch_live_league_games, fetch_pro_match, fetch_match_details
+from dota_oracle_pipeline.data_extraction import fetch_hero_data, fetch_league_data, fetch_live_league_games, fetch_pro_match, fetch_match_details
 
 # import pydantic api_models
 from dota_oracle_common.models.heroes import HeroesAPIResponse
