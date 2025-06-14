@@ -11,6 +11,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
+boto3 = "^1.38.36"
+boto3-stubs = {extras = ["s3"], version = "^1.38.36"}
 
 [tool.poetry.group.dev.dependencies]
 # Common dev dependencies for the entire monorepo
