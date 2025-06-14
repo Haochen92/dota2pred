@@ -7,7 +7,7 @@ name = "prediction-service"
 version = "0.1.0"
 description = "BentoML prediction service for Dota Oracle"
 authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
-packages = [{include = "*", from = "src"}]
+packages = [{include = "inference_service", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"

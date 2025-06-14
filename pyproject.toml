@@ -30,7 +30,7 @@ optional = false
 dota-oracle-common = {path = "packages/dota_oracle_common", develop = true}
 dota-oracle-etl = {path = "packages/dota_oracle_etl", develop = true}
 model-factory = {path = "model_factory", develop = true}
-prediction-service = {path = "services/prediction_service", develop = true}
+prediction-service = {path = "services/inference_service", develop = true}
 live-orchestrator-app = {path = "live_orchestrator_app", develop = true}
 api-service = {path = "services/api_service", develop = true}
 

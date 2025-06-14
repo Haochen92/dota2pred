@@ -2761,7 +2761,7 @@ scikit-learn = "*"
 
 [package.source]
 type = "directory"
-url = "services/prediction_service"
+url = "services/inference_service"
 
 [[package]]
 name = "prefect"
@@ -5294,4 +5294,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "4eea170176f8414f0ff8bf95cafdaf6b2af3019578c49acc1fc2cfd0b64edab8"
+content-hash = "97071d479aff47227f26a59179d894f772dc41439c129e3eef93e1bb5c276fe2"

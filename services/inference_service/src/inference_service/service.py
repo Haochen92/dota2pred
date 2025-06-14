@@ -22,7 +22,7 @@ class MatchPredictionService:
         self.model_metadata = self.rf_model.info.metadata
         
     @bentoml.api
-    def predict(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, input_data: Dict[str, Any]) -> List:
         
         
         features = input_data.get('input_features', {})
@@ -51,6 +51,4 @@ class MatchPredictionService:
     def is_ready(self) -> str:
         return "OK"
 
-# Create the service instance for BentoML (using the decorator's return)
-svc = MatchPredictionService
 

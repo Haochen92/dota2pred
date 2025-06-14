@@ -1,12 +1,12 @@
 import aiohttp
-from dotenv import load_dotenv
 import os
-from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.utils import get_logger, load_workspace_env
 from typing import Optional
 
 logger = get_logger(__name__)
-load_dotenv()
-API_KEY = os.getenv('OPEN_DOTA_API')
+load_workspace_env()
+
+API_KEY = os.getenv('OPENDOTA_API')
 BASE_URL = 'https://api.opendota.com'
 BASE_PATH = '/api/'
 
@@ -29,6 +29,8 @@ async def fetch_opendota(endpoint: str, params: Optional[dict] = None )-> dict:
     
 
 async def fetch_opendota_api( endpoint:str, params:Optional[dict]= None) -> dict:
+    if not API_KEY:
+        raise ValueError("Missing API KEY, unable to fetch data")
     # Paid api calls using API_KEY
     timeout = aiohttp.ClientTimeout(total=60)
     url = f'{BASE_URL}{BASE_PATH}{endpoint}'
