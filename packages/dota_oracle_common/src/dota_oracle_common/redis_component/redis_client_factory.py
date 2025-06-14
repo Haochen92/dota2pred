@@ -1,27 +1,25 @@
-import redis.asyncio as redis
-from typing import Dict, Optional
+import redis.asyncio as aioredis
+import os
+from dota_oracle_common.utils.env_loader import load_workspace_env
+
+load_workspace_env()
 
 class RedisClientFactory:
-    _instances: Dict[str, Optional[redis.Redis]] = {}
+    _instance: aioredis.Redis | None = None
     
     @classmethod
-    def create_instance(cls, env: str = 'prod') -> redis.Redis:
-        if env not in cls._instances or cls._instances[env] is None:
-            port = 6390 if env == 'test' else 6380
-            cls._instances[env] = redis.Redis(
+    def create_instance(cls) -> aioredis.Redis:
+        if cls._instance is None:
+            cls._instance= aioredis.Redis(
                 host='localhost',
-                port=port,
+                port=int(os.getenv("REDIS_PORT", "6379")),
                 decode_responses=True
             )
         
-        instance = cls._instances[env]
-        assert instance is not None
-        return instance
+        return cls._instance
     
     @classmethod
-    async def close_instance(cls, env: str = 'prod') -> None:
-        if env in cls._instances and cls._instances[env] is not None:
-            instance = cls._instances[env]
-            if instance:
-                await instance.aclose() 
-                cls._instances[env] = None
+    async def close_instance(cls) -> None:
+        if cls._instance is not None:
+            await cls._instance.aclose()
+            cls._instance = None
