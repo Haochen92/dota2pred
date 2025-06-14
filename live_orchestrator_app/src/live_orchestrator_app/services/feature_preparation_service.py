@@ -138,7 +138,7 @@ class FeaturePreparationService:
             logger.warning("Missing hero_map. Unable to proceed with data encoding.")
             return None
 
-        encoded_hero_df = await FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
+        encoded_hero_df = FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
         
         if encoded_hero_df is None or encoded_hero_df.empty:
             return None
