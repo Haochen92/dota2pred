@@ -17,6 +17,8 @@ scikit-learn = "*"
 bentoml = "*"
 numpy = "*"
 pandas = "*"
+xgboost = "^3.0.2"
+lightgbm = "^4.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
