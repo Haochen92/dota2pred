@@ -13,7 +13,7 @@ def build_bento() -> bentoml.Bento:
     logger.info("building bento... ")
     try:
         bento = bentoml.build(
-        service='match_prediction',
+        service='service:MatchPredictionService', # reference the file:class
         )
         print(f'{bento} has been successfully created')
         return bento
