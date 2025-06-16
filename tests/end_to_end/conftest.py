@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope='module')
 def e2e_environment():
-    compose = DockerCompose(context='tests/end_to_end', compose_file_name="docker-compose.test.yml")
+    compose = DockerCompose(context='.', compose_file_name="docker-compose.test.yml")
     
     with compose:
         prediction_host = compose.get_service_host("bentoml", 3000)
@@ -72,41 +72,5 @@ async def e2e_redis_client(e2e_environment: dict):
     yield client
     
     # Clean up
-    client.connection_pool.disconnect
+    await client.connection_pool.disconnect()
 
-@pytest_asyncio.fixture(scope='module')
-async def e2e_postgres_engine(e2e_environment: dict):
-    async_db_url = e2e_environment.get("db_url")
-    if not async_db_url:
-        raise ValueError("Missing async_db_url")
-    
-    engine = create_async_engine(async_db_url)
-    logger.info(f"Test DB engine created for: {async_db_url}")
-    
-    yield engine
-    
-    logger.info("Disposing Test DB engine.")
-    await engine.dispose()
-
-@pytest_asyncio.fixture(scope="module", autouse=True)
-async def create_e2e_db_tables(e2e_postgres_engine):
-    app_metadata_to_create = SQLModel.metadata
-    
-    async with e2e_postgres_engine.begin() as conn:
-        logger.info("Dropping existing tables for a clean state")
-        await conn.run_sync(SQLModel.metadata.drop_all)
-        logger.info("Creating all tables in test database")
-        await conn.run_sync(app_metadata_to_create.create_all)
-        
-    logger.info("Database tables created in test PostgreSQL container.")
-    
-
-@pytest_asyncio.fixture(scope='module')
-async def e2e_redis_client(e2e_environment: dict):
-    client = aioredis.from_url(e2e_environment["redis_url"], decode_responses=True)
-    await client.ping()
-    yield client
-    
-    # Clean up
-    client.connection_pool.disconnect
-    
