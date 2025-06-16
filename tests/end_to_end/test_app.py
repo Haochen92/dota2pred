@@ -10,13 +10,22 @@ pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 @pytest_asyncio.fixture(scope='function')
 async def test_app_container(
-    test_redis_client,
-    test_postgres_engine
+    e2e_redis_client,
+    e2e_postgres_engine,
+    e2e_environment
 )-> AppContainer:
+    from dependency_injector import providers
+    from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
     
     container = AppContainer()
-    container.redis_async_pool.override(test_redis_client)
-    container.db_engine.override(test_postgres_engine)
+    container.redis_async_pool.override(e2e_redis_client)
+    container.db_engine.override(e2e_postgres_engine)
+    
+    # Override model inference service with correct URL
+    prediction_url = e2e_environment["prediction_api_url"]
+    container.model_inference_service.override(
+        providers.Resource(ModelInferenceService.create, base_url=prediction_url)
+    )
     
     return container
 
@@ -95,16 +104,10 @@ class TestComprehensiveE2EWiring:
             assert model_service is not None
             
             # Mock external API calls with realistic data
-            with patch('dota_oracle_etl.data_extraction.api_clients.steam_api.fetch_steam_data') as mock_steam, \
-                 patch('dota_oracle_etl.data_extraction.api_clients.opendota_api.fetch_opendota') as mock_opendota, \
-                 patch('dota_oracle_etl.data_extraction.api_clients.opendota_api.fetch_opendota_api') as mock_opendota_api:
+            with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games:
                 
-                # Configure Steam API mock for live games
-                mock_steam.return_value = mock_live_games_data.model_dump()
-                
-                # Configure OpenDota API mocks for match details
-                mock_opendota.return_value = mock_match_details_data[0].model_dump() if mock_match_details_data else {}
-                mock_opendota_api.return_value = mock_match_details_data[1].model_dump() if len(mock_match_details_data) > 1 else {}
+                # Configure live games mock
+                mock_live_games.return_value = mock_live_games_data.result.games
                 
                 # The successful initialization of resources and services above 
                 # proves the entire dependency graph is correctly wired.
