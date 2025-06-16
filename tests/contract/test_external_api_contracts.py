@@ -59,11 +59,12 @@ async def test_pro_match_contract():
     assert len(pro_match_list) == 1, f"expect 1 results, got {len(pro_match_list)}"
     
 
-# async def test_model_metadata_contract(model_inference_service):
-#     model_metadata = await model_inference_service.get_model_metadata()
+async def test_model_metadata_contract(model_inference_service):
+    model_metadata = await model_inference_service.get_model_metadata()
     
-#     assert isinstance(model_metadata, ModelMetaDataAPIResponse)
-#     assert 
+    assert isinstance(model_metadata, ModelMetaDataAPIResponse)
+    assert model_metadata.version_metadata.feature_columns, "feature_columns is None"
+    assert isinstance(model_metadata.version_metadata.feature_columns, list)
     
 
     
