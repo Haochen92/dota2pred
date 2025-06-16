@@ -3,20 +3,21 @@ import logging
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
+# IMAGE TAG: TO SET IN CONFIG FILE
+IMAGE_TAG = "match_prediction:latest"
+
 logger = logging.getLogger(__name__)
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def prediction_server_container():
     """
     Starts the BentoML prediction server using a DockerContainer
     for the duration of the test session.
     """
-    # Custom image tag
-    image_tag = "match_prediction:test"
     
     # THE CORRECT CLASS NAME: DockerContainer
     # We instantiate it with the image tag.
-    with DockerContainer(image=image_tag) as container:
+    with DockerContainer(image=IMAGE_TAG) as container:
         # Use the builder pattern to configure it.
         container.with_exposed_ports(3000)
         
