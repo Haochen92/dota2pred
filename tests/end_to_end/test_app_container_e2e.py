@@ -43,27 +43,42 @@ class TestLivePipelineE2E:
     @pytest.fixture(scope='function')
     def cycle1_live_games(self, ongoing_league_game_factory):
         """Cycle 1: Two new matches discovered."""
-        return [
+        from dota_oracle_common.models.live_games.schema import LiveLeagueGame
+        
+        ongoing_games = [
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_1),
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_2)
         ]
+        
+        # Convert OngoingLeagueGame to LiveLeagueGame for mock compatibility
+        return [LiveLeagueGame.model_validate(game.model_dump()) for game in ongoing_games]
 
     @pytest.fixture(scope='function')
     def cycle2_live_games(self, ongoing_league_game_factory):
         """Cycle 2: Previous matches still ongoing + one new match."""
-        return [
+        from dota_oracle_common.models.live_games.schema import LiveLeagueGame
+        
+        ongoing_games = [
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_1),  # Still ongoing
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_2),  # Still ongoing
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_3)   # New match
         ]
+        
+        # Convert OngoingLeagueGame to LiveLeagueGame for mock compatibility
+        return [LiveLeagueGame.model_validate(game.model_dump()) for game in ongoing_games]
 
     @pytest.fixture(scope='function')
     def cycle3_live_games(self, ongoing_league_game_factory):
         """Cycle 3: Match 1 completed (not in live games), others ongoing."""
-        return [
+        from dota_oracle_common.models.live_games.schema import LiveLeagueGame
+        
+        ongoing_games = [
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_2),  # Still ongoing
             ongoing_league_game_factory.build(match_id=self.MATCH_ID_3)   # Still ongoing
         ]
+        
+        # Convert OngoingLeagueGame to LiveLeagueGame for mock compatibility
+        return [LiveLeagueGame.model_validate(game.model_dump()) for game in ongoing_games]
 
     @pytest.fixture(scope='function')
     def match_details_responses(self, matches_api_response_factory):
@@ -167,7 +182,7 @@ class TestLivePipelineE2E:
 
     async def verify_redis_stream_progression(self, redis_service, expected_state: dict, cycle_name: str):
         """Verify Redis stream states and acknowledgments for proper pipeline progression."""
-        redis_client = redis_service.redis_client
+        redis_client = redis_service.redis
         
         print(f"\n{cycle_name} Redis Stream State:")
         
@@ -210,7 +225,7 @@ class TestLivePipelineE2E:
 
     async def verify_match_status_tracking(self, redis_service, expected_matches: dict, cycle_name: str):
         """Verify match status tracking in Redis hashes."""
-        redis_client = redis_service.redis_client
+        redis_client = redis_service.redis
         
         print(f"\n{cycle_name} Match Status Tracking:")
         
@@ -237,7 +252,7 @@ class TestLivePipelineE2E:
         from dota_oracle_common.models.histories.table import TeamHistoryTable, TeamMatchupHistoryTable, PlayerHeroHistoryTable
         from dota_oracle_common.models.heroes.table import HeroDataTable
         
-        async with db_engine.connect() as conn:
+        async with db_engine.begin() as conn:
             print(f"\n{cycle_name} Database State:")
             
             # 1. Verify Matches Table
@@ -330,7 +345,7 @@ class TestLivePipelineE2E:
         
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_engine = configured_test_container.db_engine.provided
+        db_engine = configured_test_container.db_engine()
         
         # =====================
         # INITIAL STATE VERIFICATION
@@ -348,9 +363,9 @@ class TestLivePipelineE2E:
         async def mock_fetch_match_details(match_id: int):
             return match_details_responses.get(match_id)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle1_live_games
             mock_pro_match.return_value = []  # No completed matches yet
@@ -389,9 +404,9 @@ class TestLivePipelineE2E:
         print("CYCLE 2: One new match + existing matches in completion")
         print("="*60)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle2_live_games
             mock_pro_match.return_value = []  # Still no completed matches
@@ -431,9 +446,9 @@ class TestLivePipelineE2E:
         print("CYCLE 3: Match 1 completes → outcome recorded, tracking removed")
         print("="*60)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             # Match 1 no longer in live games (completed)
             mock_live_games.return_value = cycle3_live_games
@@ -476,14 +491,14 @@ class TestLivePipelineE2E:
         """Test that BentoML predictions are properly made and stored."""
         
         app = await configured_test_container.app()
-        db_engine = configured_test_container.db_engine.provided
+        db_engine = configured_test_container.db_engine()
         
         async def mock_fetch_match_details(match_id: int):
             return match_details_responses.get(match_id)
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
-             patch('dota_oracle_etl.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
-             patch('dota_oracle_etl.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games, \
+             patch('dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details', side_effect=mock_fetch_match_details), \
+             patch('dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_pro_match') as mock_pro_match:
             
             mock_live_games.return_value = cycle1_live_games
             mock_pro_match.return_value = []
@@ -494,7 +509,7 @@ class TestLivePipelineE2E:
             # Verify predictions were made using real BentoML service
             from dota_oracle_common.models.inference.table import MatchPredictionTable
             
-            async with db_engine.connect() as conn:
+            async with db_engine.begin() as conn:
                 result = await conn.execute(select(MatchPredictionTable))
                 predictions = result.fetchall()
                 
@@ -515,7 +530,7 @@ class TestLivePipelineE2E:
         
         app = await configured_test_container.app()
         
-        with patch('dota_oracle_etl.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games:
+        with patch('dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games') as mock_live_games:
             
             # Simulate API failure
             mock_live_games.side_effect = Exception("Steam API temporarily unavailable")
