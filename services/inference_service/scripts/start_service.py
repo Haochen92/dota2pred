@@ -1,4 +1,3 @@
-from .build_service import main
 import subprocess
 
 def docker_compose_up():
@@ -8,6 +7,5 @@ def docker_compose_up():
     )
     
 if __name__ == "__main__":
-    main()
     docker_compose_up()
 
