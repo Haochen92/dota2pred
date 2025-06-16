@@ -63,6 +63,6 @@ def feature_preparation_service(mock_model_inference_service, model_meta_data_ap
 
 
 @pytest.fixture
-async def model_inference_service(prediction_server_container) -> ModelInferenceService:
-    service = await ModelInferenceService.create(base_url=prediction_server_container)
+async def model_inference_service(bentoml_container_url) -> ModelInferenceService:
+    service = await ModelInferenceService.create(base_url=bentoml_container_url)
     return service
