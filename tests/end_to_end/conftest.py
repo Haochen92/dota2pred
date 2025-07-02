@@ -2,10 +2,12 @@ import pytest
 import pytest_asyncio
 import logging
 from testcontainers.compose import DockerCompose
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from dota_oracle_common import models
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 import redis.asyncio as aioredis
+from live_orchestrator_app.app_container import AppContainer
+from dependency_injector import providers
+from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
 
 logger = logging.getLogger(__name__)
 
@@ -74,3 +76,21 @@ async def e2e_redis_client(e2e_environment: dict):
     # Clean up
     await client.connection_pool.disconnect()
 
+
+@pytest_asyncio.fixture(scope='function')
+async def test_app_container(
+    e2e_redis_client,
+    e2e_postgres_engine,
+    e2e_environment
+)-> AppContainer:
+    container = AppContainer()
+    container.redis_async_pool.override(e2e_redis_client)
+    container.db_engine.override(e2e_postgres_engine)
+    
+    # Override model inference service with correct URL
+    prediction_url = e2e_environment["prediction_api_url"]
+    container.model_inference_service.override(
+        providers.Resource(ModelInferenceService.create, base_url=prediction_url)
+    )
+    
+    return container

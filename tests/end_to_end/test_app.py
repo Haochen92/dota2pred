@@ -1,33 +1,13 @@
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, patch
-from live_orchestrator_app.app_container import AppContainer
 
 from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
-@pytest_asyncio.fixture(scope='function')
-async def test_app_container(
-    e2e_redis_client,
-    e2e_postgres_engine,
-    e2e_environment
-)-> AppContainer:
-    from dependency_injector import providers
-    from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
-    
-    container = AppContainer()
-    container.redis_async_pool.override(e2e_redis_client)
-    container.db_engine.override(e2e_postgres_engine)
-    
-    # Override model inference service with correct URL
-    prediction_url = e2e_environment["prediction_api_url"]
-    container.model_inference_service.override(
-        providers.Resource(ModelInferenceService.create, base_url=prediction_url)
-    )
-    
-    return container
+
 
 class TestContainerValidation:
     async def test_container_initializes_all_resources_successfully(
