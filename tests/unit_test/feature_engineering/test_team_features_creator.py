@@ -1,7 +1,7 @@
 import pytest
 from dota_oracle_common.models.features import TeamFeaturesTable
 
-FUNCTION_FP = 'dota_oracle_etl.feature_engineering.team_features_creator'
+FUNCTION_FP = 'dota_oracle_pipeline.feature_engineering.team_features_creator'
 
 @pytest.mark.asyncio
 async def test_team_feature_success(
