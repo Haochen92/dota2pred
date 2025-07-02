@@ -94,3 +94,18 @@ async def test_app_container(
     )
     
     return container
+
+
+@pytest_asyncio.fixture(scope='function')
+async def configured_test_container(test_app_container):
+    container = test_app_container
+    try:
+        # 1. SETUP: Initialize resources before the test runs
+        await container.init_resources()
+        
+        # 2. PROVIDE: Yield the ready-to-use container to the test
+        yield container
+        
+    finally:
+        # 3. TEARDOWN: Guarantee resources are shut down after the test
+        await container.shutdown_resources()
