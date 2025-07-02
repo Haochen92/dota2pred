@@ -11,7 +11,7 @@ from live_orchestrator_app.inference.model_inference_service import ModelInferen
 
 logger = logging.getLogger(__name__)
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='package')
 def e2e_environment():
     compose = DockerCompose(context='.', compose_file_name="docker-compose.test.yml")
     
@@ -40,7 +40,7 @@ def e2e_environment():
         }
     logger.info("E2E environment has been shut down.")
 
-@pytest_asyncio.fixture(scope='module')
+@pytest_asyncio.fixture(scope='package')
 async def e2e_postgres_engine(e2e_environment: dict):
     async_db_url = e2e_environment.get("db_url")
     if not async_db_url:
@@ -54,7 +54,7 @@ async def e2e_postgres_engine(e2e_environment: dict):
     logger.info("Disposing Test DB engine.")
     await engine.dispose()
 
-@pytest_asyncio.fixture(scope="module", autouse=True)
+@pytest_asyncio.fixture(scope="package", autouse=True)
 async def create_e2e_db_tables(e2e_postgres_engine):
     app_metadata_to_create = SQLModel.metadata
     
@@ -67,7 +67,7 @@ async def create_e2e_db_tables(e2e_postgres_engine):
     logger.info("Database tables created in test PostgreSQL container.")
     
 
-@pytest_asyncio.fixture(scope='module')
+@pytest_asyncio.fixture(scope='package')
 async def e2e_redis_client(e2e_environment: dict):
     client = aioredis.from_url(e2e_environment["redis_url"], decode_responses=True)
     await client.ping()
