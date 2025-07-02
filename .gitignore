@@ -3,7 +3,6 @@ data
 logs
 dota2pred
 dota2
-.claude
 services/prediction_service/models/*.joblib
 
 # Python cache files
@@ -45,3 +44,7 @@ htmlcov/
 
 # Environment Variables
 .env
+
+# claude caches
+.claude
+*.claude
