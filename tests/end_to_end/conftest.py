@@ -8,6 +8,8 @@ import redis.asyncio as aioredis
 from live_orchestrator_app.app_container import AppContainer
 from dependency_injector import providers
 from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
+from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
+from dota_oracle_common.models.heroes.table import HeroDataTable
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,27 @@ async def e2e_redis_client(e2e_environment: dict):
     
     # Clean up
     await client.connection_pool.disconnect()
+    
+
+@pytest_asyncio.fixture(scope='package')
+async def setup_hero_data(e2e_postgres_engine):
+    """Ensures the database is populated with hero data."""
+    try:
+        hero_data_dict = await fetch_hero_data()
+        heroes_to_insert = [
+            HeroDataTable(id=int(hero_id), **data.model_dump())
+            for hero_id, data in hero_data_dict.items()
+        ]
+        if not heroes_to_insert:
+            logger.error("No heroes data fetched from API endpoint")
+            return
+
+        async with e2e_postgres_engine.begin() as conn:
+            for hero in heroes_to_insert:
+                await conn.merge(hero) 
+        print(f"\nINFO: Populated database with {len(heroes_to_insert)} heroes.")
+    except Exception as e:
+        pytest.skip(f"Could not fetch hero data to populate DB, skipping E2E tests: {e}")
 
 
 @pytest_asyncio.fixture(scope='function')
@@ -87,7 +110,7 @@ async def test_app_container(
     container.redis_async_pool.override(e2e_redis_client)
     container.db_engine.override(e2e_postgres_engine)
     
-    # Override model inference service with correct URL
+    # Override model inference service with docker_compose test URL
     prediction_url = e2e_environment["prediction_api_url"]
     container.model_inference_service.override(
         providers.Resource(ModelInferenceService.create, base_url=prediction_url)
@@ -100,12 +123,11 @@ async def test_app_container(
 async def configured_test_container(test_app_container):
     container = test_app_container
     try:
-        # 1. SETUP: Initialize resources before the test runs
         await container.init_resources()
         
-        # 2. PROVIDE: Yield the ready-to-use container to the test
         yield container
         
     finally:
-        # 3. TEARDOWN: Guarantee resources are shut down after the test
         await container.shutdown_resources()
+        
+
