@@ -7,8 +7,6 @@ from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, R
 pytestmark = pytest.mark.asyncio(loop_scope='session')
 
 
-
-
 class TestContainerValidation:
     async def test_container_initializes_all_resources_successfully(
         self,
