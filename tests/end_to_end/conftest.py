@@ -130,4 +130,3 @@ async def configured_test_container(test_app_container):
     finally:
         await container.shutdown_resources()
         
-
