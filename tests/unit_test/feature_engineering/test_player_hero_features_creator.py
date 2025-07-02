@@ -2,9 +2,8 @@ import pytest
 from unittest.mock import ANY
 from datetime import datetime, timezone
 from dota_oracle_common.models.features import PlayerHeroFeatureTable
-from dota_oracle_common.models.match import MatchTable
 
-FUNCTION_FP = 'dota_oracle_etl.feature_engineering.player_hero_features_creator'
+FUNCTION_FP = 'dota_oracle_pipeline.feature_engineering.player_hero_features_creator'
 
 @pytest.mark.asyncio
 async def test_create_player_hero_features_success(
@@ -95,23 +94,21 @@ async def test_create_features_handles_task_failure_gracefully(
     # Arrange
     match_instance = match_table_factory.build(match_id=789)
     
-    # Mock _calculate_win_rate to simulate task failure with side effects
-    def mock_calculate_win_rate(*args, **kwargs):
-        # Simulate a failure for the second call (player 1)
-        if mock_calculate_win_rate.call_count == 2:
+    mock_calculate = mocker.patch.object(player_hero_features_creator, '_calculate_win_rate')
+    
+    mock_counter = 0
+    def side_effect(*args, **kwargs):
+        nonlocal mock_counter
+        mock_counter += 1
+        # Use the mock's built-in call_count (starts at 1 for first call)
+        if mock_counter == 2:  # Second call
             raise ValueError("Calculation failed!")
-        elif mock_calculate_win_rate.call_count == 1:
+        elif mock_counter == 1:  # First call
             return 0.75
-        else:
+        else:  # Subsequent calls
             return 0.6
     
-    mock_calculate_win_rate.call_count = 0
-    
-    def side_effect(*args, **kwargs):
-        mock_calculate_win_rate.call_count += 1
-        return mock_calculate_win_rate(*args, **kwargs)
-    
-    mocker.patch.object(player_hero_features_creator, '_calculate_win_rate', side_effect=side_effect)
+    mock_calculate.side_effect = side_effect
     mock_logger_warning = mocker.patch(f'{FUNCTION_FP}.logger.warning')
     
     # Act
