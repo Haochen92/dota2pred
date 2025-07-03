@@ -41,13 +41,59 @@ class TestLivePipelineE2E:
 
     @pytest.fixture(scope='function')
     def live_league_data(self, ongoing_league_game_factory) -> Dict[int, OngoingLeagueGame]:
-        matches = {id: ongoing_league_game_factory.build(match_id=id) for id in self.MATCH_IDS}
+        from dota_oracle_common.models.live_games.schema import ScoreBoard, Faction, Player, TeamData
+        import random
+        
+        matches = {}
+        for match_id in self.MATCH_IDS:
+            # Create players with correct slots manually
+            radiant_players = [Player(
+                player_slot=i,
+                account_id=i + 2000,
+                hero_id=i % 50 + 1,
+                name=f"Player_{i}"
+            ) for i in range(5)]  # slots 0,1,2,3,4
+            
+            dire_players = [Player(
+                player_slot=i,
+                account_id=i + 2000,
+                hero_id=i % 50 + 1,
+                name=f"Player_{i}"
+            ) for i in range(128, 133)]  # slots 128,129,130,131,132
+            
+            scoreboard = ScoreBoard(
+                duration=random.uniform(1, 100),
+                radiant=Faction(players=radiant_players),
+                dire=Faction(players=dire_players)
+            )
+            
+            match = ongoing_league_game_factory.build(
+                match_id=match_id,
+                scoreboard=scoreboard
+            )
+            matches[match_id] = match
+            
         return matches
 
     @pytest.fixture(scope='function')
     def match_details_fetcher(self, matches_api_response_factory) -> Callable[[int], Optional[MatchesAPIResponse]]:
         """Mock match details provider."""
-        details_map = {id: matches_api_response_factory.build(match_id=id) for id in self.MATCH_IDS}
+        from dota_oracle_common.models.match.schema import PlayerData
+        
+        details_map = {}
+        for match_id in self.MATCH_IDS:
+            # Create players with correct slots manually
+            players = [PlayerData(
+                player_slot=j,
+                account_id=j + 2000,
+                hero_id=j % 50 + 1,
+                name=f"Player_{j}"
+            ) for j in list(range(5)) + list(range(128, 133))]  # slots 0,1,2,3,4,128,129,130,131,132
+            
+            details_map[match_id] = matches_api_response_factory.build(
+                match_id=match_id,
+                players=players
+            )
             
         return lambda match_id: details_map.get(match_id)
 
