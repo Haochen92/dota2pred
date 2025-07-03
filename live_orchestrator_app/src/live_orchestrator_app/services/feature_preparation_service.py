@@ -37,6 +37,7 @@ class FeaturePreparationService:
         if not feature_columns:
             raise ValueError(f"feature_columns returned invalid value of {feature_columns}")
         
+        return feature_columns
     async def prepare_features_for_inference(self, match_id: int, db_session: AsyncSession) -> Optional[np.ndarray]:
         """
         Fetches raw features, processes, encodes, merges, and returns a NumPy array.
