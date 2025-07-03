@@ -72,7 +72,7 @@ class FeatureEngineeringOrchestrator:
         for task_result in results:
             event_id = task_result.key
             event_data = work_item_map[event_id]
-            match_id = event_id.match_id
+            match_id = event_data.match_id
             try:
                 result = task_result.get_result()
                 if isinstance(result, Exception):
