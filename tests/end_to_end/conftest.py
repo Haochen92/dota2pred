@@ -88,30 +88,45 @@ async def setup_hero_data(e2e_postgres_engine):
         hero_data_dict = await fetch_hero_data()
         logger.info(f"Fetched {len(hero_data_dict)} heroes from API")
         
-        heroes_to_insert = [
-            HeroDataTable(**data.model_dump())
-            for hero_id, data in hero_data_dict.items()
-        ]
-        
-        if not heroes_to_insert:
+        if not hero_data_dict:
             logger.error("No heroes data fetched from API endpoint")
             return
 
-        logger.info(f"Inserting {len(heroes_to_insert)} heroes into database...")
-        from sqlmodel import Session
+        logger.info(f"Inserting {len(hero_data_dict)} heroes into database using HeroesRepository...")
         from sqlalchemy.ext.asyncio import AsyncSession
+        from dota_oracle_common.repositories.heroes_repository import HeroesRepository
+        
+        # Convert HeroData instances to HeroDataTable instances with correct format
+        heroes_table_dict = {
+            hero_id: HeroDataTable(**data.model_dump())
+            for hero_id, data in hero_data_dict.items()
+        }
         
         async with AsyncSession(e2e_postgres_engine) as session:
-            session.add_all(heroes_to_insert)
+            heroes_repo = HeroesRepository(session)
+            await heroes_repo.store_hero_data(heroes_table_dict)
             await session.commit()
+            
+            # Verify the data was stored and is accessible
+            hero_map = await heroes_repo.get_hero_id_map()
+            logger.info(f"Verification: Retrieved hero map with {len(hero_map)} heroes")
+            
+            # Check if our test hero IDs are present
+            test_hero_ids = [1, 2, 3, 4, 5]  # Anti-Mage, Axe, Bane, Bloodseeker, Crystal Maiden
+            for hero_id in test_hero_ids:
+                if hero_id in hero_map:
+                    logger.info(f"Verified hero {hero_id}: {hero_map[hero_id]}")
+                else:
+                    logger.warning(f"Test hero {hero_id} not found in hero map!")
         
-        logger.info(f"Successfully populated database with {len(heroes_to_insert)} heroes.")
-        print(f"\nINFO: Populated database with {len(heroes_to_insert)} heroes.")
+        logger.info(f"Successfully populated database with {len(heroes_table_dict)} heroes using repository.")
+        print(f"\nINFO: Populated database with {len(heroes_table_dict)} heroes.")
     except Exception as e:
         logger.error(f"Error setting up hero data: {e}")
         import traceback
         logger.error(f"Full traceback: {traceback.format_exc()}")
         pytest.skip(f"Could not fetch hero data to populate DB, skipping E2E tests: {e}")
+
 
 
 @pytest_asyncio.fixture(scope='function')
