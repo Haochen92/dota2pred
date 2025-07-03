@@ -28,7 +28,7 @@ class ModelInferenceService:
     async def get_prediction(self, input_features: np.ndarray) -> ModelPredictionAPIResponse:
         
         logger.info("calling model endpoint for prediction...")
-        request_data = {"input_features": input_features.tolist()}
+        request_data = {"input_data": {"input_features": input_features.tolist()}}
         
         try:
             async with aiohttp.ClientSession() as session:
