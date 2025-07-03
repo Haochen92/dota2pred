@@ -38,49 +38,16 @@ class TestLivePipelineE2E:
     """Tests match progression through the pipeline across multiple cycles."""
 
     MATCH_IDS = [7800001, 7800002, 7800003]
-    VALID_HERO_IDS = list(range(1, 11))
 
     @pytest.fixture(scope='function')
     def live_league_data(self, ongoing_league_game_factory) -> Dict[int, OngoingLeagueGame]:
-        """Generate test match data."""
-        matches = {}
-        
-        for i, match_id in enumerate(self.MATCH_IDS):
-            match = ongoing_league_game_factory.build(
-                match_id=match_id,
-                league_id=1000 + i,
-                start_time=datetime.now(timezone.utc).timestamp()
-            )
-            
-            if match.scoreboard:
-                match.scoreboard.duration = 1200.0 + (i * 300)
-                
-                # Create radiant team
-                match.scoreboard.radiant.players = [
-                    Player(player_slot=j, account_id=1000 + j + (i * 10), name=f"Radiant_Player_{j}", hero_id=self.VALID_HERO_IDS[j])
-                    for j in range(5)
-                ]
-                
-                # Create dire team
-                match.scoreboard.dire.players = [
-                    Player(player_slot=128 + j, account_id=2000 + j + (i * 10), name=f"Dire_Player_{j}", hero_id=self.VALID_HERO_IDS[j + 5])
-                    for j in range(5)
-                ]
-                    
-            matches[match_id] = match
-            
+        matches = {id: ongoing_league_game_factory.build(match_id=id) for id in self.MATCH_IDS}
         return matches
 
     @pytest.fixture(scope='function')
     def match_details_fetcher(self, matches_api_response_factory) -> Callable[[int], Optional[MatchesAPIResponse]]:
         """Mock match details provider."""
-        details_map = {}
-        
-        for match_id in self.MATCH_IDS:
-            match_details = matches_api_response_factory.build(match_id=match_id)
-            for i, player in enumerate(match_details.players):
-                player.hero_id = self.VALID_HERO_IDS[i % len(self.VALID_HERO_IDS)]
-            details_map[match_id] = match_details
+        details_map = {id: matches_api_response_factory.build(match_id=id) for id in self.MATCH_IDS}
             
         return lambda match_id: details_map.get(match_id)
 
