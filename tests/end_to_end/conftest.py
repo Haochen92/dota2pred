@@ -13,6 +13,7 @@ from dota_oracle_common.models.heroes.table import HeroDataTable
 
 logger = logging.getLogger(__name__)
 
+
 @pytest.fixture(scope='package')
 def e2e_environment():
     compose = DockerCompose(context='.', compose_file_name="docker-compose.test.yml")
@@ -83,20 +84,33 @@ async def e2e_redis_client(e2e_environment: dict):
 async def setup_hero_data(e2e_postgres_engine):
     """Ensures the database is populated with hero data."""
     try:
+        logger.info("Fetching hero data from API...")
         hero_data_dict = await fetch_hero_data()
+        logger.info(f"Fetched {len(hero_data_dict)} heroes from API")
+        
         heroes_to_insert = [
-            HeroDataTable(id=int(hero_id), **data.model_dump())
+            HeroDataTable(**data.model_dump())
             for hero_id, data in hero_data_dict.items()
         ]
+        
         if not heroes_to_insert:
             logger.error("No heroes data fetched from API endpoint")
             return
 
-        async with e2e_postgres_engine.begin() as conn:
-            for hero in heroes_to_insert:
-                await conn.merge(hero) 
+        logger.info(f"Inserting {len(heroes_to_insert)} heroes into database...")
+        from sqlmodel import Session
+        from sqlalchemy.ext.asyncio import AsyncSession
+        
+        async with AsyncSession(e2e_postgres_engine) as session:
+            session.add_all(heroes_to_insert)
+            await session.commit()
+        
+        logger.info(f"Successfully populated database with {len(heroes_to_insert)} heroes.")
         print(f"\nINFO: Populated database with {len(heroes_to_insert)} heroes.")
     except Exception as e:
+        logger.error(f"Error setting up hero data: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         pytest.skip(f"Could not fetch hero data to populate DB, skipping E2E tests: {e}")
 
 
@@ -122,11 +136,6 @@ async def test_app_container(
 @pytest_asyncio.fixture(scope='function')
 async def configured_test_container(test_app_container):
     container = test_app_container
-    try:
-        await container.init_resources()
-        
-        yield container
-        
-    finally:
-        await container.shutdown_resources()
-        
+    await container.init_resources()
+    
+    return container
