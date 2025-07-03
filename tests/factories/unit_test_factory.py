@@ -1,5 +1,4 @@
 from polyfactory.factories.pydantic_factory import ModelFactory
-from polyfactory.factories import pydantic_factory
 from polyfactory import Use
 from polyfactory.pytest_plugin import register_fixture
 import random
@@ -17,15 +16,12 @@ from dota_oracle_common.models.pipeline.schema import (
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
 
 
-radiant_slot_ids = list(range(5))
-dire_slot_ids = list(range(128, 133))
-
 # HELPER FACTORIES DEFINITION
 class PlayerFactory(ModelFactory[Player]):
     """
     Player Model factory for live games
     """
-    __set_as_default_factory_for_field__ = False
+    pass
 
 class RadiantFactionFactory(ModelFactory[Faction]):
     pass
