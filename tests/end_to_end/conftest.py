@@ -80,7 +80,7 @@ async def e2e_redis_client(e2e_environment: dict):
     await client.connection_pool.disconnect()
     
 
-@pytest_asyncio.fixture(scope='package')
+@pytest_asyncio.fixture(scope='package', autouse=True)
 async def setup_hero_data(e2e_postgres_engine):
     """Ensures the database is populated with hero data."""
     try:
