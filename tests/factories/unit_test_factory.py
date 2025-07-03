@@ -25,23 +25,13 @@ class PlayerFactory(ModelFactory[Player]):
     """
     Player Model factory for live games
     """
-    pass
+    __set_as_default_factory_for_field__ = False
 
 class RadiantFactionFactory(ModelFactory[Faction]):
-    players = Use(lambda: [PlayerFactory.build(
-        player_slot=i,
-        account_id=i + 2000,
-        hero_id= (i+1) % 100,
-        name=f"Player_{i}"
-    ) for i in radiant_slot_ids])
+    pass
 
 class DireFactionFactory(ModelFactory[Faction]):
-    players = Use(lambda: [PlayerFactory.build(
-        player_slot=i,
-        account_id=i + 2000,
-        hero_id= (i+1) % 100,
-        name=f"Player_{i}"
-    ) for i in dire_slot_ids])
+    pass
     
 class ScoreboardFactory(ModelFactory[ScoreBoard]):
     duration = Use(lambda: random.uniform(1,100))
@@ -58,16 +48,11 @@ class PlayerDataFactory(ModelFactory[PlayerData]):
 
 @register_fixture
 class OngoingLeagueGameFactory(ModelFactory[OngoingLeagueGame]):
-    scoreboard = ScoreboardFactory
+    pass
 
 @register_fixture
 class MatchesAPIResponseFactory(ModelFactory[MatchesAPIResponse]):
-    players = Use(lambda: [PlayerDataFactory.build(
-        player_slot=j,
-        account_id=j+2000,
-        hero_id=(j+1) % 100,
-        name=f"Player_{j}"
-    ) for j in radiant_slot_ids + dire_slot_ids])
+    pass
 
 @register_fixture
 class ModelPredictionAPIResponseFactory(ModelFactory[ModelPredictionAPIResponse]):
