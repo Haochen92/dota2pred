@@ -16,31 +16,27 @@ from dota_oracle_common.models.pipeline.schema import (
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
 
 
-# HELPER FACTORIES DEFINITION
+# ================================
+# POLYFACTORY FIXTURES DEFINITIONS
+# ================================
+@register_fixture
 class PlayerFactory(ModelFactory[Player]):
     """
     Player Model factory for live games
     """
     pass
 
-class RadiantFactionFactory(ModelFactory[Faction]):
+@register_fixture
+class FactionFactory(ModelFactory[Faction]):
     pass
-
-class DireFactionFactory(ModelFactory[Faction]):
-    pass
-    
+ 
+@register_fixture   
 class ScoreboardFactory(ModelFactory[ScoreBoard]):
-    duration = Use(lambda: random.uniform(1,100))
-    radiant: RadiantFactionFactory
-    dire: DireFactionFactory
-    
+    duration = Use(lambda: random.uniform(1,1000))
+
+@register_fixture
 class PlayerDataFactory(ModelFactory[PlayerData]):
     pass
-
-# ================================
-# POLYFACTORY FIXTURES DEFINITIONS
-# ================================
-
 
 @register_fixture
 class OngoingLeagueGameFactory(ModelFactory[OngoingLeagueGame]):
