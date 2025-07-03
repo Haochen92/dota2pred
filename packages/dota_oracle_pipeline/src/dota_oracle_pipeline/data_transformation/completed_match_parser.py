@@ -1,14 +1,12 @@
-from dota_oracle_common.models.match import MatchesAPIResponse, Match
+from dota_oracle_common.models.match import MatchesAPIResponse, MatchWithOutcome
 from pydantic import ValidationError
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import to_utc_datetime_object
-from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
 logger = get_logger(__name__)
 
-async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo: HeroesRepository) -> Match:
+async def parse_completed_matches(raw_match_data: MatchesAPIResponse) -> MatchWithOutcome:
     # Initialize player slots dictionaries
-    hero_map = await hero_repo.get_hero_id_map()
     
     try:
         # Create match data dictionary with required fields
@@ -27,14 +25,12 @@ async def parse_completed_matches(raw_match_data: MatchesAPIResponse, hero_repo:
         
         for player in raw_match_data.players:
             slot = player.player_slot
-            mapped_hero_id = hero_map.get(player.hero_id)
-            if mapped_hero_id is None:
-                logger.warning(f"Hero ID {player.hero_id} not found in hero map for match {raw_match_data.match_id}")
-            match_data[f"slot_{slot}_hero_id"] = mapped_hero_id
+
+            match_data[f"slot_{slot}_hero_id"] = player.hero_id
             match_data[f"slot_{slot}_account_id"] = player.account_id
         
         # Create and return the Match model
-        return Match(**match_data)
+        return MatchWithOutcome(**match_data)
     except ValidationError as ve:
         logger.error(f"validation error for match {raw_match_data.match_id}, {ve}", exc_info=True)
         raise ve
