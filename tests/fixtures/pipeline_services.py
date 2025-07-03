@@ -3,7 +3,6 @@ Pipeline services-related fixtures for tests.
 """
 import pytest
 from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 # Pipeline Services Import
 from live_orchestrator_app.services.feature_engineering_service import FeatureEngineeringService
