@@ -5,7 +5,6 @@ Tests the complete flow from match discovery through prediction and completion
 by simulating multiple processing cycles.
 """
 import logging
-from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 from unittest.mock import patch
 
@@ -15,13 +14,13 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from dota_oracle_common.models.inference.table import MatchPredictionTable
-from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame, Player
+from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
 from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchOutcome
 from dota_oracle_common.models.match.table import MatchOutcomeTable, MatchTable
 from live_orchestrator_app.app_container import AppContainer
 
-from dota_oracle_common.models.live_games.schema import ScoreBoard, Faction, Player, TeamData
-import random
+from datetime import datetime, timezone
+
 
 logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.asyncio(loop_scope='session'), pytest.mark.e2e]
@@ -46,7 +45,6 @@ class TestLivePipelineE2E:
 
     @pytest.fixture(scope='function')
     def live_league_data(self, ongoing_league_game_factory, player_factory) -> Dict[int, OngoingLeagueGame]:
-        from datetime import datetime, timezone
         
         matches = {}
         # Use realistic timestamps (recent dates)
@@ -169,7 +167,7 @@ class TestLivePipelineE2E:
 
     # --- E2E Test Cases (Sequential and Dependent) ---
 
-    async def test_initial_state(self, configured_test_container: AppContainer, setup_hero_data):
+    async def test_initial_state(self, configured_test_container: AppContainer):
         """Verify that the system starts in a clean, empty state."""
         redis_service = await configured_test_container.redis_service()
         db_engine = configured_test_container.db_engine()
@@ -179,7 +177,7 @@ class TestLivePipelineE2E:
 
     @pytest.mark.dependency(depends=['test_initial_state'])
     async def test_cycle_1_new_match_discovery(
-        self, configured_test_container: AppContainer, cycle1_live_games, match_details_fetcher, setup_hero_data
+        self, configured_test_container: AppContainer, cycle1_live_games, match_details_fetcher
     ):
         """CYCLE 1: Tests the discovery and full processing of two new matches."""
         app = await configured_test_container.app()
@@ -204,7 +202,7 @@ class TestLivePipelineE2E:
 
     @pytest.mark.dependency(depends=['test_cycle_1_new_match_discovery'])
     async def test_cycle_2_additional_match(
-        self, configured_test_container: AppContainer, cycle2_live_games, match_details_fetcher, setup_hero_data
+        self, configured_test_container: AppContainer, cycle2_live_games, match_details_fetcher
     ):
         """CYCLE 2: Tests discovery of one new match while others are pending."""
         app = await configured_test_container.app()
@@ -226,7 +224,7 @@ class TestLivePipelineE2E:
 
     @pytest.mark.dependency(depends=['test_cycle_2_additional_match'])
     async def test_cycle_3_match_completion(
-        self, configured_test_container: AppContainer, cycle3_live_games, completed_match_outcomes, setup_hero_data
+        self, configured_test_container: AppContainer, cycle3_live_games, completed_match_outcomes
     ):
         """CYCLE 3: Tests the completion of one match and its state removal from pending."""
         app = await configured_test_container.app()
