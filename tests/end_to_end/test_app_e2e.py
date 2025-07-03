@@ -85,30 +85,6 @@ class TestLivePipelineE2E:
         return matches
 
     @pytest.fixture(scope='function')
-    def match_details_fetcher(self, matches_api_response_factory, player_data_factory) -> Callable[[int], Optional[MatchesAPIResponse]]:
-        """Mock match details provider."""
-        
-        details_map = {}
-        for match_id in self.MATCH_IDS:
-            response = matches_api_response_factory.build(match_id=match_id)
-            # Use the same hero IDs as the live data
-            radiant_hero_ids = [1, 2, 3, 4, 5]  # Anti-Mage, Axe, Bane, Bloodseeker, Crystal Maiden
-            dire_hero_ids = [6, 7, 8, 9, 14]    # Drow Ranger, Earthshaker, Juggernaut, Mirana, Pudge
-            all_slots = self.RADIANT_SLOT_IDS + self.DIRE_SLOT_IDS
-            
-            response.players = [
-                player_data_factory.build(
-                    player_slot=i,
-                    account_id=i+2000,
-                    hero_id=radiant_hero_ids[i] if i < 5 else dire_hero_ids[i - 128],
-                    name=f"player_{i}"
-                ) for i in all_slots
-            ]
-            details_map[match_id] = response
-            
-        return lambda match_id: details_map.get(match_id)
-
-    @pytest.fixture(scope='function')
     def cycle1_live_games(self, live_league_data: Dict[int, OngoingLeagueGame]) -> List[LiveLeagueGame]:
         """Cycle 1: Two new matches."""
         games = [live_league_data[self.MATCH_IDS[0]], live_league_data[self.MATCH_IDS[1]]]
@@ -140,9 +116,12 @@ class TestLivePipelineE2E:
         logger.info(f"--- State for {expected.cycle_name} verified successfully. ---")
         
     async def _verify_redis_streams(self, redis_service, expected_pending: Dict[str, int], cycle: str):
-        streams = ["new_matches", "pending_prediction", "pending_completion"]
-        for stream in streams:
-            group = f"{stream}_group"
+        stream_groups = {
+            "new_matches": "feature_engineer_group",
+            "pending_prediction": "prediction_group", 
+            "pending_completion": "completion_group"
+        }
+        for stream, group in stream_groups.items():
             try:
                 pending_info = await redis_service.redis.xpending(stream, group)
                 actual = pending_info['pending']
@@ -177,7 +156,7 @@ class TestLivePipelineE2E:
 
     @pytest.mark.dependency(depends=['test_initial_state'])
     async def test_cycle_1_new_match_discovery(
-        self, configured_test_container: AppContainer, cycle1_live_games, match_details_fetcher
+        self, configured_test_container: AppContainer, cycle1_live_games
     ):
         """CYCLE 1: Tests the discovery and full processing of two new matches."""
         app = await configured_test_container.app()
@@ -186,7 +165,6 @@ class TestLivePipelineE2E:
 
         # ARRANGE
         with patch("live_orchestrator_app.data_fetching.new_match_data_provider.fetch_live_league_games", return_value=cycle1_live_games), \
-             patch("dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details", side_effect=match_details_fetcher), \
              patch("live_orchestrator_app.services.fetch_outcome_service.fetch_pro_match", return_value=[]):
             
             # ACT: Run the pipeline
@@ -195,14 +173,14 @@ class TestLivePipelineE2E:
         # ASSERT: Verify the system state after processing two new matches.
         await self._verify_system_state(redis_service, db_engine, VerificationState(
             cycle_name="Cycle 1 - Two New Matches",
-            redis_pending={},  # Streams are processed, no pending items in streams
-            redis_statuses={self.MATCH_IDS[0]: "pending_prediction", self.MATCH_IDS[1]: "pending_prediction"},
+            redis_pending={"pending_completion": 2},  
+            redis_statuses={self.MATCH_IDS[0]: "pending_completion", self.MATCH_IDS[1]: "pending_completion"},
             db_counts={'matches': 2, 'predictions': 0, 'outcomes': 0},  # Predictions not yet stored in DB
         ))
 
     @pytest.mark.dependency(depends=['test_cycle_1_new_match_discovery'])
     async def test_cycle_2_additional_match(
-        self, configured_test_container: AppContainer, cycle2_live_games, match_details_fetcher
+        self, configured_test_container: AppContainer, cycle2_live_games, 
     ):
         """CYCLE 2: Tests discovery of one new match while others are pending."""
         app = await configured_test_container.app()
@@ -210,7 +188,6 @@ class TestLivePipelineE2E:
         db_engine = configured_test_container.db_engine()
 
         with patch("live_orchestrator_app.data_fetching.new_match_data_provider.fetch_live_league_games", return_value=cycle2_live_games), \
-             patch("dota_oracle_pipeline.data_extraction.fetch_match_details.fetch_match_details", side_effect=match_details_fetcher), \
              patch("live_orchestrator_app.services.fetch_outcome_service.fetch_pro_match", return_value=[]):
 
             await app.run_cycle()
@@ -218,7 +195,7 @@ class TestLivePipelineE2E:
         await self._verify_system_state(redis_service, db_engine, VerificationState(
             cycle_name="Cycle 2 - One Additional Match",
             redis_pending={"pending_completion": 3},
-            redis_statuses={mid: "pending_completion" for mid in self.MATCH_IDS},
+            redis_statuses={m_id: "pending_completion" for m_id in self.MATCH_IDS},
             db_counts={'matches': 3, 'predictions': 3, 'outcomes': 0},
         ))
 
