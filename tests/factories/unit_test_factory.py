@@ -4,9 +4,9 @@ from polyfactory.pytest_plugin import register_fixture
 import random
 
 # Model imports for factories
-from dota_oracle_common.models.live_games.schema import OngoingLeagueGame, ScoreBoard, Faction, Player
+from dota_oracle_common.models.live_games.schema import OngoingLeagueGame, Player
 from dota_oracle_common.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
-from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchOutcome, PlayerData
+from dota_oracle_common.models.match.schema import MatchesAPIResponse, PlayerData
 from dota_oracle_common.models.pipeline.schema import (
     NewMatchWorkItem,
     FeatureEngineeringWorkItem, 
@@ -27,15 +27,10 @@ class PlayerFactory(ModelFactory[Player]):
     pass
 
 @register_fixture
-class FactionFactory(ModelFactory[Faction]):
-    pass
- 
-@register_fixture   
-class ScoreboardFactory(ModelFactory[ScoreBoard]):
-    duration = Use(lambda: random.uniform(1,1000))
-
-@register_fixture
 class PlayerDataFactory(ModelFactory[PlayerData]):
+    """
+    Player Model factory for completed games
+    """
     pass
 
 @register_fixture
