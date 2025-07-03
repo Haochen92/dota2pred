@@ -1,7 +1,6 @@
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_pipeline.data_transformation.live_match_parser import parse_live_league_games
 from dota_oracle_common.repositories.match_repository import MatchRepository
-from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.match import MatchTable
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from dota_oracle_common.models.pipeline import NewMatchWorkItem
@@ -41,8 +40,7 @@ class NewMatchEventProcessor:
     async def _transform_match_data(self, work_item: NewMatchWorkItem, session: AsyncSession) -> MatchTable:
         """Transforms live match data to MatchTable."""
         try:
-            hero_repo = HeroesRepository(session=session)
-            transformed_data = await parse_live_league_games([work_item.live_match_data], hero_repo)
+            transformed_data = await parse_live_league_games([work_item.live_match_data])
             
             if not transformed_data:
                 raise ValueError(f"Failed to transform match data for match {work_item.match_id}")
