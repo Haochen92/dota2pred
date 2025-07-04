@@ -39,14 +39,20 @@ class ModelInferenceService:
                 ) as response:
                     response.raise_for_status()
                     result = await response.json()
-                    validated_result = ModelPredictionAPIResponse.model_validate(result)
+                    try:
+                        validated_result = ModelPredictionAPIResponse.model_validate(result)
+                    except ValidationError as ve:
+                        error_msg = f"""
+                        Validation Error for returned data
+                        response data: {result},
+                        error: {ve}
+                        """
+                        logger.error(error_msg, exc_info=True)
+                        raise ve
                     return validated_result
         except aiohttp.ClientResponseError as ce:
             logger.error(f"HTTP error {ce.status} getting prediction {self.predict_url}: {ce.message}", exc_info=True)  
             raise ce         
-        except ValidationError as ve:
-            logger.error(f"Validation error for returned data {ve}", exc_info=True)
-            raise ve
         except Exception as e:
             logger.error(f"Error getting prediction: {e}", exc_info=True)
             raise e
