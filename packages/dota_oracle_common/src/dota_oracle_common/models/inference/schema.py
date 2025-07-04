@@ -68,7 +68,7 @@ class ModelPredictionAPIResponse(BaseModel):
         probability: Prediction probabilities (Optional[List[float]])
     """
     prediction: List[int]
-    probability: Optional[List[float]]
+    probability: Optional[List[float]] = []
 
    
 
