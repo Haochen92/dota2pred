@@ -65,13 +65,25 @@ class RedisService:
         """
         parsed_events: Dict[str, StreamMatchEventData] = {}
         try:
-            raw_events_response = await self.redis.xreadgroup(
+            # Read new messages 
+            await self.redis.xreadgroup(
                 groupname=group,
                 consumername=consumer,
-                streams={stream: '>'},
+                streams={stream: '>'}, # Read new messages 
                 count=batch,
                 block=1000
             )
+            
+            # Consume all messages
+            raw_events_response = await self.redis.xreadgroup(
+                groupname=group,
+                consumername=consumer,
+                streams={stream: '0'}, # Read pending unacknowledged messages
+                count=batch,
+                block=1000
+            )
+            
+            
             if not raw_events_response:
                 return {}
 
@@ -81,9 +93,9 @@ class RedisService:
                 try:
                     parsed_event = StreamMatchEventData.model_validate(data_dict)
                     parsed_events[event_id] = parsed_event
-                except ValidationError as e:
+                except ValidationError as ve:
                     logger.warning(
-                        f"Pydantic validation failed for event ID '{event_id}' from stream '{stream}'. "
+                        f"Pydantic validation failed for event ID '{event_id}' from stream '{stream}'. Error: {ve} "
                     )
                     continue
             return parsed_events
