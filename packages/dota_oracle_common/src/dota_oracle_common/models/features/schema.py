@@ -33,7 +33,7 @@ class HeroFeatures(SQLModel):
     """
     
     # Feature columns
-    hero_picks: List[str]
+    hero_picks: List[int]
 
 
 class PlayerHeroFeature(SQLModel):
@@ -85,4 +85,4 @@ class AllFeaturesDTO(TeamFeatures, HeroFeatures, PlayerHeroFeature):
     player_hero_132_win_rate: float
 
     # 3. Hero Features (Categorical/Non-numeric features often go last)
-    hero_picks: List[str]
+    hero_picks: List[int]

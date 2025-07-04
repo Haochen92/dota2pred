@@ -49,7 +49,7 @@ class HeroFeaturesTable(HeroFeatures, table=True):
     match_id: int = Field(sa_type=BigInteger, primary_key=True, 
                           foreign_key="matches.match_id")
     
-    hero_picks: List[str] = Field(sa_column=Column(JSON))
+    hero_picks: List[int] = Field(sa_column=Column(JSON))
     
     # Relationship
     match: "MatchTable" = Relationship(back_populates="hero_features")
