@@ -1,5 +1,6 @@
 import bentoml 
 from bentoml.models import BentoModel
+from dota_oracle_common.models.inference import ModelPredictionAPIResponse
 from typing import Dict, Any, List
 import logging
 
@@ -22,7 +23,7 @@ class MatchPredictionService:
         self.model_metadata = self.rf_model.info.metadata
         
     @bentoml.api
-    def predict(self, input_data: Dict[str, Any]) -> List:
+    def predict(self, input_data: Dict[str, Any]) -> ModelPredictionAPIResponse:
         
         
         features = input_data.get('input_features', {})
@@ -36,7 +37,8 @@ class MatchPredictionService:
         
         try:
             prediction = self.model.predict(features)
-            return prediction.tolist()
+            output = ModelPredictionAPIResponse(prediction=prediction.tolist())
+            return output
         
         except Exception as e:
             logger.error(f"prediction failed, {e}", exc_info=True)
