@@ -25,6 +25,7 @@ class CompletionDataProvider:
         
         # For all matches in the pending list, attempt to retrieve their outcome by batch
         pending_id_list = [data.match_id for _, data in events.items()]
+        logger.info(f"Found {len(pending_id_list)} events pending completion")
         outcome_map = await FetchOutcomeService.fetch_outcomes_batch(pending_id_list)
         
         if not outcome_map:
