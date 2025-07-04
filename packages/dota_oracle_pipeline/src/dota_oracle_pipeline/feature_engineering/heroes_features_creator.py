@@ -15,8 +15,8 @@ class HeroesFeatureCreator:
         for instance in match_instances:
             heroes_list = []
             for col_name in DRAFT_COLS:
-                hero_name = getattr(instance, col_name)
-                heroes_list.append(hero_name) 
+                hero_id = getattr(instance, col_name)
+                heroes_list.append(hero_id) 
                 
             hero_feature = HeroFeaturesTable(
                 match_id=instance.match_id,
