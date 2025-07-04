@@ -10,7 +10,12 @@ logger = logging.getLogger(__name__)
 my_image = bentoml.images.Image(python_version='3.11', distro='debian') \
     .run('echo "Installing system packages..."') \
     .system_packages('curl') \
-    .requirements_file('requirements.txt') \
+    .python_packages(
+        'scikit-learn',
+        'numpy',
+        'pandas',
+        'git+https://github.com/Haochen92/dota2pred.git@remote#subdirectory=packages/dota_oracle_common'
+    ) \
     .run('echo "Image Built Successfully...!"')
 
 @bentoml.service(name='match_prediction', image=my_image)
