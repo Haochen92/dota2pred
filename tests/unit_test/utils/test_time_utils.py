@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 from dota_oracle_common.utils.time_utils import to_utc_datetime_object
+from typing import Any
 
 
 def test_to_utc_aware_datetime() -> None:
@@ -56,7 +57,7 @@ def test_to_utc_unsupported_type_raises_type_error() -> None:
         to_utc_datetime_object(list_input)
 
 
-def test_to_utc_internal_conversion_failure_raise_value_error(mocker) -> None:
+def test_to_utc_internal_conversion_failure_raise_value_error(mocker: Any) -> None:
     empty_string_input = ""
     with pytest.raises(ValueError, match=f"String '{empty_string_input}' could not be parsed"):
         to_utc_datetime_object(empty_string_input)
