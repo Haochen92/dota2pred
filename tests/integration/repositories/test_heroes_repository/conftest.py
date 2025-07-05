@@ -3,7 +3,6 @@ import pytest_asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.utils import get_logger 
 
 from typing import Dict

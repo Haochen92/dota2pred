@@ -1,14 +1,11 @@
 import pytest
 import logging
-import sys
-import os
 import requests
 import subprocess
 import time
 import socket
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
-from starlette.testclient import TestClient
 
 # IMAGE TAG: TO SET IN CONFIG FILE
 IMAGE_TAG = "match_prediction:latest"

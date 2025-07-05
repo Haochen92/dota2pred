@@ -1,13 +1,8 @@
 import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock
 
 from dota_oracle_common.repositories.history_repository import HistoryRepository
-from dota_oracle_common.repositories.match_repository import MatchRepository
-from dota_oracle_common.utils import get_logger, TaskRunner
 
-from dota_oracle_common.models.match import MatchTable, MatchOutcomeTable
-from dota_oracle_common.models.utils import AsyncTask
 
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 F_PATH = "live_orchestrator_app.services.history_update_service"

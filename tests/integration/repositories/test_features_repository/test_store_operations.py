@@ -2,8 +2,7 @@
 Tests for store operations: store_features
 """
 import pytest
-import pytest_asyncio
-from typing import Dict, Any, Type, List
+from typing import Dict, Any, Type
 
 from dota_oracle_common.repositories.features_repository import FeaturesRepository
 from dota_oracle_common.models.features import (

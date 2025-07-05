@@ -14,7 +14,6 @@ from live_orchestrator_app.prediction.prediction_event_processor import Predicti
 # Service imports
 from live_orchestrator_app.services.feature_engineering_service import FeatureEngineeringService
 from live_orchestrator_app.services.feature_preparation_service import FeaturePreparationService
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
 
 
