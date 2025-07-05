@@ -35,7 +35,7 @@ class FeaturePreparationService:
         if not feature_columns:
             raise ValueError(f"feature_columns returned invalid value of {feature_columns}")
 
-        return feature_columns
+        return list(feature_columns)
 
     async def prepare_features_for_inference(self, match_id: int, db_session: AsyncSession) -> Optional[np.ndarray]:
         """
@@ -78,7 +78,7 @@ class FeaturePreparationService:
                 return None
 
             # Convert final DataFrame to NumPy array
-            numpy_array = final_features_df.to_numpy()
+            numpy_array: np.ndarray = final_features_df.to_numpy()
             logger.info(f"Successfully prepared features for match {match_id}, final shape: {numpy_array.shape}")
             return numpy_array
 
@@ -130,7 +130,7 @@ class FeaturePreparationService:
             logger.warning("Missing hero_map. Unable to proceed with data encoding.")
             return None
 
-        encoded_hero_df = FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
+        encoded_hero_df: Optional[pd.DataFrame] = FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
 
         if encoded_hero_df is None or encoded_hero_df.empty:
             return None

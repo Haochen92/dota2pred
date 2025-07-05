@@ -2,6 +2,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.engine.url import URL
 from dota_oracle_common.utils.env_loader import load_workspace_env
+from typing import Dict, Any
 import os
 
 load_workspace_env()
@@ -17,7 +18,7 @@ class DatabaseEngineFactory:
     _engine: AsyncEngine | None = None
 
     @classmethod
-    def _get_config(cls) -> dict:
+    def _get_config(cls) -> Dict[str, Any]:
         """Get current database configuration from environment variables"""
         return {
             "drivername": "postgresql+asyncpg",
@@ -32,7 +33,7 @@ class DatabaseEngineFactory:
         }
 
     @classmethod
-    def _validate_config(cls, config: dict) -> None:
+    def _validate_config(cls, config: Dict[str, Any]) -> None:
         """Validate that all required configuration is present"""
         required_fields = ["username", "password", "database"]
         missing = [field for field in required_fields if not config.get(field)]

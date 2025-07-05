@@ -26,7 +26,7 @@ class TeamFeaturesTable(TeamFeatures, table=True):
     Feature model for match data with match_id as both primary and foreign key.
     This links to the matches table while storing computed features.
     """
-    __tablename__ = "team_features"  # type: ignore
+    __tablename__ = "team_features"
 
     # Primary Key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, foreign_key="matches.match_id")
@@ -46,7 +46,7 @@ class HeroFeaturesTable(HeroFeatures, table=True):
         match: Related MatchTable instance
     """
 
-    __tablename__ = "hero_features"  # type: ignore
+    __tablename__ = "hero_features"
 
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, foreign_key="matches.match_id")
@@ -68,7 +68,7 @@ class PlayerHeroFeatureTable(PlayerHeroFeature, table=True):
         match: Related MatchTable instance
     """
 
-    __tablename__ = "player_hero_features"  # type: ignore
+    __tablename__ = "player_hero_features"
 
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, foreign_key="matches.match_id")

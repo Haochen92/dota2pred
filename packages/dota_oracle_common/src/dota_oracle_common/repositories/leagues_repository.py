@@ -18,6 +18,7 @@ class LeaguesRepository(BaseRepository):
         except Exception as e:
             logger.error(f"Error encountered when storing league data: Error {e}", exc_info=True)
             raise e
+        return None
 
     async def get_league_data_by_ids(self, league_id_inputs: List[int]) -> List[LeagueTable]:
         try:
@@ -28,6 +29,7 @@ class LeaguesRepository(BaseRepository):
             return league_data_instances
         except Exception as e:
             logger.error(f"Error fetching league_data for league_ids: {league_id_inputs},{e}", exc_info=True)
+            raise
 
     async def get_all_league_data(self) -> List[LeagueTable]:
         try:
