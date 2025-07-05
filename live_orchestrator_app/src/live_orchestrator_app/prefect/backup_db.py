@@ -1,7 +1,6 @@
 from prefect import flow, task
 import subprocess
 from pathlib import Path
-from typing import Union
 from datetime import datetime
 from prefect_aws import AwsCredentials, S3Bucket
 
