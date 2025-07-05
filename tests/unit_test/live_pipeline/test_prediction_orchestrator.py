@@ -1,7 +1,6 @@
 import pytest
 from typing import Any, List
 from dota_oracle_common.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
-from dota_oracle_common.models.pipeline.schema import PredictionWorkItem
 from dota_oracle_common.models.utils.schema import TaskResult, AsyncTask
 from live_orchestrator_app.prediction.prediction_orchestrator import PredictionOrchestrator
 
