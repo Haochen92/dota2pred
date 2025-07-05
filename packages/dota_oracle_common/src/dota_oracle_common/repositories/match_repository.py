@@ -76,7 +76,7 @@ class MatchRepository(BaseRepository):
                 )
                 return []  # Return empty list for "not found"
             logger.info(f"Found {len(match_details_list)} MatchTable details.")
-            return match_details_list  # type: ignore
+            return match_details_list
         except SQLAlchemyError as e:
             logger.error(f"DB error fetching match details: {e}", exc_info=True)
             raise

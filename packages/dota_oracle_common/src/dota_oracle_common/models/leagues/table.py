@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field
 from .schema import LeagueItem
 
 
-class LeagueTable(SQLModel, LeagueItem, table=True):  # type: ignore
+class LeagueTable(SQLModel, LeagueItem, table=True):
     """Database table for league data.
 
     Inherits from LeagueItem with database-specific overrides.

@@ -6,7 +6,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Any
 
 logger = get_logger(__name__)
 
@@ -49,7 +49,7 @@ class FeatureEngineeringService:
         features_repository = FeaturesRepository(session=session)
 
         # Create AsyncTask objects for TaskGroup execution
-        storage_tasks: List[AsyncTask] = [
+        storage_tasks: List[AsyncTask[str, Any]] = [
             AsyncTask(
                 key="hero_features_storage",
                 coro=features_repository.store_features(feature_instances=hero_features, table_class=HeroFeaturesTable),

@@ -13,7 +13,7 @@ class TeamHistoryTable(SQLModel, table=True):
         start_time: Match start with timezone (TIMESTAMP)
     """
 
-    __tablename__ = "team_histories"  # type: ignore
+    __tablename__ = "team_histories"
 
     # Composite Primary Key
     team_name: str = Field(sa_column=Column(String, primary_key=True))
@@ -34,7 +34,7 @@ class TeamMatchupHistoryTable(SQLModel, table=True):
         start_time: Match start with timezone (TIMESTAMP)
     """
 
-    __tablename__ = "team_matchup_histories"  # type: ignore
+    __tablename__ = "team_matchup_histories"
 
     team1_name: str = Field(sa_column=Column(String, primary_key=True))
     team2_name: str = Field(sa_column=Column(String, primary_key=True))
@@ -56,7 +56,7 @@ class PlayerHeroHistoryTable(SQLModel, table=True):
         start_time: Match start with timezone (TIMESTAMP)
     """
 
-    __tablename__ = "player_hero_histories"  # type: ignore
+    __tablename__ = "player_hero_histories"
 
     # Composite Primary Key
     account_id: int = Field(sa_column=Column(BigInteger, primary_key=True))

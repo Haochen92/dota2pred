@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import List
+from typing import List, Any
 from live_orchestrator_app.utils.set_logging import get_logger
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
 
@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 class TaskRunner:
 
     @staticmethod
-    async def run_concurrently(tasks: List[AsyncTask]) -> List[TaskResult]:
+    async def run_concurrently(tasks: List[AsyncTask]) -> List[TaskResult[Any]]:
         """
         Run all tasks concurrently using asyncio.gather
         Always returns a list of TaskResult objects, never raises.
@@ -25,7 +25,7 @@ class TaskRunner:
 
         results_or_exceptions = await asyncio.gather(*coroutines, return_exceptions=True)
 
-        outcomes: List[TaskResult] = []
+        outcomes: List[TaskResult[Any]] = []
 
         for i, outcome in enumerate(results_or_exceptions):
             key = task_keys[i]
@@ -38,7 +38,7 @@ class TaskRunner:
         return outcomes
 
     @staticmethod
-    async def run_as_group(tasks: List[AsyncTask]) -> List[TaskResult]:
+    async def run_as_group(tasks: List[AsyncTask]) -> List[TaskResult[Any]]:
         if sys.version_info < (3, 11):
             raise RuntimeError("TaskGroup requires Python 3.11 or newer.")
 
