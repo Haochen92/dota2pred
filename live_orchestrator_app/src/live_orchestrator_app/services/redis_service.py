@@ -36,13 +36,13 @@ class RedisService:
         self._initialized: bool = False
 
     @classmethod
-    async def create(cls, redis_client: redis.Redis):
+    async def create(cls, redis_client: redis.Redis) -> 'RedisService':
         # A class method which initialises the class with injected dependenceis
         instance = cls(redis_client=redis_client)
         await instance.initialize_async_service()
         return instance
 
-    async def initialize_async_service(self):
+    async def initialize_async_service(self) -> None:
         if self._initialized:
             return
 

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
@@ -28,7 +28,7 @@ class FeaturePreparationService:
         self.model_inference_service = model_inference_service
         self.model_feature_names = self._extract_feature_columns()
 
-    def _extract_feature_columns(self):
+    def _extract_feature_columns(self) -> List[str]:
         model_metadata = self.model_inference_service.model_metadata
         feature_columns = model_metadata.version_metadata.feature_columns
 

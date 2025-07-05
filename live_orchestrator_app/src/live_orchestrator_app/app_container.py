@@ -157,7 +157,7 @@ class AppContainer(containers.DeclarativeContainer):
 
 
 # to do: wrap in prefect task or CRON task
-async def main():
+async def main() -> None:
     container = AppContainer()
     # todo: container.config.from_yaml('config.yml') # Load config if implemented
 

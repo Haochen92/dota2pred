@@ -11,7 +11,7 @@ class LeaguesRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def store_league_data(self, league_inputs: List[LeagueTable]):
+    async def store_league_data(self, league_inputs: List[LeagueTable]) -> None:
 
         try:
             await self._insert_data(model_class=LeagueTable, instances=league_inputs)
@@ -19,7 +19,7 @@ class LeaguesRepository(BaseRepository):
             logger.error(f"Error encountered when storing league data: Error {e}", exc_info=True)
             raise e
 
-    async def get_league_data_by_ids(self, league_id_inputs: List[int]):
+    async def get_league_data_by_ids(self, league_id_inputs: List[int]) -> List[LeagueTable]:
         try:
             league_data_instances = await self._get_data(model_class=LeagueTable, id_filters=league_id_inputs)
             if not league_data_instances:
@@ -29,7 +29,7 @@ class LeaguesRepository(BaseRepository):
         except Exception as e:
             logger.error(f"Error fetching league_data for league_ids: {league_id_inputs},{e}", exc_info=True)
 
-    async def get_all_league_data(self):
+    async def get_all_league_data(self) -> List[LeagueTable]:
         try:
             all_league_data = await self._get_data(model_class=LeagueTable)
             if not all_league_data:
