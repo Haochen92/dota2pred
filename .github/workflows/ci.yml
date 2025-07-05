@@ -95,15 +95,5 @@ jobs:
         cd tests
         poetry run pytest contract/ -v --tb=short -m "not slow"
     
-    - name: Run end-to-end tests
-      run: |
-        cd tests
-        poetry run pytest end_to_end/ -v --tb=short
-      env:
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        POSTGRES_DB: test_db
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
+    # E2E tests skipped in CI (requires BentoML Docker images)
+    # Run manually: cd tests && poetry run pytest end_to_end/ -v
