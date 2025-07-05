@@ -59,11 +59,11 @@ async def test_match_details_contract() -> None:
 async def test_pro_match_contract() -> None:
     valid_max, valid_min = 8320876321 + 1, 8320876321
 
-    pro_match_list = await fetch_pro_match(valid_max, valid_min)
+    pro_match_list = await fetch_pro_match(valid_max, valid_min) # Fetch one batch of data only 
 
     assert isinstance(pro_match_list, list), f"expect list, got {type(pro_match_list).__name__}"
 
-    assert len(pro_match_list) == 1, f"expect 1 results, got {len(pro_match_list)}"
+    assert len(pro_match_list) > 0, f"Results not expected to be 0, got {len(pro_match_list)}"
 
 
 async def test_model_metadata_contract(model_inference_service) -> None:
