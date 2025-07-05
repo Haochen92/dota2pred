@@ -1,7 +1,10 @@
 from sqlmodel import Field, Relationship
 from sqlalchemy import BigInteger, Column, JSON
 from .schema import TeamFeatures, PlayerHeroFeature, HeroFeatures
-from typing import List
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..match.table import MatchTable
 
 
 class TeamFeaturesTable(TeamFeatures, table=True):

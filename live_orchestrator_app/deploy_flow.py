@@ -1,6 +1,5 @@
 from prefect import flow
 from prefect.runner.storage import GitRepository
-from prefect_github import GitHubCredentials    
 from prefect.blocks.system import Secret
 
 

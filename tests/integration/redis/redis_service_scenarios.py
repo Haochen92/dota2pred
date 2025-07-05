@@ -1,9 +1,7 @@
-from dota_oracle_common.models.redis.schema import MatchProcessingStatus, MatchStatusValue, StreamMatchEventData, FailureRecord
+from dota_oracle_common.models.redis.schema import MatchProcessingStatus
 from dota_oracle_common.constants.redis_constants import (
-    MATCH_SET, MATCH_STATUS, TMP_KEY,
     STREAM_NEW_MATCHES, STREAM_PENDING_PREDICTION, STREAM_PENDING_COMPLETION,
-    FEATURE_ENGINEER_GROUP, PREDICTION_GROUP, COMPLETION_GROUP,
-    FAILED_EVENTS_MAPPING
+    FEATURE_ENGINEER_GROUP, PREDICTION_GROUP, COMPLETION_GROUP
 )
 
 

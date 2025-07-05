@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 from typing import TypeVar
 
-from dota_oracle_common.repositories.features_repository import FeaturesRepository
 
 from dota_oracle_common.models.features import PlayerHeroFeatureTable, TeamFeaturesTable, HeroFeaturesTable
 

@@ -1,8 +1,12 @@
 from sqlmodel import Field, Relationship
 from sqlalchemy import BigInteger, Column, TIMESTAMP
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from .schema import MatchPrediction
+
+if TYPE_CHECKING:
+    from ..match.table import MatchTable
 
 class MatchPredictionTable(MatchPrediction, table=True):
     """Database table for match predictions.

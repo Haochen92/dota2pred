@@ -2,7 +2,7 @@ from dota_oracle_common.repositories.base_repository import BaseRepository
 from dota_oracle_common.utils import get_logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
-from typing import List, TypeVar, Set, Optional
+from typing import List, TypeVar
 
 
 T = TypeVar("T", bound=SQLModel)

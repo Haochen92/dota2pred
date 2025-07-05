@@ -1,5 +1,4 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..models.inference import MatchPredictionTable
 from ..utils.set_logging import get_logger

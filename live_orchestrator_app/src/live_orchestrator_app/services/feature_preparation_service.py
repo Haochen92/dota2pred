@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from dota_oracle_common.repositories.match_repository import MatchRepository
-from dota_oracle_common.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable, AllFeaturesDTO
+from dota_oracle_common.models.features import TeamFeaturesTable, HeroFeaturesTable, PlayerHeroFeatureTable
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
 from dota_oracle_pipeline.feature_transformation import FeatureEncoder

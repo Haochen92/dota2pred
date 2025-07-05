@@ -4,7 +4,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dota_oracle_common.models.match import MatchOutcomeTable, MatchTable
-from dota_oracle_common.repositories.match_repository import MatchRepository
 
 
 from typing import Tuple, AsyncGenerator, Dict

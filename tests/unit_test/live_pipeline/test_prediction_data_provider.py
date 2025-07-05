@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import AsyncMock
 
 @pytest.mark.asyncio
 async def test_get_work_items_successfully(prediction_data_provider, stream_match_event_data_factory, mocker):
@@ -73,7 +72,7 @@ async def test_get_work_items_filters_invalid_events(prediction_data_provider, s
         "invalid_event_2": stream_match_event_data_factory.build(match_id=-1),  # Invalid: negative match_id
     }
     
-    mock_fetch_matches = mocker.patch.object(
+    mocker.patch.object(
         prediction_data_provider.redis,
         'fetch_matches_pending_prediction',
         return_value=mock_events
