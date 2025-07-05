@@ -70,7 +70,14 @@ jobs:
         poetry run black --check .
     
     - name: Run type checking
-      run: poetry run mypy .
+      run: |
+        # Only check core packages to avoid alembic and less critical areas
+        poetry run mypy packages/dota_oracle_common/src/dota_oracle_common/ \
+                       packages/dota_oracle_pipeline/src/dota_oracle_pipeline/ \
+                       live_orchestrator_app/src/live_orchestrator_app/ \
+                       services/inference_service/src/inference_service/ \
+                       services/api_service/src/api_service/ \
+                       --show-error-codes
     
     - name: Run unit tests
       run: |

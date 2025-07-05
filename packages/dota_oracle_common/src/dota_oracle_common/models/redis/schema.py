@@ -1,6 +1,7 @@
 from pydantic import BaseModel, field_serializer
 from enum import Enum
 from datetime import datetime
+from typing import Any
 
 
 # Enums
@@ -35,7 +36,7 @@ class StreamMatchEventData(BaseModel):
     timestamp: datetime
 
     @field_serializer("timestamp")
-    def serialize_timestamp(self, dt: datetime, _info):
+    def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
         return dt.isoformat()
 
 
@@ -72,5 +73,5 @@ class FailureRecord(BaseModel):
     failure_timestamp: datetime
 
     @field_serializer("failure_timestamp")
-    def serialize_timestamp(self, dt: datetime, _info):
+    def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
         return dt.isoformat()

@@ -160,7 +160,7 @@ class BaseRepository:
         update_dict = {col: getattr(pg_insert(model_class).excluded, col) for col in filtered_cols}
         return update_dict
 
-    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int], stmt: Select):
+    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int], stmt: Select) -> Select:
 
         if not id_filters:
             logger.warning("empty input list provided for id_filters")

@@ -13,7 +13,7 @@ class CompletionEventProcessor:
         self.history_updater = history_update_service
         self.engine = db_engine
 
-    async def process_events(self, work_item: CompletionWorkItem):
+    async def process_events(self, work_item: CompletionWorkItem) -> None:
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 try:
@@ -32,7 +32,7 @@ class CompletionEventProcessor:
                 except Exception as e:
                     raise e
 
-    async def _update_match_outcome(self, match_repository: MatchRepository, match_id: int, match_outcome: bool):
+    async def _update_match_outcome(self, match_repository: MatchRepository, match_id: int, match_outcome: bool) -> None:
         try:
             outcome_instance = MatchOutcomeTable(match_id=match_id, radiant_win=match_outcome)
             await match_repository.insert_match_outcome([outcome_instance])
