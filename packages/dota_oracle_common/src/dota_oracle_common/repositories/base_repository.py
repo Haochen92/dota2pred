@@ -6,7 +6,6 @@ from ..utils.set_logging import get_logger
 # SQLAlchemy imports
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, InstrumentedAttribute
-from sqlalchemy import Select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 
