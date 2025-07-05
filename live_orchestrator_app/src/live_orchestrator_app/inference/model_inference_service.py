@@ -13,7 +13,7 @@ class ModelInferenceService:
         self.metadata_url = f"{base_url}/get_metadata"
 
     @classmethod
-    async def create(cls, base_url: str = "http://localhost:3333") -> 'ModelInferenceService':
+    async def create(cls, base_url: str = "http://localhost:3333") -> "ModelInferenceService":
         # Factory class method to create and initialize service
         instance = cls(base_url)
         await instance.initialize_async_service()
