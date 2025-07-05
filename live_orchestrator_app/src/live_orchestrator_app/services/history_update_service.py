@@ -2,7 +2,7 @@ from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.utils import get_logger, TaskRunner
 from dota_oracle_common.utils.time_utils import to_utc_datetime_object
-from typing import List
+from typing import List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from dota_oracle_common.models.match import MatchTable, MatchOutcomeTable
 from dota_oracle_common.models.utils import AsyncTask
@@ -22,7 +22,7 @@ class HistoryUpdateService:
             if not match_outcome:
                 raise ValueError(f"Match outcome for {match_id} not in database, unable to proceed")
 
-            update_history_task: List[AsyncTask] = [
+            update_history_task: List[AsyncTask[str, Any]] = [
                 AsyncTask(
                     key="update_team_histories",
                     coro=self._update_team_histories(history_repository, match_details, match_outcome),

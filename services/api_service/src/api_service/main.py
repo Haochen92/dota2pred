@@ -23,7 +23,8 @@ async def health_check() -> Dict[str, str]:
 async def predict(data: Dict[str, Any]) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
         response = await client.post("http://prediction-service:3000/predict", json=data)
-        return response.json()
+        result: Dict[str, Any] = response.json()
+        return result
 
 
 @app.get("/matches")

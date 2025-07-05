@@ -26,11 +26,11 @@ class MatchPredictionService:
 
     rf_model = BentoModel("dota_oracle_random_forest:latest")  # bentoml use this tag to load the saved model
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = bentoml.sklearn.load_model(self.rf_model)
         self.model_metadata = self.rf_model.info.metadata
 
-    @bentoml.api
+    @bentoml.api  # type: ignore[misc]
     def predict(self, input_data: Dict[str, Any]) -> ModelPredictionAPIResponse:
 
         features = input_data.get("input_features", {})
@@ -51,10 +51,11 @@ class MatchPredictionService:
             logger.error(f"prediction failed, {e}", exc_info=True)
             raise bentoml.exceptions.InternalServerError(f"Prediction failed: {e}")
 
-    @bentoml.api
+    @bentoml.api  # type: ignore[misc]
     def get_metadata(self) -> Dict[str, Any]:
-        return self.model_metadata
+        metadata: Dict[str, Any] = self.model_metadata
+        return metadata
 
-    @bentoml.api(route="/readyz")
+    @bentoml.api(route="/readyz")  # type: ignore[misc]
     def is_ready(self) -> str:
         return "OK"

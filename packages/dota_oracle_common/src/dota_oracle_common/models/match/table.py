@@ -28,7 +28,7 @@ class MatchTable(Match, table=True):
         hero_features: Hero-based features (Optional[HeroFeaturesTable])
     """
 
-    __tablename__ = "matches"  # type: ignore
+    __tablename__ = "matches"
     # Primary Key
     match_id: int = Field(sa_column=Column("match_id", BigInteger, primary_key=True))
 
@@ -80,7 +80,7 @@ class MatchOutcomeTable(MatchOutcome, table=True):
         match: Related MatchTable instance
     """
 
-    __tablename__ = "match_outcomes"  # type: ignore
+    __tablename__ = "match_outcomes"
 
     match_id: int = Field(sa_column=Column(BigInteger, ForeignKey("matches.match_id"), primary_key=True))
 
