@@ -13,10 +13,9 @@ from dota_oracle_common.models.heroes.table import HeroDataTable
 
 logger = logging.getLogger(__name__)
 
-
 @pytest.fixture(scope='package')
 def e2e_environment():
-    compose = DockerCompose(context='.', compose_file_name="docker-compose.test.yml")
+    compose = DockerCompose(context='end_to_end/', compose_file_name="docker-compose.test.yml")
     
     with compose:
         prediction_host = compose.get_service_host("bentoml", 3000)
