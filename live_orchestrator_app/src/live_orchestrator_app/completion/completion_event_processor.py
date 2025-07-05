@@ -32,7 +32,9 @@ class CompletionEventProcessor:
                 except Exception as e:
                     raise e
 
-    async def _update_match_outcome(self, match_repository: MatchRepository, match_id: int, match_outcome: bool) -> None:
+    async def _update_match_outcome(
+        self, match_repository: MatchRepository, match_id: int, match_outcome: bool
+    ) -> None:
         try:
             outcome_instance = MatchOutcomeTable(match_id=match_id, radiant_win=match_outcome)
             await match_repository.insert_match_outcome([outcome_instance])
