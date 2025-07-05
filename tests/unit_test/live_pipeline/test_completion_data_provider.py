@@ -1,5 +1,4 @@
 import pytest
-import pytest_asyncio
 
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
 

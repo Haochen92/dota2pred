@@ -397,13 +397,13 @@ async def test_record_failure_and_ack_serialization_error(
     actual_return_value = await redis_service_test_subject._record_failure_and_ack(test_failure_record)
     
     # Assert
-    assert actual_return_value == True
+    assert actual_return_value
     
     mocked_json_dump_method.assert_called_once()
     
     stored_fallback_json_str = await test_redis_client.hget(target_dlq_hash, original_event_id) # type:ignore
     
-    assert stored_fallback_json_str is not None, f"Fallback Json not found in DLQ"
+    assert stored_fallback_json_str is not None, "Fallback Json not found in DLQ"
     fallback_data = json.loads(stored_fallback_json_str)
     
     assert fallback_data.get("error") == "DLQ data serialization failed"

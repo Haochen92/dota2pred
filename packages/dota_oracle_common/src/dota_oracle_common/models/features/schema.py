@@ -1,5 +1,5 @@
 from typing import List
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel
 
 class TeamFeatures(SQLModel):
     """Base Model for team-based features.

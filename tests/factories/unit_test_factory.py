@@ -1,7 +1,6 @@
 from polyfactory.factories.pydantic_factory import ModelFactory
 from polyfactory import Use
 from polyfactory.pytest_plugin import register_fixture
-import random
 
 # Model imports for factories
 from dota_oracle_common.models.live_games.schema import OngoingLeagueGame, Player

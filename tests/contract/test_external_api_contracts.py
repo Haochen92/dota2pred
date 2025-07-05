@@ -7,12 +7,8 @@ import pytest
 from dota_oracle_pipeline.data_extraction import fetch_hero_data, fetch_league_data, fetch_live_league_games, fetch_pro_match, fetch_match_details
 
 # import pydantic api_models
-from dota_oracle_common.models.heroes import HeroesAPIResponse
-from dota_oracle_common.models.leagues import LeaguesAPIResponse
-from dota_oracle_common.models.live_games import LiveLeagueAPIResponse
-from dota_oracle_common.models.match import ProMatchAPIResponse, MatchesAPIResponse
-from dota_oracle_common.models.inference import ModelMetaDataAPIResponse, ModelPredictionAPIResponse
-from dota_oracle_common.models.features import AllFeaturesDTO
+from dota_oracle_common.models.match import MatchesAPIResponse
+from dota_oracle_common.models.inference import ModelMetaDataAPIResponse
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.contract]
 

@@ -1,5 +1,4 @@
 import pytest
-from pytest_mock import mocker
 from datetime import datetime, timezone, timedelta
 from dota_oracle_common.utils.time_utils import to_utc_datetime_object
 

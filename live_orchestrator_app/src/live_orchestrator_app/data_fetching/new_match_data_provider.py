@@ -64,10 +64,10 @@ class NewMatchDataProvider:
             try:
                 ongoing_game = OngoingLeagueGame.model_validate(game.model_dump())
                 ongoing_games_list.append(ongoing_game)
-            except ValidationError as ve:
+            except ValidationError:
                 logger.info(f"match {game.match_id} is live but game has not started")
                 continue
-            except Exception as e:
+            except Exception:
                 raise
         return ongoing_games_list
     

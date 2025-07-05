@@ -1,6 +1,5 @@
 import asyncio
 from dependency_injector import providers, containers
-from dependency_injector.wiring import inject, Provide
 
 # Redis client 
 from dota_oracle_common.redis_component.redis_client_factory import RedisClientFactory

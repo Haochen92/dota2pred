@@ -6,7 +6,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
 from sqlmodel import SQLModel
 from testcontainers.postgres import PostgresContainer
-from dota_oracle_common import models
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)

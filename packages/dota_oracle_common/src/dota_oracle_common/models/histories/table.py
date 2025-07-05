@@ -1,4 +1,3 @@
-from typing import Optional 
 from sqlmodel import SQLModel, Field
 from sqlalchemy import BigInteger, Column, String, TIMESTAMP, Boolean, Integer
 from datetime import datetime

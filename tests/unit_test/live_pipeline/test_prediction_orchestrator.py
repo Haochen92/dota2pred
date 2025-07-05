@@ -166,7 +166,7 @@ async def test_run_prediction_cycle_creates_correct_async_tasks(prediction_orche
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build()]
     
-    mock_get_work_items = mocker.patch.object(
+    mocker.patch.object(
         prediction_orchestrator.data_provider, 
         'get_work_items', 
         return_value=mock_work_items
@@ -178,8 +178,8 @@ async def test_run_prediction_cycle_creates_correct_async_tasks(prediction_orche
         captured_tasks.extend(tasks)
         return [task_result_factory.build(key=mock_work_items[0].event_id, exception=None)]
     
-    mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=capture_tasks)
-    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, 'advance_match_to_pending_completion')
+    mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=capture_tasks)
+    mocker.patch.object(prediction_orchestrator.redis, 'advance_match_to_pending_completion')
     
     # ACT
     await prediction_orchestrator.run_prediction_cycle()

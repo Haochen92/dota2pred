@@ -1,13 +1,8 @@
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, ANY
-from sqlalchemy.ext.asyncio import AsyncEngine
+from unittest.mock import AsyncMock
 
 
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from dota_oracle_common.repositories.match_repository import MatchRepository
-from dota_oracle_common.models.match import MatchOutcomeTable
-from dota_oracle_common.models.pipeline import CompletionWorkItem
 from live_orchestrator_app.completion.completion_event_processor import CompletionEventProcessor
 
 F_PATH = "live_orchestrator_app.completion.completion_event_processor"

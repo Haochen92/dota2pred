@@ -3,7 +3,6 @@ import pytest_asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlmodel import delete
 from dota_oracle_common.models.inference import MatchPredictionTable
 from dota_oracle_common.repositories.prediction_repository import PredictionRepository
 

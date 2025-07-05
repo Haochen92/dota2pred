@@ -1,8 +1,12 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, Relationship
 from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey 
 from datetime import datetime
 from .base import Match, MatchOutcome
+
+if TYPE_CHECKING:
+    from ..inference.table import MatchPredictionTable
+    from ..features.table import TeamFeaturesTable, PlayerHeroFeatureTable, HeroFeaturesTable
 
 class MatchTable(Match, table=True):
     """Database table for match data.
