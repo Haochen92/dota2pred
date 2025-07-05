@@ -31,7 +31,7 @@ class VerificationState(BaseModel):
     
     cycle_name: str
     redis_pending: Dict[str, int] = Field(default_factory=dict)
-    redis_statuses: Dict[int, str] = Field(default_factory=dict)
+    redis_statuses: Dict[int, str | None] = Field(default_factory=dict)
     db_counts: Dict[str, int] = Field(default_factory=dict)
 
 
@@ -136,7 +136,11 @@ class TestLivePipelineE2E:
             assert status == expected_status, f"[{cycle}] Match {match_id} status is '{status}', expected '{expected_status}'"
 
     async def _verify_db_counts(self, db_engine, expected_counts: Dict[str, int], cycle: str):
-        table_map = {'matches': MatchTable, 'predictions': MatchPredictionTable, 'outcomes': MatchOutcomeTable}
+        table_map = {
+            'matches': MatchTable, 
+            'predictions': MatchPredictionTable, 
+            'outcomes': MatchOutcomeTable,
+        }
         async with db_engine.begin() as conn:
             for key, table in table_map.items():
                 # Use `table.match_id` for counting to handle potential empty tables
@@ -175,7 +179,7 @@ class TestLivePipelineE2E:
             cycle_name="Cycle 1 - Two New Matches",
             redis_pending={"pending_completion": 2},  
             redis_statuses={self.MATCH_IDS[0]: "pending_completion", self.MATCH_IDS[1]: "pending_completion"},
-            db_counts={'matches': 2, 'predictions': 0, 'outcomes': 0},  # Predictions not yet stored in DB
+            db_counts={'matches': 2, 'predictions': 2, 'outcomes': 0}
         ))
 
     @pytest.mark.dependency(depends=['test_cycle_1_new_match_discovery'])
@@ -217,7 +221,7 @@ class TestLivePipelineE2E:
             cycle_name="Cycle 3 - Match Completion",
             redis_pending={"pending_completion": 2},
             redis_statuses={
-                self.MATCH_IDS[0]: "completed",
+                self.MATCH_IDS[0]: None, # Completed matches should be removed from hset
                 self.MATCH_IDS[1]: "pending_completion",
                 self.MATCH_IDS[2]: "pending_completion"
             },
