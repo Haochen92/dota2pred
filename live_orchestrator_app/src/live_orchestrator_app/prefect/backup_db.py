@@ -1,6 +1,7 @@
 from prefect import flow, task
 import subprocess
 from pathlib import Path
+from typing import Union
 from datetime import datetime
 from prefect_aws import AwsCredentials, S3Bucket
 
@@ -16,7 +17,7 @@ s3_bucket = S3Bucket(bucket_name=S3_BUCKET_NAME, bucket_folder=S3_FOLDER_NAME, c
 
 
 @task
-def backup_postgresql_db():
+def backup_postgresql_db() -> Path:
     """Create a backup of the PostgreSQL database."""
     timestamp = datetime.now().strftime("%Y%m%d")
     dump_file_name = f"{DB_NAME}_backup_{timestamp}.dump"
@@ -44,7 +45,7 @@ def backup_postgresql_db():
 
 
 @flow
-def upload_to_s3():
+def upload_to_s3() -> None:
     dump_file_path = backup_postgresql_db()
     try:
         s3_bucket.upload_from_path(dump_file_path)

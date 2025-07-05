@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime as dt
 
 
@@ -96,7 +96,7 @@ class OngoingLeagueGame(LiveLeagueGame):
 
     @field_validator("radiant_team", "dire_team", "scoreboard")
     @classmethod
-    def validate_fields(cls, v):
+    def validate_fields(cls, v: Any) -> Any:
         if v is None:
             raise ValueError(f"Fields {v} cannot be done")
         return v

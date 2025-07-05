@@ -15,19 +15,19 @@ app.add_middleware(
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     return {"status": "healthy"}
 
 
 @app.post("/predict")
-async def predict(data: Dict[str, Any]):
+async def predict(data: Dict[str, Any]) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
         response = await client.post("http://prediction-service:3000/predict", json=data)
         return response.json()
 
 
 @app.get("/matches")
-async def get_matches():
+async def get_matches() -> Dict[str, str]:
     return {"message": "Matches endpoint - connect to database via common package"}
 
 
