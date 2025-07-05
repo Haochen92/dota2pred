@@ -41,7 +41,7 @@ Test Service initialization
 """
 
 
-async def test_initialize_redis_service(redis_service_test_subject: RedisService, test_redis_client: AIORedis):
+async def test_initialize_redis_service(redis_service_test_subject: RedisService, test_redis_client: AIORedis) -> None:
     await redis_service_test_subject.initialize_async_service()
 
     expected_streams_and_groups = [
@@ -82,7 +82,7 @@ async def test_update_live_match(
     input_current_ids: list[int],
     expected_new_ids_returned: set[int],
     expected_final_redis_match_set: set[int],
-):
+) -> None:
     """Setting up the initial environment"""
     # clean up match_set and temp_key to ensure clean state
     await test_redis_client.delete(MATCH_SET, TMP_KEY)
@@ -115,7 +115,7 @@ async def test_add_new_match(
     input_match_id: Any,
     expected_match_status: str | None,
     expected_return_value: bool,
-):
+) -> None:
     match_status_key = f"{MATCH_STATUS}:{input_match_id}"
     # clean up
     await test_redis_client.delete(match_status_key)
@@ -180,7 +180,7 @@ async def test_advance_match_to_next(
     test_match_id: Any,
     prev_event_match_id: int,  # Changed from prev_event_dict
     expected_return_val: bool,
-):
+) -> None:
     match_status_key = f"{MATCH_STATUS}:{test_match_id}"
     # reset redis status
     await test_redis_client.delete(match_status_key)
@@ -266,7 +266,7 @@ async def test_fetch_events(
     consumer_name: str,
     fetch_count: int,
     expected_match_ids: Set[int],
-):
+) -> None:
     # clear state and add inputs
     await test_redis_client.xtrim(stream_to_fetch_from, maxlen=0)
     if input_match_ids:
@@ -308,7 +308,7 @@ async def test_record_failure_and_ack(
     test_id: str,
     test_stream_input: str,
     test_original_group: str,
-):
+) -> None:
     # Set up
     original_stream = test_stream_input
     original_group = test_original_group
@@ -364,7 +364,7 @@ async def test_record_failure_and_ack_serialization_error(
     stream_match_event_data_factory,
     failure_record_factory,
     mocker,
-):
+) -> None:
     # arrange
     original_stream = STREAM_PENDING_PREDICTION
     original_group = PREDICTION_GROUP

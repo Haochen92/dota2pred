@@ -2846,6 +2846,24 @@ files = [
 ]
 
 [[package]]
+name = "optype"
+version = "0.10.0"
+description = "Building blocks for precise & flexible type hints"
+optional = false
+python-versions = ">=3.11"
+groups = ["dev"]
+files = [
+    {file = "optype-0.10.0-py3-none-any.whl", hash = "sha256:7e9ccc329fb65c326c6bd62c30c2ba03b694c28c378a96c2bcdd18a084f2c96b"},
+    {file = "optype-0.10.0.tar.gz", hash = "sha256:2b89a1b8b48f9d6dd8c4dd4f59e22557185c81823c6e2bfc43c4819776d5a7ca"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4.10", markers = "python_version < \"3.13\""}
+
+[package.extras]
+numpy = ["numpy (>=1.25.2)"]
+
+[[package]]
 name = "orjson"
 version = "3.10.18"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
@@ -4764,6 +4782,24 @@ doc = ["intersphinx_registry", "jupyterlite-pyodide-kernel", "jupyterlite-sphinx
 test = ["Cython", "array-api-strict (>=2.0,<2.1.1)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja ; sys_platform != \"emscripten\"", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
 
 [[package]]
+name = "scipy-stubs"
+version = "1.16.0.2"
+description = "Type annotations for SciPy"
+optional = false
+python-versions = ">=3.11"
+groups = ["dev"]
+files = [
+    {file = "scipy_stubs-1.16.0.2-py3-none-any.whl", hash = "sha256:dc364d24a3accd1663e7576480bdb720533f94de8a05590354ff6d4a83d765c7"},
+    {file = "scipy_stubs-1.16.0.2.tar.gz", hash = "sha256:f83aacaf2e899d044de6483e6112bf7a1942d683304077bc9e78cf6f21353acd"},
+]
+
+[package.dependencies]
+optype = ">=0.10.0,<1"
+
+[package.extras]
+scipy = ["scipy (>=1.16.0,<1.17)"]
+
+[[package]]
 name = "setuptools"
 version = "80.9.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -5764,4 +5800,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "6d7b2f29cc298c8ef465e3d706001dde0cc7b8bd19a0953ade1068440e60e381"
+content-hash = "e1234c1ba0c3ffe9e6bd75fb44fa586cdf10809e6e0578ae13a05008a54fc0f5"

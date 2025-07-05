@@ -22,7 +22,7 @@ async def test_prepare_features_for_inference(
     team_features_table_factory,
     hero_features_table_factory,
     player_hero_feature_table_factory,
-):
+) -> None:
 
     # Arrange
 
@@ -72,7 +72,7 @@ async def test_get_features_from_db(
     team_features_table_factory,
     hero_features_table_factory,
     player_hero_feature_table_factory,
-):
+) -> None:
     # Arrange
     match_id = 123
     mock_team_features = team_features_table_factory.build(match_id=match_id)

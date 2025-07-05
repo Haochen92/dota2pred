@@ -12,7 +12,7 @@ async def test_create_player_hero_features_success(
     mock_async_session,
     match_table_factory,
     mocker,
-):
+) -> None:
     """
     Tests the happy path where a feature row is successfully created for a valid match.
     """
@@ -51,7 +51,7 @@ async def test_create_player_hero_features_success(
 )
 async def test_create_features_skips_match_with_missing_data(
     player_hero_features_creator, mock_async_session, match_table_factory, mocker, missing_data: dict
-):
+) -> None:
     """
     Tests that a match is skipped if essential data like account_id is missing.
     """
@@ -72,7 +72,7 @@ async def test_create_features_skips_match_with_missing_data(
 @pytest.mark.asyncio
 async def test_create_features_handles_task_failure_gracefully(
     player_hero_features_creator, mock_async_session, match_table_factory, mocker
-):
+) -> None:
     """
     Tests that if a single win-rate calculation fails, it defaults to 0.5
     and the feature creation for the match still succeeds.
@@ -128,7 +128,7 @@ async def test_create_features_handles_task_failure_gracefully(
 )
 async def test_calculate_win_rate_logic(
     player_hero_features_creator, mock_async_session, mocker, history, expected_win_rate
-):
+) -> None:
     """
     Tests the _calculate_win_rate helper method's logic directly.
     """

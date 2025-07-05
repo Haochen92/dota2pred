@@ -32,7 +32,7 @@ class TestGetMatchDetailsWithOutcome:
         seed_test_data: Tuple[Dict[int, MatchTable], Dict[int, MatchOutcomeTable]],
         test_scenario: str,
         input_match_ids: List[int],
-    ):
+    ) -> None:
         # Arrange
         match_details_dict, match_outcome_dict = seed_test_data
 
@@ -60,7 +60,7 @@ class TestGetMatchDetailsWithOutcome:
     async def test_invalid_match_ids(
         self,
         match_repository_test_subject: MatchRepository,
-    ):
+    ) -> None:
         input_match_ids = [8888, 9999]  # non seeded data
         results = await match_repository_test_subject.get_match_details(
             input_id_list=input_match_ids,
@@ -73,7 +73,7 @@ class TestGetMatchDetailsWithOutcome:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         seed_test_data,
-    ):
+    ) -> None:
         # Arrange
         expected_match_details_dict, _ = seed_test_data
 
@@ -88,7 +88,7 @@ class TestGetMatchDetailsWithOutcome:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         seed_test_data,
-    ):
+    ) -> None:
         # Arrange
         expected_match_details_dict, _ = seed_test_data
 
