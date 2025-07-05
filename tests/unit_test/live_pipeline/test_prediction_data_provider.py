@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(prediction_data_provider, stream_match_event_data_factory, mocker):
+async def test_get_work_items_successfully(prediction_data_provider, stream_match_event_data_factory, mocker) -> None:
     # Create mock events
     mock_events = {
         "event_1": stream_match_event_data_factory.build(match_id=12345),
@@ -26,7 +26,7 @@ async def test_get_work_items_successfully(prediction_data_provider, stream_matc
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_no_events(prediction_data_provider, mocker):
+async def test_get_work_items_no_events(prediction_data_provider, mocker) -> None:
     mock_fetch_matches = mocker.patch.object(
         prediction_data_provider.redis, "fetch_matches_pending_prediction", return_value={}
     )
@@ -40,7 +40,7 @@ async def test_get_work_items_no_events(prediction_data_provider, mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_with_custom_consumer(prediction_data_provider, stream_match_event_data_factory, mocker):
+async def test_get_work_items_with_custom_consumer(prediction_data_provider, stream_match_event_data_factory, mocker) -> None:
     custom_consumer = "custom_consumer"
     mock_events = {"event_1": stream_match_event_data_factory.build(match_id=12345)}
 
@@ -57,7 +57,7 @@ async def test_get_work_items_with_custom_consumer(prediction_data_provider, str
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_filters_invalid_events(prediction_data_provider, stream_match_event_data_factory, mocker):
+async def test_get_work_items_filters_invalid_events(prediction_data_provider, stream_match_event_data_factory, mocker) -> None:
     # Create mix of valid and invalid events
     mock_events = {
         "valid_event": stream_match_event_data_factory.build(match_id=12345),
@@ -76,7 +76,7 @@ async def test_get_work_items_filters_invalid_events(prediction_data_provider, s
     assert actual_work_items[0].event_id == "valid_event"
 
 
-def test_is_event_data_valid_with_valid_data(prediction_data_provider, stream_match_event_data_factory):
+def test_is_event_data_valid_with_valid_data(prediction_data_provider, stream_match_event_data_factory) -> None:
     valid_event = stream_match_event_data_factory.build(match_id=12345)
 
     # ACT
@@ -86,7 +86,7 @@ def test_is_event_data_valid_with_valid_data(prediction_data_provider, stream_ma
     assert result is True
 
 
-def test_is_event_data_valid_with_none(prediction_data_provider):
+def test_is_event_data_valid_with_none(prediction_data_provider) -> None:
     # ACT
     result = prediction_data_provider._is_event_data_valid(None)
 
@@ -94,7 +94,7 @@ def test_is_event_data_valid_with_none(prediction_data_provider):
     assert result is False
 
 
-def test_is_event_data_valid_with_zero_match_id(prediction_data_provider, stream_match_event_data_factory):
+def test_is_event_data_valid_with_zero_match_id(prediction_data_provider, stream_match_event_data_factory) -> None:
     invalid_event = stream_match_event_data_factory.build(match_id=0)
 
     # ACT
@@ -104,7 +104,7 @@ def test_is_event_data_valid_with_zero_match_id(prediction_data_provider, stream
     assert result is False
 
 
-def test_is_event_data_valid_with_negative_match_id(prediction_data_provider, stream_match_event_data_factory):
+def test_is_event_data_valid_with_negative_match_id(prediction_data_provider, stream_match_event_data_factory) -> None:
     invalid_event = stream_match_event_data_factory.build(match_id=-1)
 
     # ACT
@@ -114,7 +114,7 @@ def test_is_event_data_valid_with_negative_match_id(prediction_data_provider, st
     assert result is False
 
 
-def test_is_event_data_valid_with_non_integer_match_id(prediction_data_provider, mocker):
+def test_is_event_data_valid_with_non_integer_match_id(prediction_data_provider, mocker) -> None:
     # Create mock event with string match_id
     mock_event = mocker.Mock()
     mock_event.match_id = "invalid_id"
@@ -126,7 +126,7 @@ def test_is_event_data_valid_with_non_integer_match_id(prediction_data_provider,
     assert result is False
 
 
-def test_is_event_data_valid_with_missing_match_id(prediction_data_provider, mocker):
+def test_is_event_data_valid_with_missing_match_id(prediction_data_provider, mocker) -> None:
     # Create mock event without match_id attribute
     mock_event = mocker.Mock()
     del mock_event.match_id

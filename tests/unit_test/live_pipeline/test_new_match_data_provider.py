@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(new_match_data_provider, ongoing_league_game_factory, mocker):
+async def test_get_work_items_successfully(new_match_data_provider, ongoing_league_game_factory, mocker) -> None:
     # mock live_league_games
     mock_list_ongoing_matches = ongoing_league_game_factory.batch(3)
 
@@ -28,7 +28,7 @@ async def test_get_work_items_successfully(new_match_data_provider, ongoing_leag
 
 
 @pytest.mark.asyncio
-async def test_filter_new_matches_with_values(new_match_data_provider, ongoing_league_game_factory, mocker):
+async def test_filter_new_matches_with_values(new_match_data_provider, ongoing_league_game_factory, mocker) -> None:
     mock_current_matches = ongoing_league_game_factory.batch(5)
     mock_new_match_set = {match.match_id for match in mock_current_matches if match.match_id % 2 == 0}
 

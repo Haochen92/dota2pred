@@ -6,7 +6,7 @@ F_PATH = "live_orchestrator_app.feature_engineering.feature_engineering_data_pro
 @pytest.mark.asyncio
 async def test_get_work_items_successfully(
     feature_engineering_data_provider, mocker, stream_match_event_data_factory, match_table_factory
-):
+) -> None:
 
     stream_event_data_1 = stream_match_event_data_factory.build()
     stream_event_data_2 = stream_match_event_data_factory.build()
@@ -51,7 +51,7 @@ async def test_fetch_match_details_successfully(
     mocker,
     stream_match_event_data_factory,
     match_table_factory,
-):
+) -> None:
     stream_event_data_1 = stream_match_event_data_factory.build()
     stream_event_data_2 = stream_match_event_data_factory.build()
 

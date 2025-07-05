@@ -23,7 +23,7 @@ class TestInsertMatchDetails:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         match_table_factory,
-    ):
+    ) -> None:
         # Arrange
         input_instance = match_table_factory.build(match_id=2001)
 
@@ -40,7 +40,7 @@ class TestInsertMatchDetails:
         match_repository_test_subject: MatchRepository,
         test_repository: BaseTestRepository,
         match_table_factory,
-    ):
+    ) -> None:
         # Arrange
         original_instance = match_table_factory.build(match_id=12345)
         conflicting_instance = match_table_factory.build(match_id=12345)  # Same ID, different data
@@ -72,7 +72,7 @@ class TestInsertMatchDetails:
     )
     async def test_invalid_input_raises_attribute_error(
         self, match_repository_test_subject: MatchRepository, invalid_input: Any, expected_exception: type[Exception]
-    ):
+    ) -> None:
         with pytest.raises(expected_exception):
             await match_repository_test_subject.insert_match_details(invalid_input)
 
@@ -81,7 +81,7 @@ class TestInsertMatchDetails:
         self,
         match_repository_test_subject: MatchRepository,
         empty_input: Any,
-    ):
+    ) -> None:
         # should not raise any error
         await match_repository_test_subject.insert_match_details(empty_input)
 
@@ -94,7 +94,7 @@ class TestInsertMatchOutcome:
         test_repository: BaseTestRepository,
         seed_test_data,
         match_outcome_table_factory,
-    ):
+    ) -> None:
         # Arrange
         input_instance = match_outcome_table_factory.build(match_id=1005)  # seeded match but not match_outcome
 
@@ -115,7 +115,7 @@ class TestInsertMatchOutcome:
         test_repository: BaseTestRepository,
         seed_test_data,
         match_outcome_table_factory,
-    ):
+    ) -> None:
         # Arrange
         original_instance = match_outcome_table_factory.build(
             match_id=1006, radiant_win=True
@@ -156,7 +156,7 @@ class TestInsertMatchOutcome:
         match_repository_test_subject: MatchRepository,
         invalid_input: Any,
         expected_exception: type[Exception],
-    ):
+    ) -> None:
         with pytest.raises(expected_exception):
             await match_repository_test_subject.insert_match_outcome(invalid_input)
 
@@ -165,6 +165,6 @@ class TestInsertMatchOutcome:
         self,
         match_repository_test_subject: MatchRepository,
         empty_input: Any,
-    ):
+    ) -> None:
         # should not raise any error
         await match_repository_test_subject.insert_match_outcome(empty_input)

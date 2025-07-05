@@ -22,7 +22,7 @@ class TestStoreMatchPrediction:
         prediction_db_fetcher: PredictorFetcherClass,
         seed_prediction_data,
         match_prediction_table_factory,
-    ):
+    ) -> None:
         # Arrange
         test_instance = match_prediction_table_factory.build(
             match_id=1004, predictor_name="random_model"  # new prediction data  # primary key
@@ -42,7 +42,7 @@ class TestStoreMatchPrediction:
         prediction_db_fetcher: PredictorFetcherClass,
         seed_prediction_data,
         match_prediction_table_factory,
-    ):
+    ) -> None:
         # Arrange
         original_instance = match_prediction_table_factory.build(match_id=1005, predictor_name="model_1")
         new_instance = match_prediction_table_factory.build(match_id=1005, predictor_name="model_1")

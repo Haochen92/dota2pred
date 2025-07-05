@@ -6,7 +6,7 @@ F_PATH = "live_orchestrator_app.data_fetching.new_match_event_processor"
 @pytest.mark.asyncio
 async def test_process_event_successfully(
     new_match_event_processor, mock_async_session, mocker, new_match_work_item_factory, match_table_factory
-):
+) -> None:
     work_item = new_match_work_item_factory.build()
     match_details = match_table_factory.build(match_id=work_item.match_id)
 

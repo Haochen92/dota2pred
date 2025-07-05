@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.engine.url import URL
-from typing import Dict
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class DatabaseEngineFactory:
     _engines: Dict[str, AsyncEngine] = {}
 
     # --- Baked-in Configuration ---
-    _BASE_CONFIG = {
+    _BASE_CONFIG: Dict[str, Any] = {
         "drivername": "postgresql+asyncpg",
         "username": "liuhaochen",
         "password": "110799",
@@ -56,12 +56,12 @@ class DatabaseEngineFactory:
         try:
             # Create URL
             url_object = URL.create(
-                drivername=cls._BASE_CONFIG["drivername"],
-                username=cls._BASE_CONFIG["username"],
-                password=cls._BASE_CONFIG["password"],
-                host=cls._BASE_CONFIG["host"],
+                drivername=str(cls._BASE_CONFIG["drivername"]),
+                username=str(cls._BASE_CONFIG["username"]),
+                password=str(cls._BASE_CONFIG["password"]),
+                host=str(cls._BASE_CONFIG["host"]),
                 port=port,
-                database=cls._BASE_CONFIG["database"],
+                database=str(cls._BASE_CONFIG["database"]),
             )
 
             # Create engine
