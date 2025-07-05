@@ -4,36 +4,34 @@ from scipy import sparse
 
 from typing import Dict
 
+
 class FeatureEncoder:
     @staticmethod
     def encode_hero_features(hero_features: pd.DataFrame, hero_map: Dict[int, str]) -> pd.DataFrame:
-    
+
         if hero_features.empty:
             raise ValueError("Input dataframe is empty")
-        
-        if 'hero_picks' not in hero_features.columns:
+
+        if "hero_picks" not in hero_features.columns:
             raise ValueError("missing column hero_picks")
-        
+
         # Convert hero IDs to hero names
-        hero_features = hero_features.copy() 
-        hero_features['hero_picks_names'] = hero_features['hero_picks'].apply(
+        hero_features = hero_features.copy()
+        hero_features["hero_picks_names"] = hero_features["hero_picks"].apply(
             lambda picks: [hero_map[hero_id] for hero_id in picks if hero_id in hero_map]
         )
-        
-        hero_classes = hero_map.values()
-        
-        # for some reason mlb requires explicit conversion of view object to list
-        mlb = MultiLabelBinarizer(classes=list(hero_classes)) 
-        
-        hero_matrix = mlb.fit_transform(hero_features['hero_picks_names'])
-        hero_matrix_sparse = sparse.csr_matrix(hero_matrix)  # convert to sparse matrix
-        
-        features = pd.DataFrame.sparse.from_spmatrix(
-            data=hero_matrix_sparse,
-            columns=mlb.classes_,
-            index=hero_features.index
-        )
-        
-        features = features.assign(match_id=hero_features['match_id'])
-        return features
 
+        hero_classes = hero_map.values()
+
+        # for some reason mlb requires explicit conversion of view object to list
+        mlb = MultiLabelBinarizer(classes=list(hero_classes))
+
+        hero_matrix = mlb.fit_transform(hero_features["hero_picks_names"])
+        hero_matrix_sparse = sparse.csr_matrix(hero_matrix)  # convert to sparse matrix
+
+        features = pd.DataFrame.sparse.from_spmatrix(
+            data=hero_matrix_sparse, columns=mlb.classes_, index=hero_features.index
+        )
+
+        features = features.assign(match_id=hero_features["match_id"])
+        return features

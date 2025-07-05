@@ -8,6 +8,7 @@ T_Result = TypeVar("T_Result")
 #           Coroutines
 # ===============================
 
+
 class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
     """A uniform way to represent a keyed, awaitable task.
 
@@ -18,10 +19,12 @@ class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
         key (T_Key): The unique identifier for this task.
         coro (Coroutine): The awaitable coroutine function to be executed.
     """
+
     key: T_Key
     coro: Coroutine[Any, Any, T_Result]
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
 
 class TaskResult(BaseModel, Generic[T_Key, T_Result]):
     """A uniform way to represent the outcome of a completed task.
@@ -36,6 +39,7 @@ class TaskResult(BaseModel, Generic[T_Key, T_Result]):
         exception (Optional[Exception]): The exception object if the coroutine
             failed. Defaults to None.
     """
+
     key: T_Key
     result: Optional[T_Result] = None
     exception: Optional[Exception] = None
@@ -44,7 +48,7 @@ class TaskResult(BaseModel, Generic[T_Key, T_Result]):
         """Returns the result, or raises the exception if the task failed."""
         if self.exception is not None:
             raise self.exception
-        
+
         return self.result
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)

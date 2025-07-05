@@ -6,27 +6,21 @@ from typing import List
 
 logger = get_logger(__name__)
 
+
 class HeroesFeatureCreator:
     @staticmethod
     def create_hero_features(match_instances: List[MatchTable]) -> List[HeroFeaturesTable]:
-        
+
         output_hero_features_list: List[HeroFeaturesTable] = []
-        
+
         for instance in match_instances:
             heroes_list = []
             for col_name in DRAFT_COLS:
                 hero_id = getattr(instance, col_name)
-                heroes_list.append(hero_id) 
-                
-            hero_feature = HeroFeaturesTable(
-                match_id=instance.match_id,
-                hero_picks=heroes_list
-            )
+                heroes_list.append(hero_id)
+
+            hero_feature = HeroFeaturesTable(match_id=instance.match_id, hero_picks=heroes_list)
             output_hero_features_list.append(hero_feature)
-            
-            
+
         logger.info(f"Created {len(output_hero_features_list)} hero features")
         return output_hero_features_list
-
-    
-    
