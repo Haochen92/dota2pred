@@ -3,14 +3,14 @@ from .schema import MatchesAPIResponse, LeagueData, PlayerData, ProMatchAPIRespo
 from .table import MatchTable, MatchOutcomeTable
 
 __all__ = [
-    "Match", 
-    "MatchOutcome", 
-    "MatchWithOutcome", 
-    "MatchesAPIResponse", 
-    "LeagueData", 
-    "PlayerData", 
-    "ProMatchAPIResponse", 
-    "ProMatchOutcome", 
-    "MatchTable", 
-    "MatchOutcomeTable"
+    "Match",
+    "MatchOutcome",
+    "MatchWithOutcome",
+    "MatchesAPIResponse",
+    "LeagueData",
+    "PlayerData",
+    "ProMatchAPIResponse",
+    "ProMatchOutcome",
+    "MatchTable",
+    "MatchOutcomeTable",
 ]

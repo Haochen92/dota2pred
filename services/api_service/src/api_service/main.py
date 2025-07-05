@@ -13,23 +13,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
+
 @app.post("/predict")
 async def predict(data: Dict[str, Any]):
     async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "http://prediction-service:3000/predict",
-            json=data
-        )
+        response = await client.post("http://prediction-service:3000/predict", json=data)
         return response.json()
+
 
 @app.get("/matches")
 async def get_matches():
     return {"message": "Matches endpoint - connect to database via common package"}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

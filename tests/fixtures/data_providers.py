@@ -1,6 +1,7 @@
 """
 Data provider-related fixtures for tests.
 """
+
 import pytest
 from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -18,6 +19,7 @@ from live_orchestrator_app.services.redis_service import RedisService
 # ================================
 # DATA PROVIDER MOCKS (ESSENTIAL!)
 # ================================
+
 
 @pytest.fixture
 def mock_new_match_data_provider() -> NewMatchDataProvider:
@@ -43,6 +45,7 @@ def mock_completion_data_provider() -> CompletionDataProvider:
 # DATA PROVIDER COMPONENT FIXTURES
 # ================================
 
+
 @pytest.fixture
 def new_match_data_provider(mock_redis_service: RedisService) -> NewMatchDataProvider:
     return NewMatchDataProvider(redis_service=mock_redis_service)
@@ -50,13 +53,9 @@ def new_match_data_provider(mock_redis_service: RedisService) -> NewMatchDataPro
 
 @pytest.fixture
 def feature_engineering_data_provider(
-    mock_redis_service: RedisService,
-    mock_async_engine: AsyncEngine
+    mock_redis_service: RedisService, mock_async_engine: AsyncEngine
 ) -> FeatureEngineeringDataProvider:
-    return FeatureEngineeringDataProvider(
-        redis_service=mock_redis_service,
-        db_engine=mock_async_engine
-    )
+    return FeatureEngineeringDataProvider(redis_service=mock_redis_service, db_engine=mock_async_engine)
 
 
 @pytest.fixture

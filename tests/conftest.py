@@ -1,6 +1,6 @@
 pytest_plugins = [
     "tests.fixtures.database",
-    "tests.fixtures.redis", 
+    "tests.fixtures.redis",
     "tests.fixtures.repositories",
     "tests.fixtures.bentoml",
     "tests.fixtures.pipeline_services",

@@ -1,6 +1,7 @@
 """
 Pipeline services-related fixtures for tests.
 """
+
 import pytest
 from unittest.mock import AsyncMock
 
@@ -15,10 +16,10 @@ from live_orchestrator_app.services.match_prediction_service import MatchPredict
 from live_orchestrator_app.inference import ModelInferenceService
 
 
-
 # ================================
 # SERVICE MOCKS (ESSENTIAL!)
 # ================================
+
 
 @pytest.fixture
 def mock_feature_engineering_service() -> FeatureEngineeringService:
@@ -54,10 +55,13 @@ def mock_fetch_outcome_service() -> FetchOutcomeService:
 # SERVICE COMPONENT FIXTURES
 # ================================
 
+
 @pytest.fixture
-def feature_preparation_service(mock_model_inference_service, model_meta_data_api_response_factory) -> FeaturePreparationService:
+def feature_preparation_service(
+    mock_model_inference_service, model_meta_data_api_response_factory
+) -> FeaturePreparationService:
     mock_model_inference_service.model_metadata = model_meta_data_api_response_factory.build()
-    
+
     return FeaturePreparationService(mock_model_inference_service)
 
 
