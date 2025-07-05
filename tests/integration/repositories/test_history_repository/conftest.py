@@ -7,10 +7,8 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 
-from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.utils.set_logging import get_logger
 
-from .base_history_repo import BaseHistoryRepositoryTest
 
 logger = get_logger(__name__)
 

@@ -5,7 +5,7 @@ Tests the complete flow from match discovery through prediction and completion
 by simulating multiple processing cycles.
 """
 import logging
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +15,7 @@ from sqlmodel import select
 
 from dota_oracle_common.models.inference.table import MatchPredictionTable
 from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
-from dota_oracle_common.models.match.schema import MatchesAPIResponse, ProMatchOutcome
+from dota_oracle_common.models.match.schema import ProMatchOutcome
 from dota_oracle_common.models.match.table import MatchOutcomeTable, MatchTable
 from live_orchestrator_app.app_container import AppContainer
 

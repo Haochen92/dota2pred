@@ -1,7 +1,7 @@
 import bentoml 
 from bentoml.models import BentoModel
 from dota_oracle_common.models.inference import ModelPredictionAPIResponse
-from typing import Dict, Any, List
+from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)

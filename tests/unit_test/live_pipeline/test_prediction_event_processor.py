@@ -173,13 +173,13 @@ async def test_process_event_session_transaction_handling(prediction_event_proce
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
     mock_async_session_class.return_value = mock_session_context
     
-    mock_prepare_features = mocker.patch.object(
+    mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
         'prepare_features_for_inference',
         return_value=mock_input_array
     )
     
-    mock_predict_and_store = mocker.patch.object(
+    mocker.patch.object(
         prediction_event_processor.match_prediction_service,
         'predict_and_store'
     )

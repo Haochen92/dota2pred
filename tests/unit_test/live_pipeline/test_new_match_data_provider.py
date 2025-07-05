@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import AsyncMock
 
 @pytest.mark.asyncio
 async def test_get_work_items_successfully(new_match_data_provider, ongoing_league_game_factory, mocker):
