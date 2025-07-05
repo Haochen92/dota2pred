@@ -27,7 +27,7 @@ class FeatureEncoder:
         mlb = MultiLabelBinarizer(classes=list(hero_classes))
 
         hero_matrix = mlb.fit_transform(hero_features["hero_picks_names"])
-        hero_matrix_sparse = sparse.csr_matrix(hero_matrix)  # convert to sparse matrix
+        hero_matrix_sparse = sparse.csr_matrix(hero_matrix)  # type: ignore
 
         features = pd.DataFrame.sparse.from_spmatrix(
             data=hero_matrix_sparse, columns=mlb.classes_, index=hero_features.index
