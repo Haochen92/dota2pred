@@ -1,6 +1,7 @@
 """
 Repository-related fixtures for tests.
 """
+
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock
@@ -21,6 +22,7 @@ from ..integration.repositories.test_history_repository.base_history_repo import
 # ================================
 # REPOSITORY MOCKS
 # ================================
+
 
 @pytest.fixture
 def mock_match_repository() -> MatchRepository:
@@ -51,6 +53,7 @@ def mock_prediction_repository() -> PredictionRepository:
 # REPOSITORY TEST SUBJECTS
 # ================================
 
+
 @pytest_asyncio.fixture(scope="function")
 async def test_repository(db_session: AsyncSession) -> BaseTestRepository:
     return BaseTestRepository(session=db_session)
@@ -62,14 +65,13 @@ async def history_test_repository(db_session: AsyncSession) -> BaseHistoryReposi
     return BaseHistoryRepositoryTest(session=db_session)
 
 
-
 @pytest_asyncio.fixture(scope="function")
 async def features_repository_test_subject(db_session: AsyncSession) -> FeaturesRepository:
     """Create FeaturesRepository instance for testing."""
     return FeaturesRepository(session=db_session)
 
 
-@pytest_asyncio.fixture(scope='function')
+@pytest_asyncio.fixture(scope="function")
 async def hero_repository_test_subject(db_session: AsyncSession) -> HeroesRepository:
     return HeroesRepository(session=db_session)
 
@@ -80,6 +82,6 @@ async def history_repository_test_subject(db_session: AsyncSession) -> HistoryRe
     return HistoryRepository(session=db_session)
 
 
-@pytest_asyncio.fixture(scope='function')
+@pytest_asyncio.fixture(scope="function")
 async def match_repository_test_subject(db_session: AsyncSession):
     return MatchRepository(session=db_session)

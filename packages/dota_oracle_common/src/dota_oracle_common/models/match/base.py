@@ -2,9 +2,10 @@ from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
 
+
 class Match(SQLModel):
     """Base match model with core match data.
-    
+
     Attributes:
         match_id: Unique match identifier (int)
         leagueid: League identifier (Optional[int])
@@ -15,22 +16,23 @@ class Match(SQLModel):
         slot_*_hero_id: Hero IDs for all 10 player slots (str)
         slot_*_account_id: Account IDs for all 10 player slots (int)
     """
+
     # UUID
     match_id: int
-    
+
     # league information
     leagueid: Optional[int] = None
-    
+
     # Team information
     radiant_name: Optional[str] = None
     radiant_team_id: int
     dire_name: Optional[str] = None
     dire_team_id: int
-    
+
     # Match metadata
     start_time: datetime
     duration: Optional[float] = None
-    
+
     # Hero & Player Data
     slot_0_hero_id: int
     slot_1_hero_id: int
@@ -42,7 +44,7 @@ class Match(SQLModel):
     slot_130_hero_id: int
     slot_131_hero_id: int
     slot_132_hero_id: int
-    
+
     slot_0_account_id: int
     slot_1_account_id: int
     slot_2_account_id: int
@@ -53,26 +55,27 @@ class Match(SQLModel):
     slot_130_account_id: int
     slot_131_account_id: int
     slot_132_account_id: int
-    
-    
+
+
 class MatchOutcome(SQLModel):
     """Match outcome model.
-    
+
     Attributes:
         match_id: Match identifier (int)
         radiant_win: Whether radiant team won (bool)
     """
+
     match_id: int
     radiant_win: bool
-    
-    
+
+
 class MatchWithOutcome(Match):
     """Match model combined with outcome data.
-    
+
     Inherits from Match and adds outcome information.
-    
+
     Attributes:
         radiant_win: Whether radiant team won (bool)
     """
+
     radiant_win: bool
-    

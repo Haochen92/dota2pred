@@ -7,11 +7,13 @@ import os
 load_workspace_env()
 logger = logging.getLogger(__name__)
 
+
 class DatabaseEngineFactory:
     """
     Provides a singleton SQLAlchemy AsyncEngine instance per environment ('prod' or 'test')
     using baked-in configuration settings. Access via class method get_engine().
     """
+
     _engine: AsyncEngine | None = None
 
     @classmethod
@@ -28,7 +30,7 @@ class DatabaseEngineFactory:
             "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "2")),
             "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
         }
-    
+
     @classmethod
     def _validate_config(cls, config: dict) -> None:
         """Validate that all required configuration is present"""
@@ -36,7 +38,6 @@ class DatabaseEngineFactory:
         missing = [field for field in required_fields if not config.get(field)]
         if missing:
             raise ValueError(f"Missing required database configuration: {missing}")
-
 
     @classmethod
     def get_engine(cls) -> AsyncEngine:
@@ -55,7 +56,7 @@ class DatabaseEngineFactory:
         try:
             config = cls._get_config()
             cls._validate_config(config)
-            
+
             # Create URL
             url_object = URL.create(
                 drivername=config["drivername"],
@@ -63,7 +64,7 @@ class DatabaseEngineFactory:
                 password=config["password"],
                 host=config["host"],
                 port=config["port"],
-                database=config["database"]
+                database=config["database"],
             )
 
             # Create engine
@@ -73,7 +74,7 @@ class DatabaseEngineFactory:
                 max_overflow=config["max_overflow"],
                 pool_recycle=config["pool_recycle"],
             )
-            
+
             logger.info(
                 f"Successfully created engine for database '{config['database']}' "
                 f"at {config['host']}:{config['port']}"
@@ -82,7 +83,7 @@ class DatabaseEngineFactory:
 
         except Exception as e:
             logger.error(f"Failed to create engine: {e}", exc_info=True)
-            raise 
+            raise
 
     @classmethod
     async def close_engine(cls) -> None:

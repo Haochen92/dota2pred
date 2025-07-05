@@ -1,6 +1,7 @@
 """
 Orchestrator-related fixtures for tests.
 """
+
 import pytest
 from unittest.mock import AsyncMock
 
@@ -29,6 +30,7 @@ from live_orchestrator_app.services.history_update_service import HistoryUpdateS
 # ORCHESTRATOR MOCKS (ESSENTIAL!)
 # ================================
 
+
 @pytest.fixture
 def mock_new_match_orchestrator() -> NewMatchOrchestrator:
     return AsyncMock(spec=NewMatchOrchestrator)
@@ -53,16 +55,17 @@ def mock_completion_orchestrator() -> CompletionOrchestrator:
 # ORCHESTRATOR COMPONENT FIXTURES
 # ================================
 
+
 @pytest.fixture
 def new_match_orchestrator(
     new_match_data_provider: NewMatchDataProvider,
     new_match_event_processor: NewMatchEventProcessor,
-    mock_redis_service: RedisService
+    mock_redis_service: RedisService,
 ) -> NewMatchOrchestrator:
     return NewMatchOrchestrator(
         data_provider=new_match_data_provider,
         event_processor=new_match_event_processor,
-        redis_service=mock_redis_service
+        redis_service=mock_redis_service,
     )
 
 
@@ -70,12 +73,12 @@ def new_match_orchestrator(
 def feature_engineering_orchestrator(
     mock_redis_service: RedisService,
     feature_engineering_data_provider: FeatureEngineeringDataProvider,
-    feature_engineering_event_processor: FeatureEngineeringEventProcessor
+    feature_engineering_event_processor: FeatureEngineeringEventProcessor,
 ) -> FeatureEngineeringOrchestrator:
     return FeatureEngineeringOrchestrator(
         redis_service=mock_redis_service,
         data_provider=feature_engineering_data_provider,
-        event_processor=feature_engineering_event_processor
+        event_processor=feature_engineering_event_processor,
     )
 
 
@@ -83,12 +86,12 @@ def feature_engineering_orchestrator(
 def prediction_orchestrator(
     mock_redis_service: RedisService,
     prediction_data_provider: PredictionDataProvider,
-    prediction_event_processor: PredictionEventProcessor
+    prediction_event_processor: PredictionEventProcessor,
 ) -> PredictionOrchestrator:
     return PredictionOrchestrator(
         redis_service=mock_redis_service,
         data_provider=prediction_data_provider,
-        event_processor=prediction_event_processor
+        event_processor=prediction_event_processor,
     )
 
 
@@ -97,11 +100,11 @@ def completion_orchestrator(
     mock_redis_service: RedisService,
     mock_history_update_service: HistoryUpdateService,
     mock_completion_data_provider: CompletionDataProvider,
-    mock_completion_event_processor: CompletionEventProcessor
+    mock_completion_event_processor: CompletionEventProcessor,
 ) -> CompletionOrchestrator:
     return CompletionOrchestrator(
         redis_service=mock_redis_service,
         history_update_service=mock_history_update_service,
         completion_data_provider=mock_completion_data_provider,
-        completion_event_processor=mock_completion_event_processor
+        completion_event_processor=mock_completion_event_processor,
     )

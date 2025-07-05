@@ -6,15 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from dota_oracle_common.models.pipeline import CompletionWorkItem
 
 logger = get_logger(__name__)
+
+
 class CompletionEventProcessor:
-    def __init__(
-        self, 
-        history_update_service: HistoryUpdateService,
-        db_engine: AsyncEngine
-    ):
+    def __init__(self, history_update_service: HistoryUpdateService, db_engine: AsyncEngine):
         self.history_updater = history_update_service
         self.engine = db_engine
-    
+
     async def process_events(self, work_item: CompletionWorkItem):
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -23,19 +21,17 @@ class CompletionEventProcessor:
                     match_outcome = work_item.outcome
                     # create repository
                     match_repository = MatchRepository(session=session)
-                    
+
                     # store match outcome
                     await self._update_match_outcome(
-                        match_repository=match_repository, 
-                        match_id=event_data.match_id, 
-                        match_outcome=match_outcome
+                        match_repository=match_repository, match_id=event_data.match_id, match_outcome=match_outcome
                     )
-                    
+
                     # update related match histories
                     await self.history_updater.update_histories(session, event_data.match_id)
                 except Exception as e:
                     raise e
-            
+
     async def _update_match_outcome(self, match_repository: MatchRepository, match_id: int, match_outcome: bool):
         try:
             outcome_instance = MatchOutcomeTable(match_id=match_id, radiant_win=match_outcome)
