@@ -14,7 +14,7 @@ my_image = bentoml.images.Image(python_version='3.11', distro='debian') \
         'scikit-learn',
         'numpy',
         'pandas',
-        'git+https://github.com/Haochen92/dota2pred.git@remote#subdirectory=packages/dota_oracle_common'
+        'git+https://github.com/Haochen92/dota2pred.git@dev#subdirectory=packages/dota_oracle_common'
     ) \
     .run('echo "Image Built Successfully...!"')
 
