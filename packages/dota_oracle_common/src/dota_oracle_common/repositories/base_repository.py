@@ -136,9 +136,11 @@ class BaseRepository:
     # Helper methods
     # ========================
 
-    def _get_primary_key_attribute(self, model_class: Type[T]) -> List[InstrumentedAttribute]:
+    def _get_primary_key_attribute(self, model_class: Type[T]) -> List[InstrumentedAttribute[Any]]:
         """Helper to get the single primary key attribute of a model."""
         mapper = inspect(model_class)
+        if mapper is None:
+            raise ValueError(f"Unable to inspect model class {model_class.__name__}")
         pk_columns = mapper.primary_key
 
         pk_attributes = [getattr(model_class, col.name) for col in pk_columns]
@@ -147,6 +149,8 @@ class BaseRepository:
 
     def _get_primary_key_names(self, model_class: Type[T]) -> List[str]:
         mapper = inspect(model_class)
+        if mapper is None:
+            raise ValueError(f"Unable to inspect model class {model_class.__name__}")
         pk_columns = mapper.primary_key
 
         return [col.name for col in pk_columns]
@@ -160,7 +164,7 @@ class BaseRepository:
         update_dict = {col: getattr(pg_insert(model_class).excluded, col) for col in filtered_cols}
         return update_dict
 
-    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute, id_filters: List[int], stmt: Select) -> Select:
+    def _filter_by_ids(self, pk_attribute: InstrumentedAttribute[Any], id_filters: List[int], stmt: Any) -> Any:
 
         if not id_filters:
             logger.warning("empty input list provided for id_filters")
@@ -173,7 +177,7 @@ class BaseRepository:
 
         return stmt
 
-    def _add_relationships(self, model_class: Type[T], relationships: List[str], stmt: Select) -> Select:
+    def _add_relationships(self, model_class: Type[T], relationships: List[str], stmt: Any) -> Any:
 
         if not relationships:
             logger.warning(f"No relationships, input: {relationships}")
@@ -184,6 +188,8 @@ class BaseRepository:
             return stmt
 
         mapper = inspect(model_class)
+        if mapper is None:
+            raise ValueError(f"Unable to inspect model class {model_class.__name__}")
         valid_relationship_names = set(mapper.relationships.keys())
 
         for rel_name in relationships:

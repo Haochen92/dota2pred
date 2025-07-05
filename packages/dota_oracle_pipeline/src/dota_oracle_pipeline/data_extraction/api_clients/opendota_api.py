@@ -1,7 +1,7 @@
 import aiohttp
 import os
 from dota_oracle_common.utils import get_logger, load_workspace_env
-from typing import Optional
+from typing import Optional, Dict, Any
 
 logger = get_logger(__name__)
 load_workspace_env()
@@ -11,7 +11,7 @@ BASE_URL = "https://api.opendota.com"
 BASE_PATH = "/api/"
 
 
-async def fetch_opendota(endpoint: str, params: Optional[dict] = None) -> dict:
+async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
     # Free api calls
     url = f"{BASE_URL}{BASE_PATH}{endpoint}"
     timeout = aiohttp.ClientTimeout(total=120)
@@ -19,7 +19,7 @@ async def fetch_opendota(endpoint: str, params: Optional[dict] = None) -> dict:
         try:
             async with session.get(url, params=params) as res:
                 res.raise_for_status()
-                json_data = await res.json()
+                json_data: dict[Any, Any] = await res.json()
                 return json_data
 
         except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:
@@ -28,7 +28,7 @@ async def fetch_opendota(endpoint: str, params: Optional[dict] = None) -> dict:
             raise
 
 
-async def fetch_opendota_api(endpoint: str, params: Optional[dict] = None) -> dict:
+async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
     if not API_KEY:
         raise ValueError("Missing API KEY, unable to fetch data")
     # Paid api calls using API_KEY
@@ -39,7 +39,7 @@ async def fetch_opendota_api(endpoint: str, params: Optional[dict] = None) -> di
         try:
             async with session.get(url, params=params) as res:
                 res.raise_for_status()
-                json_data = await res.json()
+                json_data: dict[Any, Any] = await res.json()
                 return json_data
 
         except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:

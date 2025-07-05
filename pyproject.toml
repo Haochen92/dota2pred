@@ -25,6 +25,7 @@ pre-commit = "*"
 
 # Workspace configuration
 scipy-stubs = "^1.16.0.2"
+pandas-stubs = "^2.3.0.250703"
 [tool.poetry.group.workspace]
 optional = false
 

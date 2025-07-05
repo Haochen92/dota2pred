@@ -23,7 +23,7 @@ class MatchPredictionTable(MatchPrediction, table=True):
         match: Related MatchTable instance
     """
 
-    __tablename__ = "match_predictions"  # type: ignore
+    __tablename__ = "match_predictions"
 
     # Override Composite Primary Key
     match_id: int = Field(sa_type=BigInteger, foreign_key="matches.match_id", primary_key=True)

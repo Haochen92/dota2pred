@@ -90,9 +90,9 @@ class OngoingLeagueGame(LiveLeagueGame):
         scoreboard: Current game scoreboard (ScoreBoard)
     """
 
-    radiant_team: TeamData = Field(...)  # type:ignore
-    dire_team: TeamData = Field(...)  # type:ignore
-    scoreboard: ScoreBoard = Field(...)  # type:ignore
+    radiant_team: TeamData = Field(...)
+    dire_team: TeamData = Field(...)
+    scoreboard: ScoreBoard = Field(...)
 
     @field_validator("radiant_team", "dire_team", "scoreboard")
     @classmethod

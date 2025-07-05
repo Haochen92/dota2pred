@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class S3Wrapper:
-    def __init__(self):
+    def __init__(self) -> None:
         self.access_key = os.getenv("AWS_ACCESS_KEY_ID")
         self.secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
         self.region = os.getenv("AWS_REGION", "ap-southeast-1")

@@ -22,7 +22,7 @@ async def fetch_pro_match(max_match_id: int, min_match_id: int) -> List[ProMatch
             list_match_ids = [instance.match_id for instance in list_instances]
             max_match_id = min(list_match_ids)
 
-            output_list.append(list_instances)
+            output_list.extend(list_instances)
 
         except (
             aiohttp.ClientConnectionError,
