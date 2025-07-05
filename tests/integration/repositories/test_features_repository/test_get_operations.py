@@ -74,7 +74,7 @@ class TestGetFeatureById:
         feature_class: Type[T],
         expected_count: int,
         limit: Optional[int],
-    ):
+    ) -> None:
         """Test retrieving existing features by ID returns correct data."""
         # Arrange
         expected_dict = seed_features_data.get(feature_class.__name__)
@@ -95,7 +95,7 @@ class TestGetFeatureById:
 
             test_repository._assert_equal(expected_instance, instance, test_scenario)
 
-    async def test_return_empty_list(self, features_repository_test_subject: FeaturesRepository):
+    async def test_return_empty_list(self, features_repository_test_subject: FeaturesRepository) -> None:
         # Act
         result = await features_repository_test_subject.get_features(
             table_class=TeamFeaturesTable, match_ids=[9999, 10000]

@@ -49,7 +49,7 @@ class TestGetPlayerHeroWinHistory:
         before: datetime,
         limit: int,
         expected_win_history: List[bool],
-    ):
+    ) -> None:
         """Test various scenarios for getting player hero win history."""
         # Act
         actual_win_history = await history_repository_test_subject.get_player_hero_win_history(
@@ -94,7 +94,7 @@ class TestGetTeamHistory:
         before: datetime,
         limit: int,
         expected_win_history: List[bool],
-    ):
+    ) -> None:
         """Test various scenarios for getting team history."""
         # Act
         actual_win_history = await history_repository_test_subject.get_team_history(
@@ -109,7 +109,7 @@ class TestGetOperationsEmptyDatabase:
     async def test_get_team_history_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
-    ):
+    ) -> None:
         """Test that empty database returns empty list."""
         # Act
         result = await history_repository_test_subject.get_team_history(team_name="team_secret", before=None, limit=5)
@@ -120,7 +120,7 @@ class TestGetOperationsEmptyDatabase:
     async def test_get_player_hero_win_history_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
-    ):
+    ) -> None:
         """Test that empty database returns empty list."""
         # Act
         result = await history_repository_test_subject.get_player_hero_win_history(
@@ -133,7 +133,7 @@ class TestGetOperationsEmptyDatabase:
     async def test_get_team_matchup_history_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
-    ):
+    ) -> None:
         """Test that empty database returns empty list."""
         # Act
         result = await history_repository_test_subject.get_team_matchup_history(
@@ -182,7 +182,7 @@ class TestGetTeamMatchupHistory:
         before: datetime,
         limit: int,
         expected_win_history: List[bool],
-    ):
+    ) -> None:
         """Test various scenarios for getting team matchup history."""
         # Act
         actual_win_history = await history_repository_test_subject.get_team_matchup_history(
@@ -195,7 +195,7 @@ class TestGetTeamMatchupHistory:
     async def test_team_order_independence(
         self,
         history_repository_test_subject: HistoryRepository,
-    ):
+    ) -> None:
         """Test that team order doesn't matter for matchup history."""
         # Act - Get matchup in both orders
         result1 = await history_repository_test_subject.get_team_matchup_history(

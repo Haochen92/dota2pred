@@ -11,7 +11,7 @@ F_PATH = "live_orchestrator_app.completion.completion_event_processor"
 @pytest.mark.asyncio
 async def test_process_events_successfully(
     completion_event_processor: CompletionEventProcessor, mock_async_session, mocker, completion_work_item_factory
-):
+) -> None:
     # ARRANGE
     mock_work_item = completion_work_item_factory.build()
     mock_repository = AsyncMock(spec=MatchRepository)

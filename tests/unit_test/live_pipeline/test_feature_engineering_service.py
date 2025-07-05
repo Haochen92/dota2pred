@@ -17,7 +17,7 @@ async def test_create_and_store_features_sucessfully(
     team_features_table_factory,
     player_hero_feature_table_factory,
     mocker,
-):
+) -> None:
     # Arrange
     mock_logger = mocker.patch(f"{F_PATH}.logger")
     mock_store_features = mocker.patch.object(FeaturesRepository, "store_features")
@@ -66,7 +66,7 @@ async def test_missing_feature_raise_error(
     team_features_table_factory,
     player_hero_feature_table_factory,
     mocker,
-):
+) -> None:
     # Arrange
 
     match_instance = match_table_factory.build(match_id=123)

@@ -7,7 +7,7 @@ F_PATH = "live_orchestrator_app.completion.completion_orchestrator"
 @pytest.mark.asyncio
 async def test_run_completion_cycle_successfully(
     completion_orchestrator, mocker, completion_work_item_factory, task_result_factory
-):
+) -> None:
 
     # ARRANGE
     mock_work_items = completion_work_item_factory.build()
@@ -33,7 +33,7 @@ async def test_run_completion_cycle_successfully(
 @pytest.mark.asyncio
 async def test_run_completion_cycle_one_failure(
     completion_orchestrator, mocker, completion_work_item_factory, task_result_factory
-):
+) -> None:
     # Arrange
     mock_work_items = completion_work_item_factory.build()
     mock_error = ValueError()

@@ -7,7 +7,7 @@ F_PATH = "live_orchestrator_app.prediction.prediction_orchestrator"
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_successfully(
     prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker
-):
+) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
 
@@ -38,7 +38,7 @@ async def test_run_prediction_cycle_successfully(
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_no_work_items(prediction_orchestrator, mocker):
+async def test_run_prediction_cycle_no_work_items(prediction_orchestrator, mocker) -> None:
     # ARRANGE
     mock_get_work_items = mocker.patch.object(prediction_orchestrator.data_provider, "get_work_items", return_value=[])
     mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently")
@@ -56,7 +56,7 @@ async def test_run_prediction_cycle_no_work_items(prediction_orchestrator, mocke
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_one_failure(
     prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker
-):
+) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
     mock_error = ValueError("Prediction failed")
@@ -97,7 +97,7 @@ async def test_run_prediction_cycle_one_failure(
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_all_failures(
     prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker
-):
+) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
     mock_error1 = ValueError("First prediction failed")
@@ -145,7 +145,7 @@ async def test_run_prediction_cycle_all_failures(
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_creates_correct_async_tasks(
     prediction_orchestrator, prediction_work_item_factory, task_result_factory, mocker
-):
+) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build()]
 
@@ -172,7 +172,7 @@ async def test_run_prediction_cycle_creates_correct_async_tasks(
 
 
 @pytest.mark.asyncio
-async def test_run_prediction_cycle_with_custom_consumer_name(mocker):
+async def test_run_prediction_cycle_with_custom_consumer_name(mocker) -> None:
     # ARRANGE
     custom_consumer = "custom_prediction_consumer"
     mock_redis_service = mocker.AsyncMock()
@@ -200,7 +200,7 @@ async def test_run_prediction_cycle_with_custom_consumer_name(mocker):
     mock_data_provider.get_work_items.assert_awaited_once_with(custom_consumer)
 
 
-def test_prediction_orchestrator_initialization(prediction_orchestrator):
+def test_prediction_orchestrator_initialization(prediction_orchestrator) -> None:
     # ASSERT
     assert prediction_orchestrator.consumer_name == "consumer_one"
     assert prediction_orchestrator.redis is not None

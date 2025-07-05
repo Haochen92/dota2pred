@@ -6,7 +6,7 @@ F_PATH = "live_orchestrator_app.completion.completion_data_provider"
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(mock_redis_service, stream_match_event_data_factory, mocker):
+async def test_get_work_items_successfully(mock_redis_service, stream_match_event_data_factory, mocker) -> None:
     # ARRANGE
     match_id = 12345
     event_id = "event_123"
