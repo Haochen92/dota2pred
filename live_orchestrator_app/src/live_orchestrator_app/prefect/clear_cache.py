@@ -4,7 +4,7 @@ from prefect import flow
 
 
 @flow
-def clear_prefect_cache():
+def clear_prefect_cache() -> None:
     # Define the path to the Prefect cache directory
     prefect_cache_dir = Path.home() / ".prefect/storage"
 

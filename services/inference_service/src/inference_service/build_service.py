@@ -1,5 +1,6 @@
 import bentoml
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def build_bento() -> bentoml.Bento:
         raise
 
 
-def containerize_bento(bento: bentoml.Bento):
+def containerize_bento(bento: bentoml.Bento) -> Any:
     """
     Build a docker image using a Bento
     """
@@ -37,7 +38,7 @@ def containerize_bento(bento: bentoml.Bento):
         raise
 
 
-def main():
+def main() -> None:
     try:
         bento = build_bento()
         containerize_bento(bento)
