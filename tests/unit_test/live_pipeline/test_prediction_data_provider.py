@@ -40,7 +40,9 @@ async def test_get_work_items_no_events(prediction_data_provider, mocker) -> Non
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_with_custom_consumer(prediction_data_provider, stream_match_event_data_factory, mocker) -> None:
+async def test_get_work_items_with_custom_consumer(
+    prediction_data_provider, stream_match_event_data_factory, mocker
+) -> None:
     custom_consumer = "custom_consumer"
     mock_events = {"event_1": stream_match_event_data_factory.build(match_id=12345)}
 
@@ -57,7 +59,9 @@ async def test_get_work_items_with_custom_consumer(prediction_data_provider, str
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_filters_invalid_events(prediction_data_provider, stream_match_event_data_factory, mocker) -> None:
+async def test_get_work_items_filters_invalid_events(
+    prediction_data_provider, stream_match_event_data_factory, mocker
+) -> None:
     # Create mix of valid and invalid events
     mock_events = {
         "valid_event": stream_match_event_data_factory.build(match_id=12345),
