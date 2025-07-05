@@ -8,7 +8,8 @@ from pydantic import ValidationError
 logger = get_logger(__name__)
 
 # Constants
-LIVE_LEAGUE_GAMES = 'IDOTA2Match_570/GetLiveLeagueGames/v1'
+LIVE_LEAGUE_GAMES = "IDOTA2Match_570/GetLiveLeagueGames/v1"
+
 
 async def fetch_live_league_games() -> List[LiveLeagueGame]:
     try:
@@ -18,13 +19,11 @@ async def fetch_live_league_games() -> List[LiveLeagueGame]:
         return games_list
     except ValidationError as ve:
         logger.error(f"API response validation failed: {ve}", exc_info=True)
-        raise ve # 
+        raise ve  #
     except Exception as e:
         logger.error(f"Error fetching live_league_games: {e}", exc_info=True)
         raise e
-         
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(fetch_live_league_games())

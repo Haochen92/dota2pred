@@ -7,10 +7,11 @@ from typing import Dict
 
 logger = get_logger(__name__)
 
+
 async def fetch_hero_data() -> Dict[str, HeroData]:
     try:
         # fetch hero constants from OpenDota's API
-        res = await fetch_opendota(endpoint='constants/heroes')
+        res = await fetch_opendota(endpoint="constants/heroes")
         if not res:
             logger.info("No data found")
             return {}
@@ -23,8 +24,7 @@ async def fetch_hero_data() -> Dict[str, HeroData]:
     except Exception as e:
         logger.error(f"Error at fetching heroes_data: {e}")
         raise e
-    
-    
+
 
 if __name__ == "__main__":
     asyncio.run(fetch_hero_data())

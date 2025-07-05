@@ -1,6 +1,7 @@
 """
 Event processor-related fixtures for tests.
 """
+
 import pytest
 from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -20,6 +21,7 @@ from live_orchestrator_app.services.match_prediction_service import MatchPredict
 # ================================
 # EVENT PROCESSOR MOCKS (ESSENTIAL!)
 # ================================
+
 
 @pytest.fixture
 def mock_new_match_event_processor() -> NewMatchEventProcessor:
@@ -45,6 +47,7 @@ def mock_completion_event_processor() -> CompletionEventProcessor:
 # EVENT PROCESSOR COMPONENT FIXTURES
 # ================================
 
+
 @pytest.fixture
 def new_match_event_processor(mock_async_engine: AsyncEngine) -> NewMatchEventProcessor:
     return NewMatchEventProcessor(db_engine=mock_async_engine)
@@ -53,21 +56,18 @@ def new_match_event_processor(mock_async_engine: AsyncEngine) -> NewMatchEventPr
 @pytest.fixture
 def completion_event_processor(mock_history_update_service, mock_async_engine) -> CompletionEventProcessor:
     processor = CompletionEventProcessor(
-        db_engine=mock_async_engine,
-        history_update_service=mock_history_update_service
+        db_engine=mock_async_engine, history_update_service=mock_history_update_service
     )
-    
+
     return processor
 
 
 @pytest.fixture
 def feature_engineering_event_processor(
-    mock_feature_engineering_service: FeatureEngineeringService,
-    mock_async_engine: AsyncEngine
+    mock_feature_engineering_service: FeatureEngineeringService, mock_async_engine: AsyncEngine
 ) -> FeatureEngineeringEventProcessor:
     return FeatureEngineeringEventProcessor(
-        feature_engineering_service=mock_feature_engineering_service,
-        db_engine=mock_async_engine
+        feature_engineering_service=mock_feature_engineering_service, db_engine=mock_async_engine
     )
 
 
@@ -75,10 +75,10 @@ def feature_engineering_event_processor(
 def prediction_event_processor(
     mock_async_engine: AsyncEngine,
     mock_feature_preparation_service: FeaturePreparationService,
-    mock_match_prediction_service: MatchPredictionService
+    mock_match_prediction_service: MatchPredictionService,
 ) -> PredictionEventProcessor:
     return PredictionEventProcessor(
         db_engine=mock_async_engine,
         feature_preparation_service=mock_feature_preparation_service,
-        match_prediction_service=mock_match_prediction_service
+        match_prediction_service=mock_match_prediction_service,
     )

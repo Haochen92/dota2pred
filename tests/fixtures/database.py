@@ -1,6 +1,7 @@
 """
 Database-related fixtures for tests.
 """
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
@@ -11,10 +12,12 @@ from dota_oracle_common.utils.set_logging import get_logger
 logger = get_logger(__name__)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def postgres_container_instance():
     with PostgresContainer("postgres:14-alpine") as postgres_c:
-        logger.info(f"Postgres container started on {postgres_c.get_container_host_ip()}:{postgres_c.get_exposed_port(5432)}")
+        logger.info(
+            f"Postgres container started on {postgres_c.get_container_host_ip()}:{postgres_c.get_exposed_port(5432)}"
+        )
         yield postgres_c
         logger.info("Postgres Container Stopped")
 
@@ -43,13 +46,13 @@ async def create_db_tables(test_postgres_engine: AsyncEngine):
     Runs once per session.
     """
     app_metadata_to_create = SQLModel.metadata
-    
+
     async with test_postgres_engine.begin() as conn:
         logger.info("Dropping existing tables for a clean state")
         await conn.run_sync(SQLModel.metadata.drop_all)
         logger.info("Creating all tables in test database")
         await conn.run_sync(app_metadata_to_create.create_all)
-        
+
     logger.info("Database tables created in test PostgreSQL container.")
 
 
@@ -57,25 +60,23 @@ async def create_db_tables(test_postgres_engine: AsyncEngine):
 async def db_session(test_postgres_engine):
     async with test_postgres_engine.connect() as connection:
         async with connection.begin() as conn_transaction:
-            LocalSession = async_sessionmaker(
-                bind=connection, 
-                class_=AsyncSession, 
-                expire_on_commit=False
-            )
-            
+            LocalSession = async_sessionmaker(bind=connection, class_=AsyncSession, expire_on_commit=False)
+
             async with LocalSession() as session:
                 yield session
-                
+
             await conn_transaction.rollback()
 
 
 @pytest.fixture
 def mock_async_session() -> AsyncSession:
     from unittest.mock import AsyncMock
+
     return AsyncMock(spec=AsyncSession)
 
 
 @pytest.fixture
 def mock_async_engine() -> AsyncEngine:
     from unittest.mock import AsyncMock
+
     return AsyncMock(spec=AsyncEngine)

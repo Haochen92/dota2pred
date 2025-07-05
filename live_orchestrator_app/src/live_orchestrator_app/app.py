@@ -5,11 +5,11 @@ from dota_oracle_common.utils.set_logging import get_logger
 from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
 from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator
 from .prediction.prediction_orchestrator import PredictionOrchestrator
-from .completion.completion_orchestrator import CompletionOrchestrator 
-
+from .completion.completion_orchestrator import CompletionOrchestrator
 
 
 logger = get_logger(__name__)
+
 
 class MatchPipelineOrchestrator:
     """Pipeline for processing live matches, making predictions, and tracking outcomes."""
@@ -17,9 +17,9 @@ class MatchPipelineOrchestrator:
     def __init__(
         self,
         new_match_orchestrator: NewMatchOrchestrator,
-        feature_engineering_orchestrator: FeatureEngineeringOrchestrator, 
-        prediction_orchestrator: PredictionOrchestrator,           
-        completion_orchestrator: CompletionOrchestrator         
+        feature_engineering_orchestrator: FeatureEngineeringOrchestrator,
+        prediction_orchestrator: PredictionOrchestrator,
+        completion_orchestrator: CompletionOrchestrator,
     ):
         self.new_match_orchestrator = new_match_orchestrator
         self.feature_engineering_orchestrator = feature_engineering_orchestrator
@@ -36,10 +36,10 @@ class MatchPipelineOrchestrator:
             count_features_engineered: int = await self.feature_engineering_orchestrator.run_feature_engineering_cycle()
 
             # 3. Process matches pending prediction
-            count_predicted: int = await self.prediction_orchestrator.run_prediction_cycle() 
+            count_predicted: int = await self.prediction_orchestrator.run_prediction_cycle()
 
             # 4. Process predicted matches to check for completion
-            count_completed: int = await self.completion_orchestrator.run_completion_cycle() 
+            count_completed: int = await self.completion_orchestrator.run_completion_cycle()
 
             logger.info(
                 f"Pipeline cycle stats: "
