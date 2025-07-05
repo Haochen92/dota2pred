@@ -16,7 +16,7 @@ class LeagueItem(BaseModel):
     name: Optional[str] = None
 
 
-class LeaguesAPIResponse(RootModel):
+class LeaguesAPIResponse(RootModel[List[LeagueItem]]):
     """API response model for leagues list.
 
     Attributes:

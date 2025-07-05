@@ -1,6 +1,7 @@
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, patch
+from typing import List, Any
 
 from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
@@ -30,7 +31,7 @@ class TestComprehensiveE2EWiring:
         return LiveLeagueAPIResponse(result=ResultData(games=live_games))  # type: ignore
 
     @pytest.fixture(scope="function")
-    def mock_match_details_data(self, match_table_factory) -> list:
+    def mock_match_details_data(self, match_table_factory) -> List[Any]:
         """Generate realistic match details using polyfactory."""
         return match_table_factory.batch(2)
 

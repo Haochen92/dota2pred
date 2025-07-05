@@ -50,7 +50,7 @@ class HeroData(BaseModel):
     roles: List[str] = []
 
 
-class HeroesAPIResponse(RootModel):
+class HeroesAPIResponse(RootModel[Dict[str, HeroData]]):
     """API response model for heroes data.
 
     Attributes:
