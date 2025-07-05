@@ -9,7 +9,10 @@ F_PATH = "live_orchestrator_app.prediction.prediction_orchestrator"
 
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_successfully(
-    prediction_orchestrator: PredictionOrchestrator, prediction_work_item_factory: Any, task_result_factory: Any, mocker: Any
+    prediction_orchestrator: PredictionOrchestrator,
+    prediction_work_item_factory: Any,
+    task_result_factory: Any,
+    mocker: Any,
 ) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
@@ -58,7 +61,10 @@ async def test_run_prediction_cycle_no_work_items(prediction_orchestrator: Predi
 
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_one_failure(
-    prediction_orchestrator: PredictionOrchestrator, prediction_work_item_factory: Any, task_result_factory: Any, mocker: Any
+    prediction_orchestrator: PredictionOrchestrator,
+    prediction_work_item_factory: Any,
+    task_result_factory: Any,
+    mocker: Any,
 ) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
@@ -99,7 +105,10 @@ async def test_run_prediction_cycle_one_failure(
 
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_all_failures(
-    prediction_orchestrator: PredictionOrchestrator, prediction_work_item_factory: Any, task_result_factory: Any, mocker: Any
+    prediction_orchestrator: PredictionOrchestrator,
+    prediction_work_item_factory: Any,
+    task_result_factory: Any,
+    mocker: Any,
 ) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
@@ -147,7 +156,10 @@ async def test_run_prediction_cycle_all_failures(
 
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_creates_correct_async_tasks(
-    prediction_orchestrator: PredictionOrchestrator, prediction_work_item_factory: Any, task_result_factory: Any, mocker: Any
+    prediction_orchestrator: PredictionOrchestrator,
+    prediction_work_item_factory: Any,
+    task_result_factory: Any,
+    mocker: Any,
 ) -> None:
     # ARRANGE
     mock_work_items = [prediction_work_item_factory.build()]
