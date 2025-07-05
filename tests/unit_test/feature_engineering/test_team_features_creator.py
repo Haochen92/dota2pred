@@ -10,7 +10,7 @@ async def test_team_feature_success(
     mock_async_session,
     mocker,
     match_table_factory,
-):
+) -> None:
     """
     Tests the happy path where a feature row is successfully created for a valid match.
     """

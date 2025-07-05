@@ -8,7 +8,7 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 class TestContainerValidation:
-    async def test_container_initializes_all_resources_successfully(self, test_app_container):
+    async def test_container_initializes_all_resources_successfully(self, test_app_container) -> None:
 
         try:
             await test_app_container.init_resources()  # type: ignore
@@ -24,24 +24,24 @@ class TestComprehensiveE2EWiring:
     """Comprehensive E2E test validating complete AppContainer wiring with realistic mock data."""
 
     @pytest_asyncio.fixture(scope="function")
-    async def mock_live_games_data(self, ongoing_league_game_factory):
+    async def mock_live_games_data(self, ongoing_league_game_factory) -> LiveLeagueAPIResponse:
         """Generate realistic live games data using polyfactory."""
         live_games = ongoing_league_game_factory.batch(2)
         return LiveLeagueAPIResponse(result=ResultData(games=live_games))  # type: ignore
 
     @pytest.fixture(scope="function")
-    def mock_match_details_data(self, match_table_factory):
+    def mock_match_details_data(self, match_table_factory) -> list:
         """Generate realistic match details using polyfactory."""
         return match_table_factory.batch(2)
 
     @pytest.fixture(scope="function")
-    def mock_prediction_response(self, model_prediction_api_response_factory):
+    def mock_prediction_response(self, model_prediction_api_response_factory) -> object:
         """Generate realistic prediction response using polyfactory."""
         return model_prediction_api_response_factory()
 
     async def test_complete_pipeline_wiring_with_realistic_data(
         self, test_app_container, mock_live_games_data, mock_match_details_data, mock_prediction_response
-    ):
+    ) -> None:
         """
         Test complete pipeline wiring from new match discovery through completion.
         Mocks all external API calls while using realistic data structures.
@@ -103,7 +103,7 @@ class TestComprehensiveE2EWiring:
             # Ensure proper cleanup
             await test_app_container.shutdown_resources()
 
-    async def test_dependency_provider_wiring_validation(self, test_app_container):
+    async def test_dependency_provider_wiring_validation(self, test_app_container) -> None:
         """
         Validate that all dependency providers are correctly wired
         without triggering complex initialization issues.

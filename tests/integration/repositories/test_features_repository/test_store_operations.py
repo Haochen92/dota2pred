@@ -54,7 +54,7 @@ class TestStoreFeatures:
         match_ids: Any,
         table_class: Type[T],
         request,
-    ):
+    ) -> None:
         """Test storing various types of features successfully."""
         # Arrange
         factory = request.getfixturevalue(factory_name)
@@ -79,7 +79,7 @@ class TestStoreFeatures:
 
             test_repository._assert_equal(expected_instance, curr_instance, test_scenario)
 
-    async def test_store_empty_list_handles_gracefully(self, features_repository_test_subject: FeaturesRepository):
+    async def test_store_empty_list_handles_gracefully(self, features_repository_test_subject: FeaturesRepository) -> None:
         """Test that storing empty list handles gracefully without errors."""
         # Should not raise an exception and should return without doing anything
         await features_repository_test_subject.store_features([], TeamFeaturesTable)

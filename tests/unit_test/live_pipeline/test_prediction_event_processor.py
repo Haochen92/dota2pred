@@ -8,7 +8,7 @@ F_PATH = "live_orchestrator_app.prediction.prediction_event_processor"
 @pytest.mark.asyncio
 async def test_process_event_successfully(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
 
@@ -39,7 +39,7 @@ async def test_process_event_successfully(
 @pytest.mark.asyncio
 async def test_process_event_feature_preparation_returns_none(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
 
     mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
@@ -67,7 +67,7 @@ async def test_process_event_feature_preparation_returns_none(
 @pytest.mark.asyncio
 async def test_process_event_feature_preparation_returns_empty_array(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
     empty_array = np.array([])
 
@@ -98,7 +98,7 @@ async def test_process_event_feature_preparation_returns_empty_array(
 @pytest.mark.asyncio
 async def test_process_event_feature_preparation_service_raises_exception(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
     feature_error = Exception("Feature preparation failed")
 
@@ -127,7 +127,7 @@ async def test_process_event_feature_preparation_service_raises_exception(
 @pytest.mark.asyncio
 async def test_process_event_prediction_service_raises_exception(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
     prediction_error = Exception("Prediction failed")
@@ -159,7 +159,7 @@ async def test_process_event_prediction_service_raises_exception(
 @pytest.mark.asyncio
 async def test_process_event_session_transaction_handling(
     prediction_event_processor, prediction_work_item_factory, mock_async_session, mocker
-):
+) -> None:
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
 

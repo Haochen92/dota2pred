@@ -10,7 +10,7 @@ F_PATH = "live_orchestrator_app.services.history_update_service"
 
 
 @pytest.mark.asyncio
-async def test_update_histories(mock_async_session, mocker, match_table_factory, match_outcome_table_factory):
+async def test_update_histories(mock_async_session, mocker, match_table_factory, match_outcome_table_factory) -> None:
 
     # ARRANGE
 

@@ -8,7 +8,7 @@ import logging
 """
 
 
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
 
     # output_fpath = ROOT_DIR / 'logs' / f'{name}_error.log'
     logger = logging.getLogger(name)
