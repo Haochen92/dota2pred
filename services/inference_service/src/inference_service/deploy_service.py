@@ -15,9 +15,9 @@ def deploy_service(bento: bentoml.Bento) -> None:
         bento (bentoml.Bento): Freshly built bento :)
     """
     try:
-        deployment_name = "dota_oracle_predictor"
+        deployment_name = "dota-oracle-predictor"
         bento_tag_name = str(bento.tag)
-        dep = bentoml.deployment.create(bento=bento_tag_name, name=deployment_name)
+        dep = bentoml.deployment.create(bento=bento_tag_name, name=deployment_name, strategy="RollingUpdate")
         dep.wait_until_ready(timeout=3600)
         logger.info(f"bento {bento_tag_name} has been successfully deployed to bento cloud as name: {deployment_name}")
     except ServiceUnavailable as se:
