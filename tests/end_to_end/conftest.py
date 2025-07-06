@@ -6,8 +6,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 import redis.asyncio as aioredis
 from live_orchestrator_app.app_container import AppContainer
-from dependency_injector import providers
-from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
 from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from dota_oracle_common.models.heroes.table import HeroDataTable
 
@@ -19,9 +17,6 @@ def e2e_environment():
     compose = DockerCompose(context="end_to_end/", compose_file_name="docker-compose.test.yml")
 
     with compose:
-        prediction_host = compose.get_service_host("bentoml", 3000)
-        prediction_port = compose.get_service_port("bentoml", 3000)
-        prediction_url = f"http://{prediction_host}:{prediction_port}"
 
         db_host = compose.get_service_host("db", 5432)
         db_port = compose.get_service_port("db", 5432)
@@ -31,15 +26,11 @@ def e2e_environment():
         redis_port = compose.get_service_port("redis", 6379)
         redis_url = f"redis://{redis_host}:{redis_port}"
 
-        # Wait for services health check
-        logger.info(f"Waiting for BentoML service to be ready at {prediction_url}")
-        compose.wait_for(f"{prediction_url}/readyz")
         logger.info("All services are ready")
 
         yield {
             "db_url": db_url,
             "redis_url": redis_url,
-            "prediction_api_url": prediction_url,
         }
     logger.info("E2E environment has been shut down.")
 
@@ -129,16 +120,10 @@ async def setup_hero_data(e2e_postgres_engine):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_app_container(e2e_redis_client, e2e_postgres_engine, e2e_environment) -> AppContainer:
+async def test_app_container(e2e_redis_client, e2e_postgres_engine) -> AppContainer:
     container = AppContainer()
     container.redis_async_pool.override(e2e_redis_client)
     container.db_engine.override(e2e_postgres_engine)
-
-    # Override model inference service with docker_compose test URL
-    prediction_url = e2e_environment["prediction_api_url"]
-    container.model_inference_service.override(
-        providers.Resource(ModelInferenceService.create, base_url=prediction_url)
-    )
 
     return container
 
