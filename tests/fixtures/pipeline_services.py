@@ -66,6 +66,6 @@ def feature_preparation_service(
 
 
 @pytest.fixture
-async def model_inference_service(bentoml_container_url) -> ModelInferenceService:
-    service = await ModelInferenceService.create(base_url=bentoml_container_url)
+async def model_inference_service() -> ModelInferenceService:
+    service = await ModelInferenceService.create()
     return service
