@@ -1,21 +1,24 @@
 import aiohttp
+import os
 import numpy as np
 from dota_oracle_common.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
-from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.utils import get_logger, load_workspace_env
 from pydantic import ValidationError
 
 logger = get_logger(__name__)
+load_workspace_env()
 
 
 class ModelInferenceService:
-    def __init__(self, base_url: str = "http://localhost:3333"):
-        self.predict_url = f"{base_url}/predict"
-        self.metadata_url = f"{base_url}/get_metadata"
+    def __init__(self):
+        self.base_url = os.getenv("MODEL_ENDPOINT")
+        self.predict_url = f"{self.base_url}/predict"
+        self.metadata_url = f"{self.base_url}/get_metadata"
 
     @classmethod
-    async def create(cls, base_url: str = "http://localhost:3333") -> "ModelInferenceService":
+    async def create(cls) -> "ModelInferenceService":
         # Factory class method to create and initialize service
-        instance = cls(base_url)
+        instance = cls()
         await instance.initialize_async_service()
         return instance
 
