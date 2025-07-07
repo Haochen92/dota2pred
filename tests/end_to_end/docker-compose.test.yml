@@ -9,11 +9,13 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["6379"]
-  bentoml:
-    image: match_prediction:latest
-    ports: ["3000"]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/readyz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
+  # Comment out to use bentoml cloud for now
+  # bentoml:
+  #   image: match_prediction:latest
+  #   ports: ["3000"]
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:3000/readyz"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
