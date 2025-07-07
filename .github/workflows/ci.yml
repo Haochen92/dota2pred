@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       STEAM_API: ${{secrets.STEAM_API}}
-      OPENDOTA_API_KEY: ${{secrets.OPENDOTA_API}}
+      OPENDOTA_API: ${{secrets.OPENDOTA_API}}
       MODEL_ENDPOINT: ${{vars.MODEL_ENDPOINT}}
 
     steps:
