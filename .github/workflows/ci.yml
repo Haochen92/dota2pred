@@ -67,4 +67,4 @@ jobs:
 
     - name: Run E2E tests
       run: |
-        poetry run pytest tests/end_to_end/ -v -tb=short -m "e2e"
+        poetry run pytest tests/end_to_end/ -v --tb=short -m "e2e"
