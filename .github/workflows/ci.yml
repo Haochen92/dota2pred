@@ -10,38 +10,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.11.12'
 
     - name: Install Poetry
       uses: snok/install-poetry@v1
@@ -81,19 +56,14 @@ jobs:
     - name: Run integration tests
       run: |
         poetry run pytest tests/integration/ -v --tb=short
-      env:
-        # Env vars are still correct
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        POSTGRES_DB: test_db
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
 
     - name: Run contract tests
       run: |
         poetry run pytest tests/contract/ -v --tb=short -m "not slow"
+      env:
+        STEAM_API: ${{secrets.STEAM_API}}
+        OPENDOTA_API_KEY: ${{secrets.OPENDOTA_API_KEY}}
 
-    # E2E tests skipped in CI (requires BentoML Docker images)
-    # Run manually: cd tests && poetry run pytest end_to_end/ -v
+    - name: Run E2E tests
+      run: |
+        poetry run pytest tests/end_to_end/ -v -tb==short -m "e2e"
