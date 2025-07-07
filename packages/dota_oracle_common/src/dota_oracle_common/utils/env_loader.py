@@ -8,7 +8,5 @@ def load_workspace_env() -> bool:
     env_file = find_dotenv(".env")
     if env_file:
         load_dotenv(env_file)
-        return True
-    else:
-        logger.warning("unable to find environment file")
-        return False
+
+    return True
