@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="package")
 def e2e_environment():
-    compose = DockerCompose(context="end_to_end/", compose_file_name="docker-compose.test.yml")
+    compose = DockerCompose(context="./tests/end_to_end/", compose_file_name="docker-compose.test.yml")
 
     with compose:
 
