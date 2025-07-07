@@ -63,6 +63,7 @@ jobs:
       env:
         STEAM_API: ${{secrets.STEAM_API}}
         OPENDOTA_API_KEY: ${{secrets.OPENDOTA_API_KEY}}
+        MODEL_ENDPOINT: ${{vars.MODEL_ENDPOINT}}
 
     - name: Run E2E tests
       run: |
