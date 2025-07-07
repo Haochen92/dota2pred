@@ -6,9 +6,21 @@ services:
       - POSTGRES_USER=test
       - POSTGRES_PASSWORD=test
       - POSTGRES_DB=test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   redis:
     image: redis:7-alpine
     ports: ["6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # Comment out to use bentoml cloud for now
   # bentoml:
