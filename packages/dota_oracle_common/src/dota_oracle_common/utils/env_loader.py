@@ -4,11 +4,9 @@ from dota_oracle_common.utils import get_logger
 logger = get_logger(__name__)
 
 
-def load_workspace_env() -> bool:
+def load_workspace_env() -> None:
     env_file = find_dotenv(".env")
     if env_file:
         load_dotenv(env_file)
-        return True
     else:
-        logger.error("Missing .env file")
-        return False
+        logger.warning("Missing .env file")
