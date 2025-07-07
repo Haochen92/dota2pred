@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      STEAM_API: ${{secrets.STEAM_API}}
+      OPENDOTA_API_KEY: ${{secrets.OPENDOTA_API}}
+      MODEL_ENDPOINT: ${{vars.MODEL_ENDPOINT}}
 
     steps:
     - uses: actions/checkout@v4
@@ -60,11 +64,7 @@ jobs:
     - name: Run contract tests
       run: |
         poetry run pytest tests/contract/ -v --tb=short -m "not slow"
-      env:
-        STEAM_API: ${{secrets.STEAM_API}}
-        OPENDOTA_API_KEY: ${{secrets.OPENDOTA_API_KEY}}
-        MODEL_ENDPOINT: ${{vars.MODEL_ENDPOINT}}
 
     - name: Run E2E tests
       run: |
-        poetry run pytest tests/end_to_end/ -v -tb==short -m "e2e"
+        poetry run pytest tests/end_to_end/ -v -tb=short -m "e2e"
