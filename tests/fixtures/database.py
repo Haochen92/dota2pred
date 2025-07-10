@@ -5,6 +5,7 @@ Database-related fixtures for tests.
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
+from unittest.mock import AsyncMock
 from sqlmodel import SQLModel
 from testcontainers.postgres import PostgresContainer
 from dota_oracle_common.utils.set_logging import get_logger
@@ -70,13 +71,9 @@ async def db_session(test_postgres_engine):
 
 @pytest.fixture
 def mock_async_session() -> AsyncSession:
-    from unittest.mock import AsyncMock
-
     return AsyncMock(spec=AsyncSession)
 
 
 @pytest.fixture
 def mock_async_engine() -> AsyncEngine:
-    from unittest.mock import AsyncMock
-
     return AsyncMock(spec=AsyncEngine)
