@@ -49,5 +49,5 @@ class LoggerSetup:
 
 # Create a single instance that your application can import and use
 _logger_setup = LoggerSetup(loki_url=LOKI_URL)
-configure_logger = _logger_setup.configure_logger
+get_logger = _logger_setup.configure_logger
 
