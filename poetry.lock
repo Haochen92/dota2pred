@@ -1501,6 +1501,8 @@ alembic = "*"
 psycopg2-binary = "^2.9.10"
 pydantic = ">=2.0"
 python-dotenv = "*"
+python-json-logger = "^3.3.0"
+python-logging-loki = "^0.3.1"
 redis = "*"
 requests = "*"
 sqlalchemy = ">=2.0"
@@ -4038,6 +4040,22 @@ files = [
 dev = ["backports.zoneinfo ; python_version < \"3.9\"", "black", "build", "freezegun", "mdx_truly_sane_lists", "mike", "mkdocs", "mkdocs-awesome-pages-plugin", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-material (>=8.5)", "mkdocstrings[python]", "msgspec ; implementation_name != \"pypy\"", "mypy", "orjson ; implementation_name != \"pypy\"", "pylint", "pytest", "tzdata", "validate-pyproject[all]"]
 
 [[package]]
+name = "python-logging-loki"
+version = "0.3.1"
+description = "Python logging handler for Grafana Loki."
+optional = false
+python-versions = ">=3.6"
+groups = ["dev", "workspace"]
+files = [
+    {file = "python-logging-loki-0.3.1.tar.gz", hash = "sha256:b83610c8a3adc99fbab072493b91dfb25ced69be4874fefe3ab457b391adbf60"},
+    {file = "python_logging_loki-0.3.1-py3-none-any.whl", hash = "sha256:8a9131db037fbea3d390089c4c32dbe7ed233944905079615a9fb6f669b0f4e6"},
+]
+
+[package.dependencies]
+requests = "*"
+rfc3339 = ">=6.1"
+
+[[package]]
 name = "python-multipart"
 version = "0.0.20"
 description = "A streaming multipart parser for Python"
@@ -4487,6 +4505,18 @@ requests = ">=2.0.0"
 
 [package.extras]
 rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
+
+[[package]]
+name = "rfc3339"
+version = "6.2"
+description = "Format dates according to the RFC 3339."
+optional = false
+python-versions = "*"
+groups = ["dev", "workspace"]
+files = [
+    {file = "rfc3339-6.2-py3-none-any.whl", hash = "sha256:f44316b21b21db90a625cde04ebb0d46268f153e6093021fa5893e92a96f58a3"},
+    {file = "rfc3339-6.2.tar.gz", hash = "sha256:d53c3b5eefaef892b7240ba2a91fef012e86faa4d0a0ca782359c490e00ad4d0"},
+]
 
 [[package]]
 name = "rfc3339-validator"
@@ -6013,4 +6043,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.12"
-content-hash = "a81be42c1ed81fce02fd642734bba09d1ebb5a9dd1f516bf01d4dd05990e2ccb"
+content-hash = "d34430729ce582e73126eb057ad0d1ee7b74a9a8746656a67aab36832df2a471"

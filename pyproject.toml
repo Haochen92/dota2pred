@@ -34,6 +34,7 @@ testcontainers = {extras = ["postgres", "redis"], version = "^4.10.0"}
 httpx = "*"
 requests = "*"
 polyfactory = "^2.21.0"
+python-logging-loki = "^0.3.1"
 
 [tool.poetry.group.workspace]
 optional = false
