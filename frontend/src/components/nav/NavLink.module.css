@@ -11,9 +11,8 @@
     font-weight: 700;
     height:100%;
   }
-  
+
 .active {
   border-bottom: 2px solid currentColor;
   color: var(--primary-500);
 }
-  

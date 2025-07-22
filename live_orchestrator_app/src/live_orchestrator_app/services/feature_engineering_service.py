@@ -38,7 +38,7 @@ class FeatureEngineeringService:
 
         if not hero_features or not team_features or not player_hero_features:
             error_msg = f"""
-                Incomplete features, raising 
+                Incomplete features, raising
                 expected hero_features , got {hero_features}
                 expected team_features , got {team_features}
                 expected player_hero_features , got {player_hero_features}

@@ -6,16 +6,14 @@ load_workspace_env()
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
+
 class RedisClientFactory:
     _instance: aioredis.Redis | None = None
 
     @classmethod
     def create_instance(cls) -> aioredis.Redis:
         if cls._instance is None:
-            cls._instance = aioredis.from_url(
-                REDIS_URL,
-                decode_responses=True
-            )
+            cls._instance = aioredis.from_url(REDIS_URL, decode_responses=True)
 
         return cls._instance
 

@@ -295,7 +295,7 @@ async def test_fetch_events(
 
 
 """
-Test Failure Acknowledgement 
+Test Failure Acknowledgement
 """
 
 

@@ -13,7 +13,7 @@ services:
       - psql:/var/lib/postgresql/data
     networks:
       - dota-pred
-  
+
   test-db:
     image: postgres:14
     container_name: db-test
@@ -27,7 +27,7 @@ services:
       - psql-test:/var/lib/postgresql/data
     networks:
       - dota-pred
-  
+
   redis:
     image: redis:latest
     container_name: my-redis
@@ -37,7 +37,7 @@ services:
       - redis:/data
     networks:
       - dota-pred
-    
+
   test-redis:
     image: redis:latest
     container_name: redis-test
@@ -49,7 +49,7 @@ services:
       - dota-pred
     profiles:
       - test
-    
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin-web
@@ -112,7 +112,7 @@ services:
     networks:
       - dota-pred
 
-  # Logging and monitoring 
+  # Logging and monitoring
   loki:
     image: grafana/loki:latest
     container_name: loki

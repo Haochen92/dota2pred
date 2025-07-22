@@ -4,12 +4,14 @@ import logging_loki
 
 LOKI_URL = "http://localhost:3100/loki/api/v1/push"
 
+
 class LoggerSetup:
     """
     A class to handle the configuration of loggers.
     It sets up a console handler for local debugging and a Loki handler
     for structured, centralized logging.
     """
+
     def __init__(self, loki_url: str):
         self.loki_url = loki_url
 
@@ -35,7 +37,7 @@ class LoggerSetup:
         try:
             loki_handler = logging_loki.LokiHandler(
                 url=self.loki_url,
-                tags={"application": name}, # This tag will be searchable in Grafana
+                tags={"application": name},  # This tag will be searchable in Grafana
                 version="1",
             )
             # This formatter ensures the log message and any 'extra' data is sent as JSON
@@ -44,10 +46,10 @@ class LoggerSetup:
         except Exception as e:
             # Fallback if Loki is not available
             logger.warning(f"Failed to configure Loki handler: {e}")
-        
+
         return logger
+
 
 # Create a single instance that your application can import and use
 _logger_setup = LoggerSetup(loki_url=LOKI_URL)
 get_logger = _logger_setup.configure_logger
-
