@@ -1,10 +1,9 @@
 import sys
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from alembic.config import Config
 from alembic import command
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("alembic_migrations")
+logger = get_logger("alembic_migrations")
 
 # Run migration for both test and production database
 

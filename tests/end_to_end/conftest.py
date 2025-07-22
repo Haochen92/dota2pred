@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from testcontainers.compose import DockerCompose
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
@@ -9,7 +9,7 @@ from live_orchestrator_app.app_container import AppContainer
 from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from dota_oracle_common.models.heroes.table import HeroDataTable
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @pytest.fixture(scope="package")

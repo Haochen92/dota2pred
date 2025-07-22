@@ -1,9 +1,9 @@
 import bentoml
 from bentoml.exceptions import ServiceUnavailable, BentoMLException
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from inference_service.build_service import build_bento
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def deploy_service(bento: bentoml.Bento) -> None:

@@ -1,4 +1,4 @@
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.engine.url import URL
 from dota_oracle_common.utils.env_loader import load_workspace_env
@@ -6,7 +6,7 @@ from typing import Dict, Any
 import os
 
 load_workspace_env()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DatabaseEngineFactory:

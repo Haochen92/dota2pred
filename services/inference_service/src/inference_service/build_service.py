@@ -1,8 +1,8 @@
 import bentoml
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from typing import Any
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def build_bento() -> bentoml.Bento:

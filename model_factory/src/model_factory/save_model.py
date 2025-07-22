@@ -1,12 +1,12 @@
 import os
 import bentoml
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from joblib import load
 from dota_oracle_common.models.inference.schema import VersionMetaData, PerformanceMetrics, ModelMetaData
 from dota_oracle_common.models.features import AllFeaturesDTO
 from datetime import datetime as dt
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def load_model_from_dir():

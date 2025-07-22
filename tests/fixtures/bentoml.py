@@ -1,5 +1,5 @@
 import pytest
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 import requests
 import subprocess
 import time
@@ -10,7 +10,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 # IMAGE TAG: TO SET IN CONFIG FILE
 IMAGE_TAG = "match_prediction:latest"
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @pytest.fixture(scope="function")

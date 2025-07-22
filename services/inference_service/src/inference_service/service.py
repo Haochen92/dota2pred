@@ -2,9 +2,9 @@ import bentoml
 from bentoml.models import BentoModel
 from dota_oracle_common.models.inference import ModelPredictionAPIResponse
 from typing import Dict, Any
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # configurations
 my_image = (

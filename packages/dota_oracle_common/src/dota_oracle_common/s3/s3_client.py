@@ -3,11 +3,11 @@ from mypy_boto3_s3 import S3Client
 from s3transfer import S3Transfer
 from botocore.exceptions import ClientError
 import os
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils import load_workspace_env
 
 load_workspace_env()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class S3Wrapper:

@@ -5,7 +5,7 @@ Tests the complete flow from match discovery through prediction and completion
 by simulating multiple processing cycles.
 """
 
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from typing import Dict, List
 from unittest.mock import patch
 
@@ -23,7 +23,7 @@ from live_orchestrator_app.app_container import AppContainer
 from datetime import datetime, timezone
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 pytestmark = [pytest.mark.asyncio(loop_scope="session"), pytest.mark.e2e]
 
 
