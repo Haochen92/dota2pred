@@ -48,3 +48,7 @@ htmlcov/
 # assistant caches
 .assistant
 *.assistant
+
+
+# Testing Notebooks
+test.ipynb
