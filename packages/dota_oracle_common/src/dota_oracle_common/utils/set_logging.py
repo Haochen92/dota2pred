@@ -1,47 +1,53 @@
 import logging
+from pythonjsonlogger.json import JsonFormatter  # Correct import
+import logging_loki
 
-"""
-    Todos:
-    1. Rename file to logger.py and update all imports
-    2. Rename function to configure_logger and update all imports
-    3. Implement RotatingFileHandler
-"""
+LOKI_URL = "http://localhost:3100/loki/api/v1/push"
 
+class LoggerSetup:
+    """
+    A class to handle the configuration of loggers.
+    It sets up a console handler for local debugging and a Loki handler
+    for structured, centralized logging.
+    """
+    def __init__(self, loki_url: str):
+        self.loki_url = loki_url
 
-def get_logger(name: str) -> logging.Logger:
+    def configure_logger(self, name: str) -> logging.Logger:
+        """
+        Configures and returns a logger instance.
+        Avoids adding duplicate handlers if called multiple times.
+        """
+        logger = logging.getLogger(name)
+        logger.propagate = False
+        logger.setLevel(logging.INFO)
 
-    # output_fpath = ROOT_DIR / 'logs' / f'{name}_error.log'
-    logger = logging.getLogger(name)
-    logger.propagate = False
-    logger.setLevel(logging.INFO)
+        if logger.hasHandlers():
+            return logger
 
-    # Avoid adding handlers multiple times
-    if not logger.hasHandlers():
-        # Set up handlers
+        # --- Console Handler (for simple local output) ---
         console_handler = logging.StreamHandler()
-        # file_handler = logging.FileHandler(output_fpath)
-
-        # Configure handlers
-        console_handler.setLevel(logging.INFO)
-        # file_handler.setLevel(logging.ERROR)
-
-        console_format = logging.Formatter("%(name)s - %(message)s")
-        # file_format = logging.Formatter('Time: %(asctime)s - File: %(filename)s - Name: %(name)s - Error Msg: %(message)s')
-        # file_format.converter = lambda *args: datetime.now(pytz.timezone('Asia/Shanghai')).timetuple()
-
+        console_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(console_format)
-        # file_handler.setFormatter(file_format)
-
-        # Add handlers to the logger
         logger.addHandler(console_handler)
-        # logger.addHandler(file_handler)
-    else:
-        logger.info(f"Handlers already set up {logger.handlers}")
 
-    return logger
+        # --- Loki Handler (for sending logs to Grafana) ---
+        try:
+            loki_handler = logging_loki.LokiHandler(
+                url=self.loki_url,
+                tags={"application": name}, # This tag will be searchable in Grafana
+                version="1",
+            )
+            # This formatter ensures the log message and any 'extra' data is sent as JSON
+            loki_handler.setFormatter(JsonFormatter())  # Using the corrected import
+            logger.addHandler(loki_handler)
+        except Exception as e:
+            # Fallback if Loki is not available
+            logger.warning(f"Failed to configure Loki handler: {e}")
+        
+        return logger
 
+# Create a single instance that your application can import and use
+_logger_setup = LoggerSetup(loki_url=LOKI_URL)
+configure_logger = _logger_setup.configure_logger
 
-if __name__ == "__main__":
-    logger = get_logger(__name__)
-    logger.info("testing console log")
-    logger.error("testing error log")
