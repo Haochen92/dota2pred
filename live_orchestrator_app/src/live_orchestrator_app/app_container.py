@@ -1,3 +1,6 @@
+# Prefect Orchestrator
+from prefect import flow
+
 import asyncio
 from dependency_injector import providers, containers
 
@@ -156,8 +159,12 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
 
-# to do: wrap in prefect task or CRON task
+@flow(name="initialise_app_container")
 async def main() -> None:
+    """
+    Main entry point for the application.
+    Initializes the container and its resources, then run application cycle.
+    """
     container = AppContainer()
     # todo: container.config.from_yaml('config.yml') # Load config if implemented
 
