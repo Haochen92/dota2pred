@@ -2,6 +2,10 @@ import aiohttp
 import os
 from dota_oracle_common.utils import get_logger, load_workspace_env
 from typing import Optional, Dict, Any
+from datetime import timedelta
+
+from prefect import task
+from prefect.cache_policies import TASK_SOURCE, INPUTS
 
 logger = get_logger(__name__)
 load_workspace_env()
@@ -28,7 +32,27 @@ async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None)
             raise
 
 
+@task(
+    retries=3,
+    retry_delay_seconds=5,
+    cache_policy=TASK_SOURCE + INPUTS,
+    cache_expiration=timedelta(days=1),
+)
 async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
+    """_summary_
+
+    Fetch data from opendota API using paid API Key. Results with the same input and same function definition
+    is cached, and set to expire in 1 day.
+    Args:
+        endpoint (str): the api endpoint
+        params (Optional[Dict[str, Any]], optional): _description_. Defaults to None.
+
+    Raises:
+        ValueError: If API Key is missing
+
+    Returns:
+        dict[Any, Any]: Parsed JSON results from API
+    """
     if not API_KEY:
         raise ValueError("Missing API KEY, unable to fetch data")
     # Paid api calls using API_KEY
