@@ -25,7 +25,6 @@ RUN cd live_orchestrator_app && poetry install --only=main --no-interaction
 # Copy service application code
 COPY live_orchestrator_app/src/ ./src/
 COPY live_orchestrator_app/entrypoint.sh ./
-COPY live_orchestrator_app/deploy_flow.py ./
 
 RUN chmod +x /app/entrypoint.sh
 
