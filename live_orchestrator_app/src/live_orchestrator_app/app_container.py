@@ -160,7 +160,7 @@ class AppContainer(containers.DeclarativeContainer):
 
 
 @flow(name="initialise_app_container")
-async def main() -> None:
+async def start_application() -> None:
     """
     Main entry point for the application.
     Initializes the container and its resources, then run application cycle.
@@ -190,4 +190,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(start_application())
