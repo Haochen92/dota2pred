@@ -18,8 +18,8 @@ echo "Starting the Prefect worker for the work pool 'work-pool'..."
 prefect worker start -p "work-pool" &  # Run the worker in the background
 
 # Run the Python deployment script
-echo "Deploying the flow..."
-python deploy_flow.py
+echo "Starting service..."
+python deploy_service.py
 
 # Wait for background processes to finish (if any)
 wait
