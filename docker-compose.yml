@@ -14,20 +14,6 @@ services:
     networks:
       - dota-pred
 
-  test-db:
-    image: postgres:14
-    container_name: db-test
-    environment:
-      - POSTGRES_USER=liuhaochen
-      - POSTGRES_PASSWORD=110799
-      - POSTGRES_DB=dota2
-    ports:
-      - "6006:5432"
-    volumes:
-      - psql-test:/var/lib/postgresql/data
-    networks:
-      - dota-pred
-
   redis:
     image: redis:latest
     container_name: my-redis
@@ -38,32 +24,39 @@ services:
     networks:
       - dota-pred
 
-  test-redis:
-    image: redis:latest
-    container_name: redis-test
-    ports:
-      - "6390:6379"
-    volumes:
-      - redis-test:/data
-    networks:
-      - dota-pred
-    profiles:
-      - test
-
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin-web
     environment:
       - PGADMIN_DEFAULT_EMAIL=liu_hao_chen@hotmail.com
       - PGADMIN_DEFAULT_PASSWORD=Password12345!
+      - PGADMIN_CONFIG_X_FORWARDED_FOR_HOST=1
+      - PGADMIN_CONFIG_LOGIN_BANNER="Welcome to the Dota Oracle Database Portal"
     ports:
       - "5050:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:
       - dota-pred
+      - shared-caddy-network
     depends_on:
-      - test-db
+      - db
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    container_name: prefect-server
+    restart: always
+    command: prefect server start --host 0.0.0.0
+    environment:
+      # To use YOUR Postgres container, but in a NEW database named 'prefect_db'.
+      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://liuhaochen:110799@db:5432/prefect_db
+      # Public address for generating correct links.
+      - PREFECT_UI_URL=https://prefect.liuhaochen.com/
+    depends_on:
+      - db
+    networks:
+      - dota-pred
+      - shared-caddy-network
 
   # Microservices
   api-service:
@@ -79,40 +72,25 @@ services:
     depends_on:
       - db
       - redis
-      - prediction-service
     networks:
       - dota-pred
 
-  prediction-service:
-    build:
-      context: .
-      dockerfile: ./services/prediction_service/Dockerfile
-    container_name: prediction-service
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
-    depends_on:
-      - db
-    networks:
-      - dota-pred
+  # live-orchestrator-app:
+  #   build:
+  #     context: .
+  #     dockerfile: ./live_orchestrator_app/Dockerfile
+  #   container_name: live-orchestrator-app
+  #   environment:
+  #     - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
+  #     - REDIS_URL=redis://redis:6379
+  #     - PYTHONPATH=/app
+  #   depends_on:
+  #     - db
+  #     - redis
+  #   networks:
+  #     - dota-pred
 
-  live-orchestrator-app:
-    build:
-      context: .
-      dockerfile: ./live_orchestrator_app/Dockerfile
-    container_name: live-orchestrator-app
-    environment:
-      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
-      - REDIS_URL=redis://redis:6379
-      - PYTHONPATH=/app
-    depends_on:
-      - db
-      - redis
-    networks:
-      - dota-pred
-
-  # Logging and monitoring
+  # Logging and Observability
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -131,10 +109,13 @@ services:
       - loki
     networks:
       - dota-pred
+      - shared-caddy-network
 
 networks:
   dota-pred:
     driver: bridge
+  shared-caddy-network:
+    external: true
 
 volumes:
   psql:
