@@ -1,8 +1,9 @@
 import logging
 from pythonjsonlogger.json import JsonFormatter  # Correct import
 import logging_loki
+import os
 
-LOKI_URL = "http://localhost:3100/loki/api/v1/push"
+LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100/loki/api/v1/push")
 
 
 class LoggerSetup:
