@@ -4,15 +4,21 @@ services:
     image: postgres:14
     container_name: my-postgres
     environment:
-      - POSTGRES_USER=liuhaochen
-      - POSTGRES_PASSWORD=110799
-      - POSTGRES_DB=dota2
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "6000:5432"
     volumes:
       - psql:/var/lib/postgresql/data
     networks:
       - dota-pred
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:latest
@@ -23,15 +29,20 @@ services:
       - redis:/data
     networks:
       - dota-pred
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin-web
     environment:
-      - PGADMIN_DEFAULT_EMAIL=liu_hao_chen@hotmail.com
-      - PGADMIN_DEFAULT_PASSWORD=Password12345!
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
       - PGADMIN_CONFIG_X_FORWARDED_FOR_HOST=1
-      - PGADMIN_CONFIG_LOGIN_BANNER="Welcome to the Dota Oracle Database Portal"
     ports:
       - "5050:80"
     volumes:
@@ -40,7 +51,10 @@ services:
       - dota-pred
       - shared-caddy-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+        restart: true
+
 
   prefect-server:
     image: prefecthq/prefect:3-latest
@@ -49,11 +63,14 @@ services:
     command: prefect server start --host 0.0.0.0
     environment:
       # To use YOUR Postgres container, but in a NEW database named 'prefect_db'.
-      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://liuhaochen:110799@db:5432/prefect_db
+      - PREFECT_API_DATABASE_CONNECTION_URL=${PREFECT_API_DATABASE_CONNECTION_URL}
+      - PREFECT_API_URL=${PREFECT_API_URL}
       # Public address for generating correct links.
-      - PREFECT_UI_URL=https://prefect.liuhaochen.com/
+      - PREFECT_UI_URL=${PREFECT_UI_URL}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+        restart: true
     networks:
       - dota-pred
       - shared-caddy-network
@@ -67,28 +84,39 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - PREFECT_API_URL=${PREFECT_API_URL}
     depends_on:
       - db
       - redis
     networks:
       - dota-pred
 
-  # live-orchestrator-app:
-  #   build:
-  #     context: .
-  #     dockerfile: ./live_orchestrator_app/Dockerfile
-  #   container_name: live-orchestrator-app
-  #   environment:
-  #     - DATABASE_URL=postgresql://liuhaochen:110799@db:5432/dota2
-  #     - REDIS_URL=redis://redis:6379
-  #     - PYTHONPATH=/app
-  #   depends_on:
-  #     - db
-  #     - redis
-  #   networks:
-  #     - dota-pred
+  live-orchestrator-app:
+    build:
+      context: .
+      dockerfile: ./live_orchestrator_app/Dockerfile
+    container_name: live-orchestrator-app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - PREFECT_API_URL=${PREFECT_API_URL}
+      - LOKI_URL=${LOKI_URL}
+      - STEAM_API=${STEAM_API}
+      - OPEN_DOTA_API=${OPEN_DOTA_API}
+      - MODEL_ENDPOINT=${MODEL_ENDPOINT}
+    depends_on:
+      prefect-server:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    networks:
+      - dota-pred
 
   # Logging and Observability
   loki:
@@ -99,6 +127,12 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - dota-pred
+    healthcheck:
+      # Checks Loki's /ready endpoint to ensure it's ready to receive logs.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   grafana:
     image: grafana/grafana:latest
@@ -110,6 +144,12 @@ services:
     networks:
       - dota-pred
       - shared-caddy-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
 networks:
   dota-pred:
