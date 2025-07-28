@@ -1,3 +1,4 @@
+import pydantic
 from dota_oracle_common.models.redis.schema import StreamMatchEventData
 from dota_oracle_common.utils.set_logging import get_logger
 from live_orchestrator_app.services.redis_service import RedisService
@@ -60,16 +61,20 @@ class CompletionOrchestrator:
                     raise result
                 await self.redis.mark_match_as_completed(match_id=event_data.match_id, event_id_to_ack=event_id)
                 count_success += 1
-            except Exception as e:
+
+            except (pydantic.ValidationError, ValueError, KeyError) as ve:
                 await self.redis.handle_processing_failure(
                     event_data=event_data,
                     event_id=event_id,
-                    error=e,
+                    error=ve,
                     consumer_group=COMPLETION_GROUP,
                     event_stream=STREAM_PENDING_COMPLETION,
                 )
                 count_failure += 1
                 continue
+            except Exception as e:
+                logger.error("Unexcepted Error during cycle, {e}", exc_info=e)
+                raise
 
         logger.info(f"Completion Orchestrator: Successfully processed {count_success} and failed {count_failure}")
 

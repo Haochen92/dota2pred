@@ -1,3 +1,4 @@
+import pydantic
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
@@ -81,15 +82,18 @@ class PredictionOrchestrator:
                 await self.redis.advance_match_to_pending_completion(match_id, event_id)
                 logger.debug(f"Successfully processed prediction for event {event_id}")
 
-            except Exception as e:
+            except (pydantic.ValidationError, ValueError, KeyError) as ve:
                 count_failure += 1
                 await self.redis.handle_processing_failure(
                     event_data=event_data,
                     event_id=event_id,
-                    error=e,
+                    error=ve,
                     consumer_group=PREDICTION_GROUP,
                     event_stream=STREAM_PENDING_PREDICTION,
                 )
+            except Exception as e:
+                logger.error("Unexcepted Error during cycle, {e}", exc_info=e)
+                raise
         logger.info(
             f"PredictionOrchestrator: Finished cycle, with {count_success} successful events, and {count_failure} failures"
         )

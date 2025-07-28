@@ -1,3 +1,4 @@
+import pydantic
 from typing import Dict
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
@@ -80,15 +81,18 @@ class FeatureEngineeringOrchestrator:
                 count_success += 1
                 logger.debug(f"Successfully processed feature engineering for event {event_id}")
 
-            except Exception as e:
+            except (pydantic.ValidationError, ValueError, KeyError) as ve:
                 count_failure += 1
                 await self.redis.handle_processing_failure(
                     event_data=event_data,
                     event_id=event_id,
-                    error=e,
+                    error=ve,
                     consumer_group=FEATURE_ENGINEER_GROUP,
                     event_stream=STREAM_NEW_MATCHES,
                 )
+            except Exception as e:
+                logger.error(f"Unexcepted Error during cycle, {e}", exc_info=True)
+                raise
 
         logger.info(
             f"Feature engineering cycle complete: "

@@ -1,3 +1,4 @@
+import pydantic
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.utils import AsyncTask
@@ -68,10 +69,13 @@ class NewMatchOrchestrator:
                 await self.redis.add_match_for_processing(match_id)
                 logger.debug(f"Successfully processed new match {match_id}")
 
-            except Exception as e:
+            except (pydantic.ValidationError, ValueError, KeyError) as ve:
                 count_failure += 1
-                logger.error(f"Failed to process new match {match_id}: {e}", exc_info=True)
+                logger.error(f"Failed to process new match {match_id}: {ve}", exc_info=True)
                 # Note: No failure recording needed for new matches as they're not from Redis streams
+            except Exception as e:
+                logger.error("Unexcepted Error during cycle, {e}", exc_info=e)
+                raise
 
         logger.info(f"New match cycle complete: successful={count_success}, failed={count_failure}")
         return count_success
