@@ -23,7 +23,7 @@ class FeatureEngineeringService:
 
     async def create_and_store_features(self, match_instance: MatchTable, session: AsyncSession) -> None:
         if not match_instance:
-            logger.warning("no match_instances for data creation")
+            logger.info("no match_instances for data creation")
             return None
 
         try:
