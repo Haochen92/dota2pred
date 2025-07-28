@@ -8,5 +8,3 @@ def load_workspace_env() -> None:
     env_file = find_dotenv(".env")
     if env_file:
         load_dotenv(env_file)
-    else:
-        logger.warning("Missing .env file")
