@@ -61,8 +61,8 @@ class AppContainer(containers.DeclarativeContainer):
     # config = providers.Configuration() # Todo
 
     # --- Clients ---
-    redis_async_pool = providers.Singleton(RedisClientFactory.create_instance, env="test")
-    db_engine = providers.Singleton(DatabaseEngineFactory.get_engine, env="test")
+    redis_async_pool = providers.Resource(RedisClientFactory.create_instance)
+    db_engine = providers.Resource(DatabaseEngineFactory.get_engine)
 
     # --- Feature Engineering Components ---
     team_feature_creator = providers.Factory(TeamFeatureCreator)
@@ -175,13 +175,14 @@ async def start_application() -> None:
         logger.info("Container resources initialized.")
 
         # Get the main app after resources are initialized
-        application = container.app()
+        application = await container.app()  # type: ignore
 
         logger.debug("Running pipeline cycle...")
         await application.run_cycle()
 
     except Exception as e:
-        logger.error(f"Pipeline failed: {e}")
+        logger.error(f"Pipeline failed: {e}", exc_info=True)
+        raise
     finally:
         # Shutdown resources
         logger.debug("Shutting down container resources...")
