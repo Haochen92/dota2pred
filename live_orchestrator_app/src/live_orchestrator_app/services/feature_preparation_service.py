@@ -164,4 +164,4 @@ class FeaturePreparationService:
 
         except Exception as e:
             logger.error(f"Error during _merge_and_filter_dataframe: {e}", exc_info=True)
-            return None
+            raise
