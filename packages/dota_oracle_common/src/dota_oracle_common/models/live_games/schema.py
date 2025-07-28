@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Any
+from pydantic import BaseModel, Field
+from typing import List, Optional
 from datetime import datetime as dt
 
 
@@ -28,7 +28,7 @@ class Player(BaseModel):
     player_slot: int
     account_id: int
     name: Optional[str] = None
-    hero_id: int
+    hero_id: int = Field(gt=0)
 
 
 class Faction(BaseModel):
@@ -93,13 +93,6 @@ class OngoingLeagueGame(LiveLeagueGame):
     radiant_team: TeamData = Field(...)
     dire_team: TeamData = Field(...)
     scoreboard: ScoreBoard = Field(...)
-
-    @field_validator("radiant_team", "dire_team", "scoreboard")
-    @classmethod
-    def validate_fields(cls, v: Any) -> Any:
-        if v is None:
-            raise ValueError(f"Fields {v} cannot be done")
-        return v
 
 
 class ResultData(BaseModel):
