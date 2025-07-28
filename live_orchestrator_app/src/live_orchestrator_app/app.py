@@ -51,4 +51,4 @@ class MatchPipelineOrchestrator:
 
         except Exception as e:
             logger.error(f"Error in MatchPipelineOrchestrator run_cycle: {str(e)}", exc_info=True)
-            # continue next cycle on failure
+            raise
