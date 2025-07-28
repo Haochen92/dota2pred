@@ -1,15 +1,28 @@
-from live_orchestrator_app.app_container import start_application
+import asyncio
+from prefect import flow
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
 
-if __name__ == "__main__":
-    start_application.deploy(
+
+async def create_deployment():
+    """
+    Builds a Prefect Deployment object with a specific entrypoint
+    and applies it to the Prefect server.
+    """
+
+    flow_from_file = await flow.from_source(
+        source="./live_orchestrator_app/src",
+        entrypoint="live_orchestrator_app/app_container.py:start_application",
+    )
+
+    await flow_from_file.deploy(
         name="live_orchestration_app",
         work_pool_name="dota-work-pool",
         cron="*/2 * * * *",
-        entrypoint="live_orchestrator_app/app_container.py:start_application",
-        # every 2 minutes
     )
+    logger.info("Prefect Deployment 'live_orchestration_app' applied successfully.")
 
-    logger.info(msg="Prefect Deployment successful for dota-app")
+
+if __name__ == "__main__":
+    asyncio.run(create_deployment())
