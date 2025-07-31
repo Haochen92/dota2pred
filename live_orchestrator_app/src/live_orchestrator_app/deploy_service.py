@@ -17,9 +17,7 @@ async def create_deployment():
     )
 
     await flow_from_file.deploy(
-        name="live_orchestration_app",
-        work_pool_name="dota-work-pool",
-        cron="*/2 * * * *",
+        name="live_orchestration_app", work_pool_name="dota-work-pool", cron="*/2 * * * *", concurrency_limit=1
     )
     logger.info("Prefect Deployment 'live_orchestration_app' applied successfully.")
 
