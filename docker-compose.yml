@@ -138,8 +138,6 @@ networks:
 
 volumes:
   psql:
-  psql-test:
   redis:
-  redis-test:
   pgadmin-data:
   backend:    # Unused for now, but can be used later
