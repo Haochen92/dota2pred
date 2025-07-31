@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import List, Any
+from typing import List, Any, Optional, Coroutine
 from .set_logging import get_logger
 from ..models.utils import TaskResult, AsyncTask
 
@@ -10,9 +10,11 @@ logger = get_logger(__name__)
 class TaskRunner:
 
     @staticmethod
-    async def run_concurrently(tasks: List[AsyncTask[Any, Any]]) -> List[TaskResult[Any, Any]]:
+    async def run_concurrently(
+        tasks: List[AsyncTask[Any, Any]], concurrency_limit: Optional[int] = None
+    ) -> List[TaskResult[Any, Any]]:
         """
-        Run all tasks concurrently using asyncio.gather
+        Run all tasks concurrently using asyncio.gather with an optional concurrency limit.
         Always returns a list of TaskResult objects, never raises.
         Exceptions are captured within the TaskResult object.
         """
@@ -21,7 +23,11 @@ class TaskRunner:
 
         # Use a dictionary for fast lookup after gather completes
         task_keys = [task.key for task in tasks]
-        coroutines = [task.coro for task in tasks]
+
+        if concurrency_limit:
+            coroutines = TaskRunner._apply_semaphore(tasks, concurrency_limit)
+        else:
+            coroutines = [task.coro for task in tasks]
 
         results_or_exceptions = await asyncio.gather(*coroutines, return_exceptions=True)
 
@@ -38,25 +44,42 @@ class TaskRunner:
         return outcomes
 
     @staticmethod
-    async def run_as_group(tasks: List[AsyncTask[Any, Any]]) -> List[TaskResult[Any, Any]]:
+    async def run_as_group(
+        tasks: List[AsyncTask[Any, Any]], concurrency_limit: Optional[int] = None
+    ) -> List[TaskResult[Any, Any]]:
         if sys.version_info < (3, 11):
             raise RuntimeError("TaskGroup requires Python 3.11 or newer.")
-
         if not tasks:
             return []
 
+        if concurrency_limit:
+            coroutines_to_run = TaskRunner._apply_semaphore(tasks, concurrency_limit)
+        else:
+            coroutines_to_run = [task.coro for task in tasks]
+
         task_to_key_map = {}
 
-        try:
-            async with asyncio.TaskGroup() as tg:
-                asyncio_tasks = []
-                for task_model in tasks:
-                    t = tg.create_task(task_model.coro)
-                    asyncio_tasks.append(t)
-                    task_to_key_map[t] = task_model.key
-        except* Exception as eg:
-            logger.error(f"TaskGroup failed with {len(eg.exceptions)} error(s).")
-            raise eg
+        # map the original keys to the new tasks
+        original_keys = [task.key for task in tasks]
 
-        # If we reach here, all tasks succeeded
+        async with asyncio.TaskGroup() as tg:
+            asyncio_tasks = []
+            for i, coro in enumerate(coroutines_to_run):
+                t = tg.create_task(coro)
+                asyncio_tasks.append(t)
+                task_to_key_map[t] = original_keys[i]
+
         return [TaskResult(key=task_to_key_map[t], result=t.result()) for t in asyncio_tasks]
+
+    @staticmethod
+    def _apply_semaphore(tasks: List[AsyncTask[Any, Any]], concurrency_limit: int) -> List[Coroutine[Any, Any, Any]]:
+        """Apply a semaphore to limit concurrency."""
+        logger.info(f"Applying a concurrency limit of {concurrency_limit}.")
+        semaphore = asyncio.Semaphore(concurrency_limit)
+
+        async def wrapper(coro: Coroutine[Any, Any, Any]) -> Any:
+            async with semaphore:
+                return await coro
+
+        # Apply the wrapper to each coroutine
+        return [wrapper(task.coro) for task in tasks]
