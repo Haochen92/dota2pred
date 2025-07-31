@@ -1,0 +1,30 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "dota_oracle_schedule"
+version = "0.1.0"
+description = "Runs daily scheduled task for the application"
+authors = ["liuhaochen <liu_hao_chen@hotmail.com>"]
+packages = [{include = "*", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+dota-oracle-common = {path = "../packages/dota_oracle_common", develop = true}
+dota-oracle-pipeline = {path = "../packages/dota_oracle_pipeline", develop = true}
+prefect = ">=3.0"
+prefect-aws = "*"
+prefect-sqlalchemy = "*"
+prefect-github = "*"
+dependency-injector = "*"
+redis = "*"
+requests = "*"
+aiohttp = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-mock = "*"
+pytest-asyncio = "^0.26.0"
+testcontainers = {extras = ["postgres", "redis"], version = "^4.10.0"}
+mypy = "*"
