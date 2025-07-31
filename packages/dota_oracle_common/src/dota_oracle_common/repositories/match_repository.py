@@ -58,7 +58,9 @@ class MatchRepository(BaseRepository):
         """
         args: instances: A list of MatchWithOutcome DTO
 
-        Description: Store completed match into MatchTable and MatchOutcomeTable using cascade
+        Description:
+            Store completed match into MatchTable and MatchOutcomeTable using cascade.
+            No conflict handling feature.
         """
 
         validated_matches = []
@@ -78,7 +80,6 @@ class MatchRepository(BaseRepository):
 
         try:
             self.session.add_all(validated_matches)
-            await self.session.commit()
         except SQLAlchemyError as e:
             logger.error(f"Database error encountered when attempting to insert data {e}", exc_info=True)
             raise
