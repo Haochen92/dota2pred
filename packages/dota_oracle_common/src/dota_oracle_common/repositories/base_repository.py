@@ -51,7 +51,6 @@ class BaseRepository:
             stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(index_elements=on_conflict_keys)
 
             await self.session.execute(stmt)
-            await self.session.flush()
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -84,7 +83,6 @@ class BaseRepository:
             )
 
             await self.session.execute(stmt)
-            await self.session.flush()
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
