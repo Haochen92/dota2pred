@@ -1,9 +1,10 @@
 from typing import List, Optional
-from ..models.match import MatchOutcomeTable, MatchTable
+from ..models.match import MatchOutcomeTable, MatchTable, MatchWithOutcome
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from ..utils.set_logging import get_logger
 from .base_repository import BaseRepository
+from pydantic import ValidationError
 
 logger = get_logger(__name__)
 
@@ -36,6 +37,9 @@ class MatchRepository(BaseRepository):
 
     async def insert_match_outcome(self, instances: List[MatchOutcomeTable]) -> None:
         """
+        args: instances: A list of MatchOutcomeTable Instances
+
+        Description:
         Upsert a match outcome using INSERT ... ON CONFLICT DO UPDATE.
         """
         if not instances:
@@ -48,6 +52,38 @@ class MatchRepository(BaseRepository):
             await self._insert_data(model_class=MatchOutcomeTable, instances=instances)
         except Exception as e:
             logger.error(f"Error encountered when trying to insert MatchTable data, {e}", exc_info=True)
+            raise
+
+    async def insert_match_with_outcome(self, instances: List[MatchWithOutcome]) -> None:
+        """
+        args: instances: A list of MatchWithOutcome DTO
+
+        Description: Store completed match into MatchTable and MatchOutcomeTable using cascade
+        """
+
+        validated_matches = []
+        # Validate Inputs
+        for match in instances:
+            try:
+                validated_match = MatchTable.model_validate(match)
+                validated_match.outcome = MatchOutcomeTable.model_validate(match)
+                validated_matches.append(validated_match)
+            except (ValueError, ValidationError) as ve:
+                logger.warning(f"Match match_id: {match.match_id} failed validation, {ve}")
+                continue
+
+        if not validated_matches:
+            logger.info("No validated matches, returning...")
+            return
+
+        try:
+            self.session.add_all(validated_matches)
+            await self.session.commit()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error encountered when attempting to insert data {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error while inserting data: {e}", exc_info=True)
             raise
 
     async def get_match_details(
