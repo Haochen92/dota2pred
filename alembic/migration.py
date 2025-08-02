@@ -33,7 +33,6 @@ def main():
     # Updated to match your Docker Compose configuration
     databases = [
         {"url": "postgresql://liuhaochen:110799@localhost:6000/dota2", "description": "Production database (dota2)"},
-        {"url": "postgresql://liuhaochen:110799@localhost:6006/dota2", "description": "Test database (test_dota2)"},
     ]
 
     # Track success
