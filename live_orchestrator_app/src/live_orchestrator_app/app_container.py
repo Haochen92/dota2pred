@@ -8,7 +8,7 @@ from dependency_injector import providers, containers
 from dota_oracle_common.redis_component.redis_client_factory import RedisClientFactory
 
 # database
-from dota_oracle_common.postgresql import DatabaseEngineFactory
+from dota_oracle_common.postgresql import DatabaseManager
 
 # --- Feature Engineering Components ---
 from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamFeatureCreator
@@ -62,7 +62,7 @@ class AppContainer(containers.DeclarativeContainer):
 
     # --- Clients ---
     redis_async_pool = providers.Resource(RedisClientFactory.create_instance)
-    db_engine = providers.Resource(DatabaseEngineFactory.get_engine)
+    db_session_factory = providers.Resource(DatabaseManager.get_session_factory)
 
     # --- Feature Engineering Components ---
     team_feature_creator = providers.Factory(TeamFeatureCreator)
@@ -94,7 +94,7 @@ class AppContainer(containers.DeclarativeContainer):
     new_match_data_provider = providers.Factory(NewMatchDataProvider, redis_service=redis_service)
 
     feature_engineering_data_provider = providers.Factory(
-        FeatureEngineeringDataProvider, redis_service=redis_service, db_engine=db_engine
+        FeatureEngineeringDataProvider, redis_service=redis_service, db_session_factory=db_session_factory
     )
 
     prediction_data_provider = providers.Factory(
@@ -105,21 +105,23 @@ class AppContainer(containers.DeclarativeContainer):
     completion_data_provider = providers.Factory(CompletionDataProvider, redis_service=redis_service)
 
     # --- Event Processors ---
-    new_match_event_processor = providers.Factory(NewMatchEventProcessor, db_engine=db_engine)
+    new_match_event_processor = providers.Factory(NewMatchEventProcessor, db_session_factory=db_session_factory)
 
     feature_engineering_event_processor = providers.Factory(
-        FeatureEngineeringEventProcessor, db_engine=db_engine, feature_engineering_service=feature_engineering_service
+        FeatureEngineeringEventProcessor,
+        db_session_factory=db_session_factory,
+        feature_engineering_service=feature_engineering_service,
     )
 
     prediction_event_processor = providers.Factory(
         PredictionEventProcessor,
-        db_engine=db_engine,
+        db_session_factory=db_session_factory,
         feature_preparation_service=feature_preparation_service,
         match_prediction_service=match_prediction_service,
     )
 
     completion_event_processor = providers.Factory(
-        CompletionEventProcessor, history_update_service=history_update_service, db_engine=db_engine
+        CompletionEventProcessor, history_update_service=history_update_service, db_session_factory=db_session_factory
     )
 
     # --- Orchestrators ---

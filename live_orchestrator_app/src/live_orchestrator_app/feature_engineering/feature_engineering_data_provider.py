@@ -3,7 +3,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.redis.schema import StreamMatchEventData
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from ..services.redis_service import RedisService
 from dota_oracle_common.models.pipeline import FeatureEngineeringWorkItem
 
@@ -15,9 +15,9 @@ DEFAULT_CONSUMER_NAME = "consumer_one"
 class FeatureEngineeringDataProvider:
     """Data provider for feature engineering pipeline."""
 
-    def __init__(self, redis_service: RedisService, db_engine: AsyncEngine):
+    def __init__(self, redis_service: RedisService, db_session_factory: async_sessionmaker[AsyncSession]):
         self.redis = redis_service
-        self.engine = db_engine
+        self.db_session_factory = db_session_factory
 
     async def get_work_items(self, consumer_name: str = DEFAULT_CONSUMER_NAME) -> List[FeatureEngineeringWorkItem]:
         """
@@ -98,7 +98,7 @@ class FeatureEngineeringDataProvider:
         logger.info(f"Fetching match details for {len(unique_match_ids)} unique matches")
 
         try:
-            async with AsyncSession(self.engine) as session:
+            async with self.db_session_factory() as session:
                 match_repository = MatchRepository(session=session)
 
                 match_details_list = await match_repository.get_match_details(input_id_list=unique_match_ids)

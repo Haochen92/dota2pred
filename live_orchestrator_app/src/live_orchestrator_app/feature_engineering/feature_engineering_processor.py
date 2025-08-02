@@ -1,7 +1,7 @@
 from dota_oracle_common.utils.set_logging import get_logger
 from ..services.feature_engineering_service import FeatureEngineeringService
 from dota_oracle_common.models.pipeline import FeatureEngineeringWorkItem
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 logger = get_logger(__name__)
 
@@ -9,9 +9,13 @@ logger = get_logger(__name__)
 class FeatureEngineeringEventProcessor:
     """Event processor for handling single feature engineering work items."""
 
-    def __init__(self, feature_engineering_service: FeatureEngineeringService, db_engine: AsyncEngine):
+    def __init__(
+        self,
+        feature_engineering_service: FeatureEngineeringService,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ):
         self.feature_engineering_service = feature_engineering_service
-        self.engine = db_engine
+        self.db_session_factory = db_session_factory
 
     async def process_event(self, work_item: FeatureEngineeringWorkItem) -> None:
         """
@@ -24,7 +28,7 @@ class FeatureEngineeringEventProcessor:
         match_id = work_item.event_data.match_id
         event_id = work_item.event_id
 
-        async with AsyncSession(self.engine) as session:
+        async with self.db_session_factory() as session:
             async with session.begin():
                 try:
                     logger.debug(f"Processing feature engineering for event '{event_id}', match_id={match_id}")
