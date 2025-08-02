@@ -13,10 +13,17 @@ from typing import List, Set
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from prefect import flow, task
+from prefect.logging import get_run_logger
+from prefect.cache_policies import INPUTS
+from datetime import timedelta
+
 logger = get_logger(__name__)
 
 
+@flow()
 async def batch_matches_orchestrator():
+    prefect_logger = get_run_logger()
     db_engine = DatabaseEngineFactory.get_engine()
     async with AsyncSession(db_engine) as session:
         async with session.begin():
@@ -33,7 +40,7 @@ async def batch_matches_orchestrator():
 
                 # Store match details to db
                 await store_completed_matches(session, completed_matches)
-                logger.info(
+                prefect_logger.info(
                     f"""
                         Successfully completed Batch Matches fetching operations.
                         Found {len(pro_match_ids)} pro_matches, of which
@@ -42,10 +49,11 @@ async def batch_matches_orchestrator():
                     """
                 )
             except Exception as e:
-                logger.error(f"batch matches orchetrator failed due to error {e}", exc_info=True)
+                prefect_logger.error(f"batch matches orchetrator failed due to error {e}", exc_info=True)
                 raise
 
 
+@task
 async def fetch_pro_matches() -> List[int]:
     """
     Description: calls opendota's fetch_promatch endpoint without any query parameters
@@ -90,7 +98,7 @@ async def find_existing_Ids(session: AsyncSession, ids_to_check: List[int]) -> S
     if not ids_to_check:
         return set()
 
-    stmt = select(MatchTable.match_id).where(MatchTable.match_id.in_(ids_to_check), MatchTable.outcome.is_not(None))
+    stmt = select(MatchTable.match_id).where(MatchTable.match_id.in_(ids_to_check)).where(MatchTable.outcome.has())
 
     results = await session.execute(stmt)
 
@@ -127,6 +135,13 @@ async def fetch_completed_matches_concurrently(match_ids_set: Set[int]) -> List[
     return completed_matches
 
 
+@task(
+    name="fetch_and_parse_match",
+    retries=3,
+    retry_delay_seconds=10,
+    cache_policy=INPUTS,
+    cache_expiration=timedelta(days=1),
+)
 async def fetch_and_parse_match(match_id: int) -> MatchWithOutcome:
     try:
         res = await fetch_match_details(match_id)
