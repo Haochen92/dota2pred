@@ -3,7 +3,7 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # --- CONFIGURATION ---
 # A dedicated pool for batch jobs to isolate them from the live orchestrator.
-POOL_NAME="dota-batch-pool"
+POOL_NAME="dota_oracle_scheduler"
 
 echo "--- Batch Service Entrypoint Script ---"
 
@@ -19,10 +19,7 @@ fi
 # Step 2: Run all deployment scripts for the batch jobs.
 # You will create a separate .py file for each scheduled job.
 echo "[2/3] Registering all batch deployments..."
-python -m dota_oracle_batch.deploy_db_backup
-python -m dota_oracle_batch.deploy_constants_fetch
-python -m dota_oracle_batch.deploy_completed_matches
-python -m dota_oracle_batch.deploy_prefect_cleanup
+python -m dota_oracle_schedules.deploy_daily
 # Add any new deployment scripts here in the future.
 
 # Step 3: Start the worker as the main and final process.
