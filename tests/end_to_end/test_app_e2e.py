@@ -104,12 +104,12 @@ class TestLivePipelineE2E:
         """Completed match outcome for first match."""
         return [ProMatchOutcome(match_id=self.MATCH_IDS[0], radiant_win=True)]
 
-    async def _verify_system_state(self, redis_service, db_engine, expected: VerificationState):
+    async def _verify_system_state(self, redis_service, db_session_factory, expected: VerificationState):
         """A single, clean entry point to verify the entire system state."""
         logger.info(f"--- Verifying State for: {expected.cycle_name} ---")
         await self._verify_redis_streams(redis_service, expected.redis_pending, expected.cycle_name)
         await self._verify_match_statuses(redis_service, expected.redis_statuses, expected.cycle_name)
-        await self._verify_db_counts(db_engine, expected.db_counts, expected.cycle_name)
+        await self._verify_db_counts(db_session_factory, expected.db_counts, expected.cycle_name)
         logger.info(f"--- State for {expected.cycle_name} verified successfully. ---")
 
     async def _verify_redis_streams(self, redis_service, expected_pending: Dict[str, int], cycle: str):
@@ -134,16 +134,16 @@ class TestLivePipelineE2E:
                 status == expected_status
             ), f"[{cycle}] Match {match_id} status is '{status}', expected '{expected_status}'"
 
-    async def _verify_db_counts(self, db_engine, expected_counts: Dict[str, int], cycle: str):
+    async def _verify_db_counts(self, db_session_factory, expected_counts: Dict[str, int], cycle: str):
         table_map = {
             "matches": MatchTable,
             "predictions": MatchPredictionTable,
             "outcomes": MatchOutcomeTable,
         }
-        async with db_engine.begin() as conn:
+        async with db_session_factory() as session:
             for key, table in table_map.items():
                 # Use `table.match_id` for counting to handle potential empty tables
-                count = await conn.scalar(select(func.count(table.match_id)))
+                count = await session.scalar(select(func.count(table.match_id)))
                 expected = expected_counts.get(key, 0)
                 assert (
                     count == expected
@@ -154,15 +154,17 @@ class TestLivePipelineE2E:
     async def test_initial_state(self, configured_test_container: AppContainer):
         """Verify that the system starts in a clean, empty state."""
         redis_service = await configured_test_container.redis_service()
-        db_engine = configured_test_container.db_engine()
-        await self._verify_system_state(redis_service, db_engine, VerificationState(cycle_name="Initial State"))
+        db_session_factory = await configured_test_container.db_session_factory()
+        await self._verify_system_state(
+            redis_service, db_session_factory, VerificationState(cycle_name="Initial State")
+        )
 
     @pytest.mark.dependency(depends=["test_initial_state"])
     async def test_cycle_1_new_match_discovery(self, configured_test_container: AppContainer, cycle1_live_games):
         """CYCLE 1: Tests the discovery and full processing of two new matches."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_engine = configured_test_container.db_engine()
+        db_session_factory = await configured_test_container.db_session_factory()
 
         # ARRANGE
         with (
@@ -179,7 +181,7 @@ class TestLivePipelineE2E:
         # ASSERT: Verify the system state after processing two new matches.
         await self._verify_system_state(
             redis_service,
-            db_engine,
+            db_session_factory,
             VerificationState(
                 cycle_name="Cycle 1 - Two New Matches",
                 redis_pending={"pending_completion": 2},
@@ -197,7 +199,7 @@ class TestLivePipelineE2E:
         """CYCLE 2: Tests discovery of one new match while others are pending."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_engine = configured_test_container.db_engine()
+        db_session_factory = await configured_test_container.db_session_factory()
 
         with (
             patch(
@@ -211,7 +213,7 @@ class TestLivePipelineE2E:
 
         await self._verify_system_state(
             redis_service,
-            db_engine,
+            db_session_factory,
             VerificationState(
                 cycle_name="Cycle 2 - One Additional Match",
                 redis_pending={"pending_completion": 3},
@@ -227,7 +229,7 @@ class TestLivePipelineE2E:
         """CYCLE 3: Tests the completion of one match and its state removal from pending."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_engine = configured_test_container.db_engine()
+        db_session_factory = await configured_test_container.db_session_factory()
 
         with (
             patch(
@@ -244,7 +246,7 @@ class TestLivePipelineE2E:
 
         await self._verify_system_state(
             redis_service,
-            db_engine,
+            db_session_factory,
             VerificationState(
                 cycle_name="Cycle 3 - Match Completion",
                 redis_pending={"pending_completion": 2},

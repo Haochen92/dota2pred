@@ -4,7 +4,7 @@ Event processor-related fixtures for tests.
 
 import pytest
 from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 # Event processor imports
 from live_orchestrator_app.completion.completion_event_processor import CompletionEventProcessor
@@ -49,14 +49,20 @@ def mock_completion_event_processor() -> CompletionEventProcessor:
 
 
 @pytest.fixture
-def new_match_event_processor(mock_async_engine: AsyncEngine) -> NewMatchEventProcessor:
-    return NewMatchEventProcessor(db_engine=mock_async_engine)
+def new_match_event_processor(mock_async_session) -> NewMatchEventProcessor:
+    mock_session_factory = AsyncMock(spec=async_sessionmaker)
+    mock_session_factory.return_value.__aenter__.return_value = mock_async_session
+    mock_session_factory.return_value.__aexit__.return_value = None
+    return NewMatchEventProcessor(db_session_factory=mock_session_factory)
 
 
 @pytest.fixture
-def completion_event_processor(mock_history_update_service, mock_async_engine) -> CompletionEventProcessor:
+def completion_event_processor(mock_history_update_service, mock_async_session) -> CompletionEventProcessor:
+    mock_session_factory = AsyncMock(spec=async_sessionmaker)
+    mock_session_factory.return_value.__aenter__.return_value = mock_async_session
+    mock_session_factory.return_value.__aexit__.return_value = None
     processor = CompletionEventProcessor(
-        db_engine=mock_async_engine, history_update_service=mock_history_update_service
+        db_session_factory=mock_session_factory, history_update_service=mock_history_update_service
     )
 
     return processor
@@ -64,21 +70,27 @@ def completion_event_processor(mock_history_update_service, mock_async_engine) -
 
 @pytest.fixture
 def feature_engineering_event_processor(
-    mock_feature_engineering_service: FeatureEngineeringService, mock_async_engine: AsyncEngine
+    mock_feature_engineering_service: FeatureEngineeringService, mock_async_session
 ) -> FeatureEngineeringEventProcessor:
+    mock_session_factory = AsyncMock(spec=async_sessionmaker)
+    mock_session_factory.return_value.__aenter__.return_value = mock_async_session
+    mock_session_factory.return_value.__aexit__.return_value = None
     return FeatureEngineeringEventProcessor(
-        feature_engineering_service=mock_feature_engineering_service, db_engine=mock_async_engine
+        feature_engineering_service=mock_feature_engineering_service, db_session_factory=mock_session_factory
     )
 
 
 @pytest.fixture
 def prediction_event_processor(
-    mock_async_engine: AsyncEngine,
+    mock_async_session,
     mock_feature_preparation_service: FeaturePreparationService,
     mock_match_prediction_service: MatchPredictionService,
 ) -> PredictionEventProcessor:
+    mock_session_factory = AsyncMock(spec=async_sessionmaker)
+    mock_session_factory.return_value.__aenter__.return_value = mock_async_session
+    mock_session_factory.return_value.__aexit__.return_value = None
     return PredictionEventProcessor(
-        db_engine=mock_async_engine,
+        db_session_factory=mock_session_factory,
         feature_preparation_service=mock_feature_preparation_service,
         match_prediction_service=mock_match_prediction_service,
     )

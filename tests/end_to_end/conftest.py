@@ -121,9 +121,14 @@ async def setup_hero_data(e2e_postgres_engine):
 
 @pytest_asyncio.fixture(scope="function")
 async def test_app_container(e2e_redis_client, e2e_postgres_engine) -> AppContainer:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
     container = AppContainer()
     container.redis_async_pool.override(e2e_redis_client)
-    container.db_engine.override(e2e_postgres_engine)
+
+    # Create session factory from engine
+    session_factory = async_sessionmaker(bind=e2e_postgres_engine, class_=AsyncSession, expire_on_commit=False)
+    container.db_session_factory.override(session_factory)
 
     return container
 

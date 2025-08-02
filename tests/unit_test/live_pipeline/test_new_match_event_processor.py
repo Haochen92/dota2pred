@@ -10,9 +10,7 @@ async def test_process_event_successfully(
     work_item = new_match_work_item_factory.build()
     match_details = match_table_factory.build(match_id=work_item.match_id)
 
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
+    # No longer need to mock AsyncSession class since we're using session factory
 
     mock_transform_data = mocker.patch.object(
         new_match_event_processor, "_transform_match_data", return_value=match_details

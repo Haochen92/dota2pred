@@ -112,7 +112,7 @@ class TestComprehensiveE2EWiring:
 
         # Test that all providers are defined and configured
         assert test_app_container.redis_async_pool is not None
-        assert test_app_container.db_engine is not None
+        assert test_app_container.db_session_factory is not None
         assert test_app_container.team_feature_creator is not None
         assert test_app_container.player_hero_features_creator is not None
         assert test_app_container.model_inference_service is not None
