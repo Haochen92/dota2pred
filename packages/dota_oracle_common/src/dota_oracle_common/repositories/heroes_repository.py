@@ -13,7 +13,7 @@ class HeroesRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def store_hero_data(self, heroes_input: Dict[str, HeroDataTable]) -> None:
+    async def upsert_hero_data(self, heroes_input: Dict[str, HeroDataTable]) -> None:
         if not heroes_input:
             logger.warning(f"Missing heroes_data: {heroes_input}")
             return
