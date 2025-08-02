@@ -60,6 +60,8 @@ services:
       db:
         condition: service_healthy
         restart: true
+    volumes:
+      - ~/.prefect/storage:/root/.prefect/storage
     networks:
       - dota-pred
       - shared-caddy-network
@@ -96,6 +98,25 @@ services:
         condition: service_healthy
     networks:
       - dota-pred
+
+  dota-oracle-schedules:
+    build:
+      context: .
+      dockerfile: ./dota_oracle_schedules/Dockerfile
+    container_name: dota-oracle-schedules
+    env_file: ./.env
+    depends_on:
+      prefect-server:
+        condition: service_started
+      db:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    volumes:
+      - ~/.prefect/storage:/root/.prefect/storage
+    networks:
+      - dota-pred
+
 
   # Logging and Observability
   loki:
