@@ -20,18 +20,18 @@ RUN poetry config virtualenvs.create false
 COPY packages/ ./packages/
 
 # 2. Copy the configuration and source for the NEW batch app.
-COPY dota_oracle_batch/pyproject.toml ./dota_oracle_batch/pyproject.toml
-COPY dota_oracle_batch/poetry.lock ./dota_oracle_batch/poetry.lock
-COPY dota_oracle_batch/src/ ./dota_oracle_batch/src/
+COPY dota_oracle_schedules/pyproject.toml ./dota_oracle_schedules/pyproject.toml
+COPY dota_oracle_schedules/poetry.lock ./dota_oracle_schedules/poetry.lock
+COPY dota_oracle_schedules/src/ ./dota_oracle_schedules/src/
 
 # 3. Run ONE install command from within the new batch app's directory.
-RUN cd dota_oracle_batch && poetry install --only=main --no-interaction
+RUN cd dota_oracle_schedules && poetry install --only=main --no-interaction
 
 # --- END OF INSTALLATION ---
 
 # Copy the entrypoint script for the batch service
-# Note: We copy it from its new home in the dota_oracle_batch directory
-COPY dota_oracle_batch/entrypoint.sh ./entrypoint.sh
+# Note: We copy it from its new home in the dota_oracle_schedules directory
+COPY dota_oracle_schedules/entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x /app/entrypoint.sh
 
