@@ -1,4 +1,4 @@
-from dota_oracle_common.postgresql import DatabaseEngineFactory
+from dota_oracle_common.postgresql import DatabaseManager
 from dota_oracle_common.utils import get_logger
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
 from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota
@@ -24,8 +24,8 @@ logger = get_logger(__name__)
 @flow()
 async def batch_matches_orchestrator():
     prefect_logger = get_run_logger()
-    db_engine = DatabaseEngineFactory.get_engine()
-    async with AsyncSession(db_engine) as session:
+    local_session = DatabaseManager.get_session_factory()
+    async with local_session() as session:
         async with session.begin():
             try:
                 # Fetch match_ids

@@ -1,5 +1,5 @@
 from prefect import flow
-from dota_oracle_common.postgresql import DatabaseEngineFactory
+from dota_oracle_common.postgresql import DatabaseManager
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.heroes import HeroDataTable, HeroData
@@ -16,10 +16,10 @@ async def hero_data_orchestrator():
     # fetch hero data from api endpoint
     hero_data = await fetch_hero_data()
 
-    db_engine = DatabaseEngineFactory.get_engine()
+    local_session = DatabaseManager.get_session_factory()
 
     # Store data
-    async with AsyncSession(db_engine) as session:
+    async with local_session() as session:
         async with session.begin():
             try:
                 await store_hero_data(session, hero_data)
