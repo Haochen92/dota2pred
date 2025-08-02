@@ -24,7 +24,7 @@ class CompletionEventProcessor:
             await self._update_match_outcome(match_id=event_data.match_id, match_outcome=match_outcome)
 
             # update related match histories
-            await self.history_updater.update_histories(event_data.match_id)
+            await self.history_updater.update_histories(self.db_session_factory, event_data.match_id)
         except Exception as e:
             raise e
 
