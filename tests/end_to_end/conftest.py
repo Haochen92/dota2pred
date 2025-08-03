@@ -94,7 +94,7 @@ async def setup_hero_data(e2e_postgres_engine):
 
         async with AsyncSession(e2e_postgres_engine) as session:
             heroes_repo = HeroesRepository(session)
-            await heroes_repo.store_hero_data(heroes_table_dict)
+            await heroes_repo.upsert_hero_data(heroes_table_dict)
             await session.commit()
 
             # Verify the data was stored and is accessible

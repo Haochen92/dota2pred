@@ -154,7 +154,7 @@ class TestLivePipelineE2E:
     async def test_initial_state(self, configured_test_container: AppContainer):
         """Verify that the system starts in a clean, empty state."""
         redis_service = await configured_test_container.redis_service()
-        db_session_factory = await configured_test_container.db_session_factory()
+        db_session_factory = configured_test_container.db_session_factory()
         await self._verify_system_state(
             redis_service, db_session_factory, VerificationState(cycle_name="Initial State")
         )
@@ -164,7 +164,7 @@ class TestLivePipelineE2E:
         """CYCLE 1: Tests the discovery and full processing of two new matches."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_session_factory = await configured_test_container.db_session_factory()
+        db_session_factory = configured_test_container.db_session_factory()
 
         # ARRANGE
         with (
@@ -199,7 +199,7 @@ class TestLivePipelineE2E:
         """CYCLE 2: Tests discovery of one new match while others are pending."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_session_factory = await configured_test_container.db_session_factory()
+        db_session_factory = configured_test_container.db_session_factory()
 
         with (
             patch(
@@ -229,7 +229,7 @@ class TestLivePipelineE2E:
         """CYCLE 3: Tests the completion of one match and its state removal from pending."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
-        db_session_factory = await configured_test_container.db_session_factory()
+        db_session_factory = configured_test_container.db_session_factory()
 
         with (
             patch(
