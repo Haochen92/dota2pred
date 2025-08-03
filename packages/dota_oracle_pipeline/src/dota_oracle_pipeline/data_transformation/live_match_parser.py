@@ -24,12 +24,12 @@ async def parse_live_league_games(raw_live_games: List[OngoingLeagueGame]) -> Li
             }
 
             # Populate player data
-            for team in ["radiant", "dire"]:
-                faction = getattr(row.scoreboard, team)
-                for player in faction.players:
-                    slot = player.player_slot
-                    player_data = {f"slot_{slot}_account_id": player.account_id, f"slot_{slot}_hero_id": player.hero_id}
-                    match_data.update(player_data)
+            all_players = row.scoreboard.radiant.players + row.scoreboard.dire.players
+
+            for player in all_players:
+                slot = player.player_slot
+                match_data[f"slot_{slot}_account_id"] = player.account_id
+                match_data[f"slot_{slot}_hero_id"] = player.hero_id
 
             parsed_live_league_games.append(MatchTable(**match_data))
         except Exception as e:
