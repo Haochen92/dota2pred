@@ -1,8 +1,6 @@
 from typing import List, Optional
 from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.utils import get_logger
-from dota_oracle_common.utils.async_utils import TaskRunner
-from dota_oracle_common.models.utils import AsyncTask
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
 from datetime import datetime
 from dota_oracle_common.models.match import MatchTable
@@ -44,55 +42,33 @@ class TeamFeatureCreator:
                 else:
                     effective_before = get_current_utc_iso_timestamp()
 
-                # Create AsyncTask objects for concurrent execution
-                team_tasks = [
-                    AsyncTask(
-                        key="radiant_win_rate",
-                        coro=self._calculate_team_win_rate(
-                            db_session,
-                            radiant_team,
-                            before=effective_before,
-                            after=after_timestamp,
-                            limit=history_limit,
-                        ),
-                    ),
-                    AsyncTask(
-                        key="dire_win_rate",
-                        coro=self._calculate_team_win_rate(
-                            db_session, dire_team, before=effective_before, after=after_timestamp, limit=history_limit
-                        ),
-                    ),
-                    AsyncTask(
-                        key="radiant_dire_matchup",
-                        coro=self._calculate_matchup_win_rate(
-                            db_session,
-                            radiant_team,
-                            dire_team,
-                            before=effective_before,
-                            after=after_timestamp,
-                            limit=history_limit,
-                        ),
-                    ),
-                ]
+                radiant_win_rate = await self._calculate_team_win_rate(
+                    db_session,
+                    radiant_team,
+                    before=effective_before,
+                    after=after_timestamp,
+                    limit=history_limit,
+                )
 
-                # Execute all tasks concurrently using TaskRunner
-                results = await TaskRunner.run_concurrently(team_tasks)
+                dire_win_rate = await self._calculate_team_win_rate(
+                    db_session, dire_team, before=effective_before, after=after_timestamp, limit=history_limit
+                )
 
-                # Extract results from TaskResult objects
-                outcome_dict = {}
-                for task_result in results:
-                    try:
-                        outcome_dict[task_result.key] = task_result.get_result()
-                    except Exception as e:
-                        logger.warning(f"Task {task_result.key} failed for match {match_id}: {e}")
-                        outcome_dict[task_result.key] = 0.5  # Default fallback
+                radiant_dire_matchup = await self._calculate_matchup_win_rate(
+                    db_session,
+                    radiant_team,
+                    dire_team,
+                    before=effective_before,
+                    after=after_timestamp,
+                    limit=history_limit,
+                )
 
                 # Create the feature row
                 team_features_row = TeamFeaturesTable(
                     match_id=match_id,
-                    radiant_win_rate=outcome_dict.get("radiant_win_rate", 0.5),
-                    dire_win_rate=outcome_dict.get("dire_win_rate", 0.5),
-                    radiant_dire_matchup=outcome_dict.get("radiant_dire_matchup", 0.5),
+                    radiant_win_rate=radiant_win_rate,
+                    dire_win_rate=dire_win_rate,
+                    radiant_dire_matchup=radiant_dire_matchup,
                 )
                 all_match_features.append(team_features_row)
 

@@ -1,7 +1,5 @@
 from typing import List, Optional
 from dota_oracle_common.utils import get_logger
-from dota_oracle_common.utils.async_utils import TaskRunner
-from dota_oracle_common.models.utils import AsyncTask
 from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import PlayerHeroFeatureTable
@@ -20,8 +18,6 @@ class PlayerHeroFeaturesCreator:
         session: AsyncSession,
         match_instances: List[MatchTable],
         before_timestamp: Optional[datetime] = None,
-        after_timestamp: Optional[datetime] = None,
-        history_limit: Optional[int] = None,
     ) -> List[PlayerHeroFeatureTable]:
 
         player_hero_features_list: List[PlayerHeroFeatureTable] = []
@@ -30,8 +26,7 @@ class PlayerHeroFeaturesCreator:
         for instance in match_instances:
             match_id = instance.match_id
             try:
-                # Create AsyncTask objects for all player-hero combinations
-                player_hero_tasks = []
+                outcome_dict = {}
 
                 for i in player_slots:
                     account_id = getattr(instance, f"slot_{i}_account_id")
@@ -40,33 +35,13 @@ class PlayerHeroFeaturesCreator:
                     start_time = instance.start_time
 
                     if not account_id or not hero_id or not start_time:
-                        raise ValueError(
-                            f"Match {match_id}, Slot {i}: Missing account_id ({account_id}) "
-                            f"or hero_id ({hero_id}) or start_time ({start_time}). "
-                            f"Failing this match."
-                        )
+                        raise ValueError(f"Match {match_id}, Slot {i}: Missing required data.")
 
                     effective_before = before_timestamp if before_timestamp is not None else start_time
 
-                    # Create task for this player-hero combination
-                    task = AsyncTask(
-                        key=feature_key, coro=self._calculate_win_rate(session, account_id, hero_id, effective_before)
-                    )
-                    player_hero_tasks.append(task)
+                    win_rate = await self._calculate_win_rate(session, account_id, hero_id, effective_before)
 
-                # Execute all player-hero tasks concurrently for this match
-                results = await TaskRunner.run_concurrently(player_hero_tasks)
-
-                # Extract results from TaskResult objects
-                outcome_dict = {}
-                for task_result in results:
-                    try:
-                        outcome_dict[task_result.key] = task_result.get_result()
-                    except Exception as e:
-                        logger.warning(f"Task {task_result.key} failed for match {match_id}: {e}")
-                        outcome_dict[task_result.key] = 0.5  # Default fallback
-
-                # Create single feature row for this match with all player-hero win rates
+                    outcome_dict[feature_key] = win_rate
                 feature_row = PlayerHeroFeatureTable(match_id=instance.match_id, **outcome_dict)
                 player_hero_features_list.append(feature_row)
 
