@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, TypeVar, Generic
+from typing import List, Optional, TypeVar, Generic, Annotated
 from datetime import datetime as dt
 
 PlayerType = TypeVar("PlayerType", bound="Player")
+FactionType = TypeVar("FactionType", bound="Faction")
 
 
 class TeamData(BaseModel):
@@ -43,7 +44,7 @@ class Faction(BaseModel, Generic[PlayerType]):
     players: List[PlayerType]
 
 
-class ScoreBoard(BaseModel, Generic[PlayerType]):
+class ScoreBoard(BaseModel, Generic[FactionType]):
     """Live game scoreboard data.
 
     Attributes:
@@ -53,8 +54,8 @@ class ScoreBoard(BaseModel, Generic[PlayerType]):
     """
 
     duration: float = 0.0
-    radiant: Faction[PlayerType]
-    dire: Faction[PlayerType]
+    radiant: FactionType
+    dire: FactionType
 
 
 class LiveLeagueGame(BaseModel):
@@ -77,7 +78,7 @@ class LiveLeagueGame(BaseModel):
     start_time: float = Field(default_factory=lambda: dt.now().timestamp())
     radiant_team: Optional[TeamData] = None
     dire_team: Optional[TeamData] = None
-    scoreboard: Optional[ScoreBoard[Player]] = None
+    scoreboard: Optional[ScoreBoard[Faction[Player]]] = None
 
 
 class OngoingPlayer(Player):
@@ -87,6 +88,10 @@ class OngoingPlayer(Player):
 
     #
     hero_id: int = Field(gt=0)
+
+
+class OngoingFaction(Faction[OngoingPlayer]):
+    players: Annotated[List[OngoingPlayer], Field(min_length=5, max_length=5)]
 
 
 class OngoingLeagueGame(LiveLeagueGame):
@@ -103,7 +108,7 @@ class OngoingLeagueGame(LiveLeagueGame):
 
     radiant_team: TeamData = Field(...)  # type: ignore
     dire_team: TeamData = Field(...)  # type: ignore
-    scoreboard: ScoreBoard[OngoingPlayer] = Field(...)  # type: ignore
+    scoreboard: ScoreBoard[OngoingFaction] = Field(...)  # type: ignore
 
 
 class ResultData(BaseModel):
