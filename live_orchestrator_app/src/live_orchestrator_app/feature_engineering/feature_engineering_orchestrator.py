@@ -81,7 +81,7 @@ class FeatureEngineeringOrchestrator:
                 count_success += 1
                 logger.debug(f"Successfully processed feature engineering for event {event_id}")
 
-            except (pydantic.ValidationError, ValueError, KeyError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 count_failure += 1
                 await self.redis.handle_processing_failure(
                     event_data=event_data,

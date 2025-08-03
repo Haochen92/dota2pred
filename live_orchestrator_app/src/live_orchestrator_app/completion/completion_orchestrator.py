@@ -62,7 +62,7 @@ class CompletionOrchestrator:
                 await self.redis.mark_match_as_completed(match_id=event_data.match_id, event_id_to_ack=event_id)
                 count_success += 1
 
-            except (pydantic.ValidationError, ValueError, KeyError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 await self.redis.handle_processing_failure(
                     event_data=event_data,
                     event_id=event_id,

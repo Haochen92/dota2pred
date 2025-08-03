@@ -69,7 +69,7 @@ class NewMatchOrchestrator:
                 await self.redis.add_match_for_processing(match_id)
                 logger.debug(f"Successfully processed new match {match_id}")
 
-            except (pydantic.ValidationError, ValueError, KeyError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 count_failure += 1
                 logger.error(f"Failed to process new match {match_id}: {ve}", exc_info=True)
                 # Note: No failure recording needed for new matches as they're not from Redis streams

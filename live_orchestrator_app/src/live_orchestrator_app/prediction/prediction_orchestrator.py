@@ -82,7 +82,7 @@ class PredictionOrchestrator:
                 await self.redis.advance_match_to_pending_completion(match_id, event_id)
                 logger.debug(f"Successfully processed prediction for event {event_id}")
 
-            except (pydantic.ValidationError, ValueError, KeyError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 count_failure += 1
                 await self.redis.handle_processing_failure(
                     event_data=event_data,
