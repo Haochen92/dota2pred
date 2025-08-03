@@ -1,6 +1,7 @@
 import aiohttp
 import os
 import numpy as np
+import backoff
 from dota_oracle_common.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
 from dota_oracle_common.utils import get_logger, load_workspace_env
 from pydantic import ValidationError
@@ -29,6 +30,7 @@ class ModelInferenceService:
         except Exception as e:
             raise e
 
+    @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_retires=5, max_time=60)
     async def get_prediction(self, input_features: np.ndarray) -> ModelPredictionAPIResponse:
 
         logger.info("calling model endpoint for prediction...")
@@ -59,6 +61,7 @@ class ModelInferenceService:
             logger.error(f"Error getting prediction: {e}", exc_info=True)
             raise e
 
+    @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_retires=5, max_time=60)
     async def get_model_metadata(self) -> ModelMetaDataAPIResponse:
         try:
             async with aiohttp.ClientSession() as session:
