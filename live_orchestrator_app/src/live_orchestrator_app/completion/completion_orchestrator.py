@@ -32,10 +32,14 @@ class CompletionOrchestrator:
             curr_matches: Dictionary of match_id to match details
         """
         # Retrieve work items from redis and match api for matches in events that have completed
+        logger.info("Starting Completion Cycle...")
 
         completion_work_items = await self.data_provider.get_work_items("consumer_one")
 
+        logger.info(f"Found {len(completion_work_items)} completed live matches")
+
         if not completion_work_items:
+            logger.info("None of the existing live matches have completed. Ending cycle early")
             return 0
 
         concurrent_tasks = []
