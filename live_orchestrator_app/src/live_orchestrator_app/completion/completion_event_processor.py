@@ -35,6 +35,7 @@ class CompletionEventProcessor:
                 try:
                     outcome_instance = MatchOutcomeTable(match_id=match_id, radiant_win=match_outcome)
                     await match_repository.insert_match_outcome([outcome_instance])
+                    logger.debug(f"Successfully updated match_outcome for match: {match_id}")
                 except Exception as e:
                     logger.error(f"Failed to update match outcome, {e}", exc_info=True)
                     raise e
