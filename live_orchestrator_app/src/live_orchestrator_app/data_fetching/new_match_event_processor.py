@@ -22,20 +22,15 @@ class NewMatchEventProcessor:
         Args:
             work_item: NewMatchWorkItem containing match data to process
         """
-        async with self.db_session_factory() as session:
-            async with session.begin():
-                try:
-                    # Transform match data
-                    transformed_match = await self._transform_match_data(work_item)
+        try:
+            transformed_match = await self._transform_match_data(work_item)
+            await self._store_match_details(transformed_match)
 
-                    # Store match details
-                    await self._store_match_details(transformed_match, session)
+            logger.info(f"Successfully processed new match {work_item.match_id}")
 
-                    logger.debug(f"Successfully processed new match {work_item.match_id}")
-
-                except Exception as e:
-                    logger.error(f"Failed to process new match {work_item.match_id}: {e}", exc_info=True)
-                    raise e
+        except Exception as e:
+            logger.error(f"Failed to process new match {work_item.match_id}: {e}", exc_info=True)
+            raise e
 
     async def _transform_match_data(self, work_item: NewMatchWorkItem) -> MatchTable:
         """Transforms live match data to MatchTable."""
@@ -51,12 +46,14 @@ class NewMatchEventProcessor:
             logger.error(f"Unable to transform live match data for match {work_item.match_id}: {e}", exc_info=True)
             raise
 
-    async def _store_match_details(self, match_data: MatchTable, session: AsyncSession) -> None:
+    async def _store_match_details(self, match_data: MatchTable) -> None:
         """Stores match details in database."""
-        try:
-            match_repository = MatchRepository(session=session)
-            await match_repository.insert_match_details([match_data])
+        async with self.db_session_factory() as session:
+            async with session.begin():
+                try:
+                    match_repository = MatchRepository(session=session)
+                    await match_repository.insert_match_details([match_data])
 
-        except Exception as e:
-            logger.error(f"Failed to store match details for match {match_data.match_id}: {e}", exc_info=True)
-            raise
+                except Exception as e:
+                    logger.error(f"Failed to store match details for match {match_data.match_id}: {e}", exc_info=True)
+                    raise
