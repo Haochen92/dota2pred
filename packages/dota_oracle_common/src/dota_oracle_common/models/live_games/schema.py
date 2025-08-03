@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, TypeVar, Generic
 from datetime import datetime as dt
+
+PlayerType = TypeVar("PlayerType", bound="Player")
 
 
 class TeamData(BaseModel):
@@ -16,7 +18,7 @@ class TeamData(BaseModel):
 
 
 class Player(BaseModel):
-    """Player data in live games.
+    """Base PLayer Model for live games
 
     Attributes:
         player_slot: Player slot position (int)
@@ -28,20 +30,20 @@ class Player(BaseModel):
     player_slot: int
     account_id: int
     name: Optional[str] = None
-    hero_id: int = Field(gt=0)
+    hero_id: int
 
 
-class Faction(BaseModel):
+class Faction(BaseModel, Generic[PlayerType]):
     """Team faction with player list.
 
     Attributes:
         players: List of players in faction (List[Player])
     """
 
-    players: List[Player]
+    players: List[PlayerType]
 
 
-class ScoreBoard(BaseModel):
+class ScoreBoard(BaseModel, Generic[PlayerType]):
     """Live game scoreboard data.
 
     Attributes:
@@ -51,8 +53,8 @@ class ScoreBoard(BaseModel):
     """
 
     duration: float = 0.0
-    radiant: Faction
-    dire: Faction
+    radiant: Faction[PlayerType]
+    dire: Faction[PlayerType]
 
 
 class LiveLeagueGame(BaseModel):
@@ -75,7 +77,16 @@ class LiveLeagueGame(BaseModel):
     start_time: float = Field(default_factory=lambda: dt.now().timestamp())
     radiant_team: Optional[TeamData] = None
     dire_team: Optional[TeamData] = None
-    scoreboard: Optional[ScoreBoard] = None
+    scoreboard: Optional[ScoreBoard[Player]] = None
+
+
+class OngoingPlayer(Player):
+    """
+    Valid hero_id starting from 1 for ongoing matches
+    """
+
+    #
+    hero_id: int = Field(gt=0)
 
 
 class OngoingLeagueGame(LiveLeagueGame):
@@ -90,9 +101,9 @@ class OngoingLeagueGame(LiveLeagueGame):
         scoreboard: Current game scoreboard (ScoreBoard)
     """
 
-    radiant_team: TeamData = Field(...)
-    dire_team: TeamData = Field(...)
-    scoreboard: ScoreBoard = Field(...)
+    radiant_team: TeamData = Field(...)  # type: ignore
+    dire_team: TeamData = Field(...)  # type: ignore
+    scoreboard: ScoreBoard[OngoingPlayer] = Field(...)  # type: ignore
 
 
 class ResultData(BaseModel):
