@@ -12,10 +12,6 @@ async def test_process_event_successfully(
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
 
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
-
     mock_prepare_features = mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
         "prepare_features_for_inference",
@@ -42,10 +38,6 @@ async def test_process_event_feature_preparation_returns_none(
 ) -> None:
     work_item = prediction_work_item_factory.build()
 
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
-
     mock_prepare_features = mocker.patch.object(
         prediction_event_processor.feature_preparation_service, "prepare_features_for_inference", return_value=None
     )
@@ -70,10 +62,6 @@ async def test_process_event_feature_preparation_returns_empty_array(
 ) -> None:
     work_item = prediction_work_item_factory.build()
     empty_array = np.array([])
-
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
 
     mock_prepare_features = mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
@@ -102,10 +90,6 @@ async def test_process_event_feature_preparation_service_raises_exception(
     work_item = prediction_work_item_factory.build()
     feature_error = Exception("Feature preparation failed")
 
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
-
     mock_prepare_features = mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
         "prepare_features_for_inference",
@@ -131,10 +115,6 @@ async def test_process_event_prediction_service_raises_exception(
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
     prediction_error = Exception("Prediction failed")
-
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value.__aenter__.return_value = mock_async_session
-    mock_async_session_class.return_value.__aexit__.return_value = None
 
     mock_prepare_features = mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
@@ -163,19 +143,11 @@ async def test_process_event_session_transaction_handling(
     work_item = prediction_work_item_factory.build()
     mock_input_array = np.array([[1, 2, 3, 4, 5]])
 
-    # Mock session context manager
-    mock_session_context = AsyncMock()
-    mock_session_context.__aenter__.return_value = mock_async_session
-    mock_session_context.__aexit__.return_value = None
-
     # Mock transaction context manager
     mock_transaction_context = AsyncMock()
     mock_transaction_context.__aenter__.return_value = None
     mock_transaction_context.__aexit__.return_value = None
     mock_async_session.begin.return_value = mock_transaction_context
-
-    mock_async_session_class = mocker.patch(f"{F_PATH}.AsyncSession")
-    mock_async_session_class.return_value = mock_session_context
 
     mocker.patch.object(
         prediction_event_processor.feature_preparation_service,
@@ -189,9 +161,8 @@ async def test_process_event_session_transaction_handling(
     await prediction_event_processor.process_event(work_item)
 
     # ASSERT
-    mock_async_session_class.assert_called_once_with(prediction_event_processor.engine)
-    mock_session_context.__aenter__.assert_awaited_once()
-    mock_session_context.__aexit__.assert_awaited_once()
+    # The db_session_factory should be called once to create the session
+    prediction_event_processor.db_session_factory.assert_called_once()
     mock_async_session.begin.assert_called_once()
     mock_transaction_context.__aenter__.assert_awaited_once()
     mock_transaction_context.__aexit__.assert_awaited_once()
