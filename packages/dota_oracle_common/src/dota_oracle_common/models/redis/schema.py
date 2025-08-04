@@ -1,7 +1,7 @@
 from pydantic import BaseModel, field_serializer, Field
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Any, TypeVar, Generic, Optional
+from typing import Any, TypeVar, Generic
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import HeroFeaturesTable, PlayerHeroFeatureTable, TeamFeaturesTable
 
@@ -32,8 +32,6 @@ class FeatureEngineeringPayload(BaseModel):
     Contains all the raw data needed to generate features.
     """
 
-    match_id: int
-
     match_details: MatchTable
 
 
@@ -42,8 +40,6 @@ class PredictionPayload(BaseModel):
     Payload FROM Feature Engineering stage TO Prediction stage.
     Contains the fully processed features ready for the model.
     """
-
-    match_id: int
 
     hero_features: HeroFeaturesTable
     team_features: TeamFeaturesTable
@@ -56,25 +52,30 @@ class CompletionPayload(BaseModel):
     Contains the model's prediction output.
     """
 
-    match_id: int
-
     prediction_score: float
     predicted_winner: str  # e.g., "radiant" or "dire"
 
 
-class StreamMatchEvent(BaseModel, Generic[PayloadModel]):
-    """
-    Generic data model for messages in the match processing streams.
-    It holds a specific, strongly-typed payload for each stage of the pipeline.
-    """
-
-    event_id: Optional[str] = None
+class StreamEvent(BaseModel, Generic[PayloadModel]):
+    match_id: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     payload: PayloadModel
 
     @field_serializer("timestamp")
     def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
         return dt.isoformat()
+
+
+class EventToPublish(StreamEvent):
+    """The data and payload for an event before it is sent to Redis."""
+
+    pass
+
+
+class ConsumedEvent(StreamEvent):
+    """An event that has been read from Redis, guaranteed to have an event_id."""
+
+    event_id: str
 
 
 class MatchStatusValue(BaseModel):
@@ -104,7 +105,7 @@ class FailureRecord(BaseModel, Generic[PayloadModel]):
     original_group: str
     original_event_id: str
     original_stream: str
-    original_data: StreamMatchEvent[PayloadModel]
+    original_data: ConsumedEvent
     error_type: str
     error_message: str
     failure_timestamp: datetime
