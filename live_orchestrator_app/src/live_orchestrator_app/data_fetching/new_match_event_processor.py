@@ -4,6 +4,7 @@ from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchTable
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from dota_oracle_common.models.pipeline import NewMatchWorkItem
+from live_orchestrator_app.services.redis_service import RedisService
 
 logger = get_logger(__name__)
 
@@ -11,22 +12,29 @@ logger = get_logger(__name__)
 class NewMatchEventProcessor:
     """Event processor for handling single new match work items."""
 
-    def __init__(self, db_session_factory: async_sessionmaker[AsyncSession]):
+    def __init__(self, db_session_factory: async_sessionmaker[AsyncSession], redis_service: RedisService):
         self.db_session_factory = db_session_factory
+        self.redis = redis_service
 
     async def process_event(self, work_item: NewMatchWorkItem) -> None:
         """
-        Processes a single new match work item.
-        Creates its own transaction for this unit of work.
+        Processes a new match: transforms, stores in DB, and publishes to Redis.
+        Returns the transformed MatchTable upon success.
 
         Args:
             work_item: NewMatchWorkItem containing match data to process
         """
         try:
+            # Transform data
             transformed_match = await self._transform_match_data(work_item)
+
+            # Store in database
             await self._store_match_details(transformed_match)
 
-            logger.info(f"Successfully processed new match {work_item.match_id}")
+            # Publish payload to redis
+            await self.redis.publish_new_match_to_feature_eng(transformed_match)
+
+            logger.info(f"Successfully processed and published new match {transformed_match.match_id}")
 
         except Exception as e:
             logger.error(f"Failed to process new match {work_item.match_id}: {e}", exc_info=True)
