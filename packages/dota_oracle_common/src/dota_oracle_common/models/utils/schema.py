@@ -37,6 +37,6 @@ class TaskResult(BaseModel, Generic[T_Key, T_Input, T_Result]):
 
     key: T_Key
     inputs: T_Input
-    outcome: Union[T_Result, Exception]
+    outcome: Union[T_Result, BaseException]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
