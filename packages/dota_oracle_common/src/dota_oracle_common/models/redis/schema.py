@@ -1,11 +1,11 @@
 from pydantic import BaseModel, field_serializer, Field
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Any, TypeVar, Generic
+from typing import Any, TypeVar, Generic, Optional
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import HeroFeaturesTable, PlayerHeroFeatureTable, TeamFeaturesTable
 
-PayloadType = TypeVar("PayloadType")
+PayloadModel = TypeVar("PayloadModel", bound=BaseModel)
 
 
 # Enums
@@ -56,15 +56,16 @@ class CompletionPayload(BaseModel):
     predicted_winner: str  # e.g., "radiant" or "dire"
 
 
-class StreamMatchEvent(BaseModel, Generic[PayloadType]):
+class StreamMatchEvent(BaseModel, Generic[PayloadModel]):
     """
     Generic data model for messages in the match processing streams.
     It holds a specific, strongly-typed payload for each stage of the pipeline.
     """
 
+    event_id: Optional[str] = None
     match_id: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    payload: PayloadType
+    payload: PayloadModel
 
     @field_serializer("timestamp")
     def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
@@ -80,7 +81,7 @@ class MatchStatusValue(BaseModel):
     status: MatchProcessingStatus
 
 
-class FailureRecord(BaseModel, Generic[PayloadType]):
+class FailureRecord(BaseModel, Generic[PayloadModel]):
     """
     Data model for the information stored in DLQ hashes when an event fails.
     This is serialized to JSON before being stored in the hash.
@@ -98,7 +99,7 @@ class FailureRecord(BaseModel, Generic[PayloadType]):
     original_group: str
     original_event_id: str
     original_stream: str
-    original_data: StreamMatchEvent[PayloadType]
+    original_data: StreamMatchEvent[PayloadModel]
     error_type: str
     error_message: str
     failure_timestamp: datetime
