@@ -66,13 +66,13 @@ class StreamEvent(BaseModel, Generic[PayloadModel]):
         return dt.isoformat()
 
 
-class EventToPublish(StreamEvent):
+class EventToPublish(StreamEvent[PayloadModel]):
     """The data and payload for an event before it is sent to Redis."""
 
     pass
 
 
-class ConsumedEvent(StreamEvent):
+class ConsumedEvent(StreamEvent[PayloadModel]):
     """An event that has been read from Redis, guaranteed to have an event_id."""
 
     event_id: str
