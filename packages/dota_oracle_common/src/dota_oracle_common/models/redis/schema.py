@@ -32,6 +32,8 @@ class FeatureEngineeringPayload(BaseModel):
     Contains all the raw data needed to generate features.
     """
 
+    match_id: int
+
     match_details: MatchTable
 
 
@@ -40,6 +42,8 @@ class PredictionPayload(BaseModel):
     Payload FROM Feature Engineering stage TO Prediction stage.
     Contains the fully processed features ready for the model.
     """
+
+    match_id: int
 
     hero_features: HeroFeaturesTable
     team_features: TeamFeaturesTable
@@ -52,6 +56,8 @@ class CompletionPayload(BaseModel):
     Contains the model's prediction output.
     """
 
+    match_id: int
+
     prediction_score: float
     predicted_winner: str  # e.g., "radiant" or "dire"
 
@@ -63,7 +69,6 @@ class StreamMatchEvent(BaseModel, Generic[PayloadModel]):
     """
 
     event_id: Optional[str] = None
-    match_id: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     payload: PayloadModel
 
