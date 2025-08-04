@@ -2,7 +2,7 @@ import asyncio
 import sys
 from typing import List, Any, Optional, Coroutine
 from .set_logging import get_logger
-from ..models.utils import TaskResult, AsyncTask
+from dota_oracle_common.models.utils.schema import TaskResult, AsyncTask, T_Key, T_Result
 
 logger = get_logger(__name__)
 
@@ -11,8 +11,8 @@ class TaskRunner:
 
     @staticmethod
     async def run_concurrently(
-        tasks: List[AsyncTask[Any, Any]], concurrency_limit: Optional[int] = None
-    ) -> List[TaskResult[Any, Any]]:
+        tasks: List[AsyncTask[T_Key, T_Result]], concurrency_limit: Optional[int] = None
+    ) -> List[TaskResult[T_Key, T_Result]]:
         """
         Run all tasks concurrently using asyncio.gather with an optional concurrency limit.
         Always returns a list of TaskResult objects, never raises.
@@ -31,7 +31,7 @@ class TaskRunner:
 
         results_or_exceptions = await asyncio.gather(*coroutines, return_exceptions=True)
 
-        outcomes: List[TaskResult[Any, Any]] = []
+        outcomes: List[TaskResult[T_Key, T_Result]] = []
 
         for i, outcome in enumerate(results_or_exceptions):
             key = task_keys[i]
@@ -45,8 +45,8 @@ class TaskRunner:
 
     @staticmethod
     async def run_as_group(
-        tasks: List[AsyncTask[Any, Any]], concurrency_limit: Optional[int] = None
-    ) -> List[TaskResult[Any, Any]]:
+        tasks: List[AsyncTask[T_Key, T_Result]], concurrency_limit: Optional[int] = None
+    ) -> List[TaskResult[T_Key, T_Result]]:
         if sys.version_info < (3, 11):
             raise RuntimeError("TaskGroup requires Python 3.11 or newer.")
         if not tasks:
