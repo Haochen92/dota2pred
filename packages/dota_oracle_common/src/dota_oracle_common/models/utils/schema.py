@@ -1,5 +1,5 @@
-from typing import TypeVar, Generic, Coroutine, Any, Optional
-from pydantic import BaseModel, ConfigDict
+from typing import TypeVar, Generic, Coroutine, Any, Optional, cast
+from pydantic import BaseModel, ConfigDict, model_validator
 
 T_Key = TypeVar("T_Key")
 T_Result = TypeVar("T_Result")
@@ -27,28 +27,22 @@ class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
 
 
 class TaskResult(BaseModel, Generic[T_Key, T_Result]):
-    """A uniform way to represent the outcome of a completed task.
-
-    This class holds either the successful result of a task or the
-    exception that was raised during its execution.
-
-    Attributes:
-        key (T_Key): The unique identifier of the task this result belongs to.
-        result (Optional[T_Result]): The return value of the coroutine if it
-            succeeded. Defaults to None.
-        exception (Optional[Exception]): The exception object if the coroutine
-            failed. Defaults to None.
-    """
-
     key: T_Key
     result: Optional[T_Result] = None
     exception: Optional[Exception] = None
 
-    def get_result(self) -> Optional[T_Result]:
-        """Returns the result, or raises the exception if the task failed."""
+    @model_validator(mode="after")
+    def validate_result_or_exception(self):
+        if self.result is None and self.exception is None:
+            raise ValueError("Either result or exception must be set")
+        if self.result is not None and self.exception is not None:
+            raise ValueError("Cannot have both result and exception")
+        return self
+
+    def get_result(self) -> T_Result:
         if self.exception is not None:
             raise self.exception
-
-        return self.result
+        # Type checker knows result can't be None here due to validator
+        return cast(T_Result, self.result)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
