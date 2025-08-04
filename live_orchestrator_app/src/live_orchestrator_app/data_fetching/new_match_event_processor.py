@@ -3,7 +3,6 @@ from dota_oracle_pipeline.data_transformation.live_match_parser import parse_liv
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchTable
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from live_orchestrator_app.services.redis_service import RedisService
 from dota_oracle_common.models.live_games.schema import OngoingLeagueGame
 
 logger = get_logger(__name__)
@@ -12,11 +11,10 @@ logger = get_logger(__name__)
 class NewMatchEventProcessor:
     """Event processor for handling single new match work items."""
 
-    def __init__(self, db_session_factory: async_sessionmaker[AsyncSession], redis_service: RedisService):
+    def __init__(self, db_session_factory: async_sessionmaker[AsyncSession]):
         self.db_session_factory = db_session_factory
-        self.redis = redis_service
 
-    async def process_event(self, ongoing_match: OngoingLeagueGame) -> None:
+    async def process_event(self, ongoing_match: OngoingLeagueGame) -> MatchTable:
         """
         Processes a new match: transforms, stores in DB, and publishes to Redis.
         Returns the transformed MatchTable upon success.
@@ -31,10 +29,9 @@ class NewMatchEventProcessor:
             # Store in database
             await self._store_match_details(transformed_match)
 
-            # Publish payload to redis
-            await self.redis.publish_new_match_to_feature_eng(transformed_match)
+            logger.info(f"Successfully processed and stored new match {transformed_match.match_id}")
 
-            logger.info(f"Successfully processed and published new match {transformed_match.match_id}")
+            return transformed_match
 
         except Exception as e:
             logger.error(f"Failed to process new match {ongoing_match.match_id}: {e}", exc_info=True)
