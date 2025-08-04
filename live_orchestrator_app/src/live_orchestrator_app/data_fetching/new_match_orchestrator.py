@@ -3,6 +3,7 @@ from dota_oracle_common.utils.async_utils import TaskRunner
 from .new_match_data_provider import NewMatchDataProvider
 from .new_match_event_processor import NewMatchEventProcessor
 from dota_oracle_common.models.utils import AsyncTask
+from ..services.redis_service import RedisService
 
 logger = get_logger(__name__)
 
@@ -10,12 +11,18 @@ logger = get_logger(__name__)
 class NewMatchOrchestrator:
     """Orchestrator for new match discovery and processing pipeline."""
 
-    def __init__(self, data_provider: NewMatchDataProvider, event_processor: NewMatchEventProcessor):
+    def __init__(
+        self,
+        data_provider: NewMatchDataProvider,
+        event_processor: NewMatchEventProcessor,
+        redis_service: RedisService,
+    ):
         self.data_provider = data_provider
         self.event_processor = event_processor
+        self.redis = redis_service
 
         # Validation
-        if not all([data_provider, event_processor]):
+        if not all([data_provider, event_processor, redis_service]):
             raise ValueError("All dependencies must be provided")
 
     async def run_new_match_cycle(self) -> int:
@@ -35,9 +42,6 @@ class NewMatchOrchestrator:
 
         logger.info(f"Processing {len(new_matches)} new matches")
 
-        # 2. Create async concurrent task list
-        concurrent_tasks = []
-
         # 3. Create concurrent tasks
         concurrent_tasks = [
             AsyncTask(key=match.match_id, coro=self.event_processor.process_event(match)) for match in new_matches
@@ -53,7 +57,9 @@ class NewMatchOrchestrator:
         for task_result in results:
             try:
                 # get_result() raises the exception if the task failed
-                task_result.get_result()
+                transformed_match = task_result.get_result()
+
+                await self.redis.publish_new_match_to_feature_eng(transformed_match)
                 count_success += 1
             except Exception:
                 count_failure += 1
