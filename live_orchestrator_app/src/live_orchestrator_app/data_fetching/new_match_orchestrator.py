@@ -2,6 +2,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from .new_match_data_provider import NewMatchDataProvider
 from .new_match_event_processor import NewMatchEventProcessor
+from dota_oracle_common.models.utils import AsyncTask
 
 logger = get_logger(__name__)
 
@@ -27,15 +28,20 @@ class NewMatchOrchestrator:
         logger.info("Starting new match discovery cycle")
 
         # 1. Get work items from data provider
-        work_items = await self.data_provider.get_work_items()
-        if not work_items:
+        new_matches = await self.data_provider.get_new_ongoing_matches()
+        if not new_matches:
             logger.debug("No new matches to process")
             return 0
 
-        logger.info(f"Processing {len(work_items)} new matches")
+        logger.info(f"Processing {len(new_matches)} new matches")
 
         # 2. Create async concurrent task list
         concurrent_tasks = []
+
+        # 3. Create concurrent tasks
+        concurrent_tasks = [
+            AsyncTask(key=match.match_id, coro=self.event_processor.process_event(match)) for match in new_matches
+        ]
 
         # 4. Call event processor for each task via TaskRunner
         results = await TaskRunner.run_concurrently(concurrent_tasks)

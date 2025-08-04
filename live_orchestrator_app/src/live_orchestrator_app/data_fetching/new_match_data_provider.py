@@ -3,7 +3,6 @@ from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
 from dota_oracle_pipeline.data_extraction.fetch_live_leagues import fetch_live_league_games
 from ..services.redis_service import RedisService
-from dota_oracle_common.models.pipeline import NewMatchWorkItem
 from pydantic import ValidationError
 
 logger = get_logger(__name__)
@@ -15,12 +14,12 @@ class NewMatchDataProvider:
     def __init__(self, redis_service: RedisService):
         self.redis = redis_service
 
-    async def get_work_items(self) -> List[NewMatchWorkItem]:
+    async def get_new_ongoing_matches(self) -> List[OngoingLeagueGame]:
         """
-        Fetches current live matches and filters for new ones.
+        Fetches current live matches and filters for new, ongoing ones.
 
         Returns:
-            List of NewMatchWorkItem for processing
+            List of OngoingLeagueGames
         """
         # Fetch current live matches
         ongoing_matches = await self._fetch_ongoing_matches()
@@ -38,20 +37,17 @@ class NewMatchDataProvider:
 
         logger.info(f"Found {len(new_matches)} new matches")
 
-        # Create work items
-        work_items = [NewMatchWorkItem(live_match_data=match, match_id=match.match_id) for match in new_matches]
-
-        return work_items
+        return new_matches
 
     async def _fetch_ongoing_matches(self) -> List[OngoingLeagueGame]:
         """Fetches current live league games from API & extract ongoing matches"""
         try:
-            curr_games = await fetch_live_league_games()
+            curr_games: List[LiveLeagueGame] = await fetch_live_league_games()
             ongoing_games = await self._extract_ongoing_matches(curr_games)
             return ongoing_games
         except Exception as e:
             logger.warning(f"Error fetching matches from API: {e}", exc_info=True)
-            raise
+            return []
 
     async def _extract_ongoing_matches(self, all_curr_games: List[LiveLeagueGame]) -> List[OngoingLeagueGame]:
         ongoing_games_list: List[OngoingLeagueGame] = []
