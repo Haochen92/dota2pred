@@ -4,6 +4,7 @@ from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable
 from dota_oracle_common.utils.set_logging import get_logger
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Tuple
 
 logger = get_logger(__name__)
 
@@ -18,7 +19,10 @@ class FeatureEngineeringService:
         self.team_feature_creator = team_feature_creator
         self.player_hero_feature_creator = player_hero_feature_creator
 
-    async def create_and_store_features(self, match_instance: MatchTable, session: AsyncSession) -> None:
+    async def create_and_store_features(
+        self, match_instance: MatchTable, session: AsyncSession
+    ) -> Tuple[HeroFeaturesTable, TeamFeaturesTable, PlayerHeroFeatureTable]:
+
         if not match_instance:
             logger.info("no match_instances for data creation")
             return None
@@ -55,3 +59,5 @@ class FeatureEngineeringService:
         except Exception as e:
             logger.error(f"Error storing features {e}", exc_info=True)
             raise e
+
+        return (hero_features[0], team_features[0], player_hero_features[0])  # take the first instance of the list
