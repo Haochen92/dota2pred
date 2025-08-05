@@ -85,6 +85,7 @@ class AppContainer(containers.DeclarativeContainer):
         player_hero_feature_creator=player_hero_features_creator,
     )
     history_update_service = providers.Factory(HistoryUpdateService)
+
     match_prediction_service = providers.Factory(
         MatchPredictionService,
         features_preparation_service=feature_preparation_service,
@@ -94,9 +95,7 @@ class AppContainer(containers.DeclarativeContainer):
     # --- Data Providers ---
     new_match_data_provider = providers.Factory(NewMatchDataProvider, redis_service=redis_service)
 
-    feature_engineering_data_provider = providers.Factory(
-        FeatureEngineeringDataProvider, redis_service=redis_service, db_session_factory=db_session_factory
-    )
+    feature_engineering_data_provider = providers.Factory(FeatureEngineeringDataProvider, redis_service=redis_service)
 
     prediction_data_provider = providers.Factory(
         PredictionDataProvider,
