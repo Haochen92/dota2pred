@@ -56,13 +56,16 @@ class NewMatchOrchestrator:
         count_failure = 0
 
         for task_result in results:
-            transformed_match = task_result.outcome
-            if isinstance(transformed_match, BaseException):
-                count_failure += 1
-                logger.warning(f"A new match processing task failed for match_id: {task_result.key}")
-            else:
+            try:
+                transformed_match = task_result.outcome
+                if isinstance(transformed_match, BaseException):
+                    raise transformed_match
                 await self.redis.publish_new_match_to_feature_eng(transformed_match)
                 count_success += 1
+            except Exception:
+                count_failure += 1
+                logger.warning(f"A new match processing task failed for match_id: {task_result.key}")
+                continue
 
         logger.info(f"New match cycle complete: successful={count_success}, failed={count_failure}")
         return count_success
