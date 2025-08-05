@@ -2,6 +2,7 @@
 from prefect import flow
 
 import asyncio
+
 from dependency_injector import providers, containers
 
 # Redis client
@@ -15,7 +16,7 @@ from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamF
 from dota_oracle_pipeline.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
 
 # --- Inference Components ---
-from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
+from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .services.redis_service import RedisService
@@ -161,7 +162,7 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
 
-@flow(name="initialise_app_container")
+@flow(name="start live orchestrator")
 async def start_application() -> None:
     """
     Main entry point for the application.
