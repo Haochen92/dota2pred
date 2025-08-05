@@ -22,7 +22,9 @@ class MatchPredictionService:
 
     async def predict_and_store(
         self, db_session: AsyncSession, match_id: int, input_array_for_inference: np.ndarray
-    ) -> None:
+    ) -> int:
+
+        # Predict
         try:
             prediction_instance: ModelPredictionAPIResponse = await self.model_inference_service.get_prediction(
                 input_array_for_inference
@@ -34,6 +36,7 @@ class MatchPredictionService:
             logger.error(f"Error when making prediction for {match_id}: {e}", exc_info=True)
             raise e
 
+        # Store
         try:
             metadata = self.model_inference_service.model_metadata
             prediction_table = MatchPredictionTable(
@@ -49,3 +52,5 @@ class MatchPredictionService:
         except Exception as e:
             logger.error(f"Failed to store predictions for match {match_id}: {e}", exc_info=True)
             raise e
+
+        return prediction
