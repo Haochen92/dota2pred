@@ -2,8 +2,9 @@ from dota_oracle_common.utils.set_logging import get_logger
 from ..services.history_update_service import HistoryUpdateService
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchOutcomeTable
+from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletedMatchPayload
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from dota_oracle_common.models.pipeline import CompletionWorkItem
+
 
 logger = get_logger(__name__)
 
@@ -15,16 +16,20 @@ class CompletionEventProcessor:
         self.history_updater = history_update_service
         self.db_session_factory = db_session_factory
 
-    async def process_events(self, work_item: CompletionWorkItem) -> None:
+    async def process_events(self, work_item: ConsumedEvent[CompletedMatchPayload]) -> bool:
         try:
-            event_data = work_item.event_data
-            match_outcome = work_item.outcome
+            match_id = work_item.match_id
+            match_outcome = work_item.payload.match_outcome
 
             # store match outcome
-            await self._update_match_outcome(match_id=event_data.match_id, match_outcome=match_outcome)
+            await self._update_match_outcome(match_id=match_id, match_outcome=match_outcome)
 
             # update related match histories
-            await self.history_updater.update_histories(self.db_session_factory, event_data.match_id)
+            await self.history_updater.update_histories(self.db_session_factory, match_id)
+
+            logger.debug(f"Successfully stored match outcome and match histories for match_id: {match_id}")
+
+            return True
         except Exception as e:
             raise e
 
