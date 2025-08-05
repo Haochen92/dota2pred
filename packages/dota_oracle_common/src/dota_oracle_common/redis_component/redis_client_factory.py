@@ -4,7 +4,7 @@ from dota_oracle_common.utils.env_loader import load_workspace_env
 
 load_workspace_env()
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380")
 
 
 class RedisClientFactory:
