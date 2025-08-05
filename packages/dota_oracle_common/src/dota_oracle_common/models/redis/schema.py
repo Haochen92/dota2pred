@@ -52,8 +52,8 @@ class CompletionPayload(BaseModel):
     Contains the model's prediction output.
     """
 
-    prediction_score: float
-    predicted_winner: str  # e.g., "radiant" or "dire"
+    match_id: int
+    radiant_win: bool
 
 
 class StreamEvent(BaseModel, Generic[PayloadModel]):
