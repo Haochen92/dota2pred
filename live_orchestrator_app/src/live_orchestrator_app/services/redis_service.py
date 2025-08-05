@@ -116,7 +116,7 @@ class RedisService:
 
             for event_id, data_dict in events_list:
                 try:
-                    data_dict[event_id] = event_id  # fill in event_id
+                    data_dict["event_id"] = event_id  # fill in event_id
                     parsed_event = ExpectedEventModel.model_validate(data_dict)
                     parsed_events.append(parsed_event)
                 except ValidationError as ve:
@@ -137,7 +137,7 @@ class RedisService:
         within a Redis pipeline transaction.
         """
         # 1. Create the specific event envelope using the provided payload
-        EventModel = EventToPublish[payload]
+        EventModel = EventToPublish[type(payload)]
         event_to_publish = EventModel(match_id=match_id, payload=payload)
 
         # 2. Serialize and flatten the event for Redis
@@ -295,7 +295,7 @@ class RedisService:
 
     async def handle_processing_failure(
         self,
-        event_data: ConsumedEvent[PayloadModel],
+        event_data: ConsumedEvent,
         event_id: str,
         error: Exception,
         consumer_group: str,
