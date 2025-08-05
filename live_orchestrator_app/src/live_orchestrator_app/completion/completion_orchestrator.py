@@ -1,5 +1,4 @@
 import pydantic
-from dota_oracle_common.models.redis.schema import StreamMatchEventData
 from dota_oracle_common.utils.set_logging import get_logger
 from live_orchestrator_app.services.redis_service import RedisService
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
@@ -42,14 +41,10 @@ class CompletionOrchestrator:
             logger.info("None of the existing live matches have completed. Ending cycle early")
             return 0
 
-        concurrent_tasks = []
-        work_item_map = {}
-
-        for item in completion_work_items:
-            task = AsyncTask(key=item.event_id, coro=self.processor.process_events(item))
-            concurrent_tasks.append(task)
-            # populate map for faster lookup
-            work_item_map[item.event_id] = item.event_data
+        concurrent_tasks = [
+            AsyncTask(key=item.event_id, inputs=item, coro=self.processor.process_events(item))
+            for item in completion_work_items
+        ]
 
         results = await TaskRunner.run_concurrently(concurrent_tasks)
 
@@ -58,17 +53,18 @@ class CompletionOrchestrator:
 
         for task_result in results:
             event_id: str = task_result.key
-            event_data: StreamMatchEventData = work_item_map[event_id]
+            original_event = task_result.inputs
+            match_id = original_event.match_id
             try:
-                result = task_result.get_result()
+                result = task_result.inputs
                 if isinstance(result, Exception):
                     raise result
-                await self.redis.mark_match_as_completed(match_id=event_data.match_id, event_id_to_ack=event_id)
+                await self.redis.mark_match_as_completed(match_id=match_id, event_id_to_ack=event_id)
                 count_success += 1
 
             except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 await self.redis.handle_processing_failure(
-                    event_data=event_data,
+                    event_data=original_event,
                     event_id=event_id,
                     error=ve,
                     consumer_group=COMPLETION_GROUP,
