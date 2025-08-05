@@ -11,9 +11,7 @@ from live_orchestrator_app.services.feature_preparation_service import FeaturePr
 from live_orchestrator_app.services.fetch_outcome_service import FetchOutcomeService
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
-
-# ML/Inference imports
-from live_orchestrator_app.inference import ModelInferenceService
+from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 
 
 # ================================
