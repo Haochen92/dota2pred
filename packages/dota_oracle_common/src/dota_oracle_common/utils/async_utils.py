@@ -39,8 +39,8 @@ class TaskRunner:
 
     @staticmethod
     def _apply_semaphore(
-        tasks: List[AsyncTask[Any, Any, Any]], concurrency_limit: int
-    ) -> List[Coroutine[Any, Any, Any]]:
+        tasks: List[AsyncTask[T_Key, T_Input, T_Result]], concurrency_limit: int
+    ) -> List[Coroutine[Any, Any, T_Result]]:
         """Apply a semaphore to limit concurrency."""
         logger.info(f"Applying a concurrency limit of {concurrency_limit}.")
         semaphore = asyncio.Semaphore(concurrency_limit)
