@@ -56,6 +56,14 @@ class CompletionPayload(BaseModel):
     radiant_win: bool
 
 
+class CompletedMatchPayload(BaseModel):
+    """
+    Payload for matches which has been completed with actual outcome
+    """
+
+    match_outcome: bool
+
+
 class StreamEvent(BaseModel, Generic[PayloadModel]):
     match_id: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
