@@ -1,5 +1,5 @@
 from dota_oracle_common.repositories.prediction_repository import PredictionRepository
-from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
+from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 from live_orchestrator_app.services.feature_preparation_service import FeaturePreparationService
 import numpy as np
 from dota_oracle_common.utils.set_logging import get_logger
