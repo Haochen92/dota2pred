@@ -44,7 +44,8 @@ class NewMatchOrchestrator:
 
         # 3. Create concurrent tasks
         concurrent_tasks = [
-            AsyncTask(key=match.match_id, coro=self.event_processor.process_event(match)) for match in new_matches
+            AsyncTask(key=match.match_id, inputs=match, coro=self.event_processor.process_event(match))
+            for match in new_matches
         ]
 
         # 4. Call event processor for each task via TaskRunner
@@ -55,15 +56,13 @@ class NewMatchOrchestrator:
         count_failure = 0
 
         for task_result in results:
-            try:
-                # get_result() raises the exception if the task failed
-                transformed_match = task_result.get_result()
-
-                await self.redis.publish_new_match_to_feature_eng(transformed_match)
-                count_success += 1
-            except Exception:
+            transformed_match = task_result.outcome
+            if isinstance(transformed_match, BaseException):
                 count_failure += 1
                 logger.warning(f"A new match processing task failed for match_id: {task_result.key}")
+            else:
+                await self.redis.publish_new_match_to_feature_eng(transformed_match)
+                count_success += 1
 
         logger.info(f"New match cycle complete: successful={count_success}, failed={count_failure}")
         return count_success
