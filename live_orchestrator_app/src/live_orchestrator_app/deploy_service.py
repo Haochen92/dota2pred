@@ -14,11 +14,11 @@ async def create_deployment():
     flow_from_file = await flow.from_source(
         source="./live_orchestrator_app/src",
         entrypoint="live_orchestrator_app/app_container.py:start_application",
-    )
+    )  # type: ignore
 
     await flow_from_file.deploy(
         name="live_orchestration_app", work_pool_name="dota-work-pool", cron="*/2 * * * *", concurrency_limit=1
-    )
+    )  # type: ignore
     logger.info("Prefect Deployment 'live_orchestration_app' applied successfully.")
 
 
