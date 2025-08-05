@@ -1,15 +1,23 @@
 import redis.asyncio as redis
+from redis.asyncio.client import Pipeline
 import asyncio
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
-from typing import List, Dict, Set
-from pydantic import ValidationError
+from typing import List, Set, Type
+from pydantic import ValidationError, BaseModel
+
 from dota_oracle_common.models.redis.schema import (
     MatchProcessingStatus,
     MatchStatusValue,
-    StreamMatchEventData,
+    EventToPublish,
+    ConsumedEvent,
     FailureRecord,
+    FeatureEngineeringPayload,
+    PredictionPayload,
+    CompletionPayload,
+    PayloadModel,
 )
+from dota_oracle_common.models.match import MatchTable
 import json
 
 # Constants
@@ -68,45 +76,49 @@ class RedisService:
                 raise
 
     """
-    Helper Functions
+    Generic Helper Functions
     """
 
     async def _fetch_events(
-        self, group: str, consumer: str, stream: str, batch: int
-    ) -> Dict[str, StreamMatchEventData]:
+        self, group: str, consumer: str, stream: str, payload_model: Type[PayloadModel], batch: int
+    ) -> List[ConsumedEvent[PayloadModel]]:
         """
-        Fetches batch of events, parses them into StreamMatchEventData models,
-        returns dict {event_id: StreamMatchEventData_instance}.
+        Generic helper to fetch and parse events from a stream for a given payload type.
         """
-        parsed_events: Dict[str, StreamMatchEventData] = {}
-        try:
-            # Read new messages
-            await self.redis.xreadgroup(
-                groupname=group,
-                consumername=consumer,
-                streams={stream: ">"},  # Read new messages
-                count=batch,
-                block=1000,
-            )
 
-            # Consume all messages
+        try:
+            # Step 1: Try to read from this consumer's own Pending Entries List (PEL).
             raw_events_response = await self.redis.xreadgroup(
                 groupname=group,
                 consumername=consumer,
                 streams={stream: "0"},  # Read pending unacknowledged messages
                 count=batch,
-                block=1000,
             )
 
+            # STEP 2: No pending messages - poll for new ones
             if not raw_events_response:
-                return {}
+                raw_events_response = await self.redis.xreadgroup(
+                    groupname=group,
+                    consumername=consumer,
+                    streams={stream: ">"},  # Read new messages
+                    count=batch,
+                    block=1000,
+                )
 
-            _stream_name, stream_events_data_list = raw_events_response[0]
+            if not raw_events_response:
+                return []
 
-            for event_id, data_dict in stream_events_data_list:
+            _stream_name_bytes, events_list = raw_events_response[0]
+
+            parsed_events: List[ConsumedEvent[PayloadModel]] = []  # Create type hint for generic return type
+
+            ExpectedEventModel = ConsumedEvent[payload_model]  # Create the specific instance of ConsumedEvent
+
+            for event_id, data_dict in events_list:
                 try:
-                    parsed_event = StreamMatchEventData.model_validate(data_dict)
-                    parsed_events[event_id] = parsed_event
+                    data_dict[event_id] = event_id  # fill in event_id
+                    parsed_event = ExpectedEventModel.model_validate(data_dict)
+                    parsed_events.append(parsed_event)
                 except ValidationError as ve:
                     logger.warning(
                         f"Pydantic validation failed for event ID '{event_id}' from stream '{stream}'. Error: {ve} "
@@ -114,10 +126,30 @@ class RedisService:
                     continue
             return parsed_events
         except redis.TimeoutError:
-            return {}
+            return []
         except Exception as e:
-            logger.error(f"Error reading and parsing stream {stream} for group {group}: {e}", exc_info=True)
-            return {}
+            logger.error(f"Critical Error reading and parsing stream {stream} for group {group}: {e}", exc_info=True)
+            raise
+
+    async def _publish_event(self, pipe: Pipeline, stream_name: str, match_id: int, payload: BaseModel) -> None:
+        """
+        Generic helper to construct, serialize, and add an event to a stream
+        within a Redis pipeline transaction.
+        """
+        # 1. Create the specific event envelope using the provided payload
+        EventModel = EventToPublish[payload]
+        event_to_publish = EventModel(match_id=match_id, payload=payload)
+
+        # 2. Serialize and flatten the event for Redis
+        event_dict = event_to_publish.model_dump(mode="json")
+        flat_event_data = {key: str(value) for key, value in event_dict.items()}
+
+        # 3. Add the XADD command to the pipeline
+        pipe.xadd(stream_name, flat_event_data)  # type: ignore
+
+    # ============================================
+    #   Stage 1: New Match -> Feature Engineering
+    # ============================================
 
     # New match orchestrator
     async def update_live_match_set_and_get_new(self, curr_ids: List[int]) -> Set[int]:
@@ -139,115 +171,117 @@ class RedisService:
             return set()
         return new_match_ids
 
-    async def add_match_for_processing(self, match_id: int) -> bool:
-        """Atomically sets initial status and adds match to the first stream."""
-        if not match_id or type(match_id) is not int:
-            logger.error("Missing input value or invalid datatype")
-            return False
-        match_id_str = str(match_id)
-        timestamp = get_current_utc_iso_timestamp()
-        try:
-            async with self.redis.pipeline(transaction=True) as pipe:
-                status_model = MatchStatusValue(status=MatchProcessingStatus.NEW)
-                pipe.hset(f"{MATCH_STATUS}:{match_id_str}", mapping=status_model.model_dump())
+    async def publish_new_match_to_feature_eng(self, match_details: MatchTable) -> bool:
+        """
+        Takes a MatchTable object, constructs the event, and adds it to the feature engineering stream.
+        """
+        match_id = match_details.match_id
 
-                # Using StreamMatchEventData to construct payload for xadd
-                event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp)
-                pipe.xadd(STREAM_NEW_MATCHES, event_data_model.model_dump())  # type: ignore
+        try:
+            payload = FeatureEngineeringPayload(match_details=match_details)
+
+            async with self.redis.pipeline(transaction=True) as pipe:
+                # Set initial status
+                status_model = MatchStatusValue(status=MatchProcessingStatus.NEW)
+                pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
+
+                # Publish event message to stream
+                await self._publish_event(pipe, STREAM_NEW_MATCHES, match_id, payload)
+
+                # Execute Transaction
                 await pipe.execute()
+
+            logger.info(f"Published match {match_id} to stream '{STREAM_NEW_MATCHES}'")
             return True
         except Exception as e:
-            logger.error(f"Failed adding match {match_id} to stream {STREAM_NEW_MATCHES}: {e}", exc_info=True)
+            logger.error(f"Failed publishing match {match_id} to stream {STREAM_NEW_MATCHES}: {e}", exc_info=True)
             return False
 
     # Feature engineering stage
     async def fetch_new_matches_for_feature_eng(
         self, consumer: str, count: int = 10
-    ) -> Dict[str, StreamMatchEventData]:
-        """Fetches events from the new matches stream, parsed into Pydantic models."""
-        return await self._fetch_events(FEATURE_ENGINEER_GROUP, consumer, STREAM_NEW_MATCHES, count)
+    ) -> List[ConsumedEvent[FeatureEngineeringPayload]]:
+        """Fetches events from the new matches stream with the expected payload."""
+        return await self._fetch_events(
+            FEATURE_ENGINEER_GROUP, consumer, STREAM_NEW_MATCHES, FeatureEngineeringPayload, count
+        )
 
-    async def advance_match_to_pending_prediction(self, match_id: int, event_id_to_ack: str) -> bool:
-        """Atomically updates status, adds to next stream, ACKs previous stream event."""
-        if not match_id or type(match_id) is not int:
-            logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
-            return False
-        elif not event_id_to_ack:
-            logger.error("event_id cannot be missing")
-            return False
+    async def publish_features_to_prediction(
+        self, match_id: int, features: PredictionPayload, event_id_to_ack: str
+    ) -> bool:
+        """
+        Publishes engineered features to the prediction stream and ACKs the previous event.
+        """
 
-        match_id_str = str(match_id)
-        timestamp = get_current_utc_iso_timestamp()
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
+                # 1. Set the status for this specific stage
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_PREDICTION)
-                pipe.hset(f"{MATCH_STATUS}:{match_id_str}", mapping=status_model.model_dump())
+                pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
 
-                event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp)
-                pipe.xadd(STREAM_PENDING_PREDICTION, event_data_model.model_dump())  # type: ignore
+                # 2. Call the generic helper
+                await self._publish_event(pipe, STREAM_PENDING_PREDICTION, match_id, features)
+
+                # 3. Add the ACK command for this specific stage transition
                 pipe.xack(STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP, event_id_to_ack)
+
+                # 4. Execute the transaction
                 await pipe.execute()
+
+            logger.info(f"Advanced match {match_id} to stream '{STREAM_PENDING_PREDICTION}'")
             return True
         except Exception as e:
-            logger.error(
-                f"Redis failure advancing match {match_id} to pending prediction (ACK ID: {event_id_to_ack}): {e}",
-                exc_info=True,
-            )
+            logger.error(f"Redis failure advancing match {match_id} to pending prediction: {e}", exc_info=True)
             return False
 
     # Prediction stage
-    async def fetch_matches_pending_prediction(self, consumer: str, count: int = 10) -> Dict[str, StreamMatchEventData]:
-        """Fetches events from the pending prediction stream, parsed into Pydantic models."""
-        return await self._fetch_events(PREDICTION_GROUP, consumer, STREAM_PENDING_PREDICTION, count)
+    async def fetch_matches_for_prediction(
+        self, consumer: str, count: int = 10
+    ) -> List[ConsumedEvent[PredictionPayload]]:
+        """Fetches events from the pending prediction stream with the expected payload."""
+        return await self._fetch_events(PREDICTION_GROUP, consumer, STREAM_PENDING_PREDICTION, PredictionPayload, count)
 
-    async def advance_match_to_pending_completion(self, match_id: int, event_id_to_ack: str) -> bool:
-        """Atomically updates status, adds to next stream, ACKs previous stream event."""
-        if not match_id or type(match_id) is not int:
-            logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
-            return False
-        elif not event_id_to_ack:
-            logger.error("fevent_id cannot be missing")
-            return False
-
-        match_id_str = str(match_id)
-        timestamp = get_current_utc_iso_timestamp()
+    async def publish_prediction_to_completion(
+        self, match_id: int, prediction: CompletionPayload, event_id_to_ack: str
+    ) -> bool:
+        """
+        Publishes a prediction result to the completion stream and ACKs the
+        message from the prediction stream.
+        """
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
+                # 1. Set the status for this stage
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_COMPLETION)
-                pipe.hset(f"{MATCH_STATUS}:{match_id_str}", mapping=status_model.model_dump())
+                pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
 
-                event_data_model = StreamMatchEventData(match_id=match_id, timestamp=timestamp)
-                pipe.xadd(STREAM_PENDING_COMPLETION, event_data_model.model_dump())  # type: ignore
+                # 2. Call the generic helper to publish the event
+                await self._publish_event(pipe, STREAM_PENDING_COMPLETION, match_id, prediction)
+
+                # 3. ACK the message from the previous (prediction) stream
                 pipe.xack(STREAM_PENDING_PREDICTION, PREDICTION_GROUP, event_id_to_ack)
+
+                # 4. Execute the transaction
                 await pipe.execute()
+
+            logger.info(f"Advanced match {match_id} to stream '{STREAM_PENDING_COMPLETION}'")
             return True
         except Exception as e:
-            logger.error(
-                f"Redis failure advancing match {match_id} to pending completion (ACK ID: {event_id_to_ack}): {e}",
-                exc_info=True,
-            )
+            logger.error(f"Redis failure advancing match {match_id} to pending completion: {e}", exc_info=True)
             return False
 
-    # --- PENDING COMPLETION STAGE ---
-    async def fetch_matches_pending_completion(
+    async def fetch_matches_for_completion(
         self, consumer: str, count: int = 20
-    ) -> Dict[str, StreamMatchEventData]:  # MODIFIED RETURN TYPE
-        """Fetches events from the pending completion stream, parsed into Pydantic models."""
-        return await self._fetch_events(COMPLETION_GROUP, consumer, STREAM_PENDING_COMPLETION, count)
+    ) -> List[ConsumedEvent[CompletionPayload]]:
+        """
+        Fetches events from the pending completion stream with the expected payload.
+        """
+        return await self._fetch_events(COMPLETION_GROUP, consumer, STREAM_PENDING_COMPLETION, CompletionPayload, count)
 
     async def mark_match_as_completed(self, match_id: int, event_id_to_ack: str) -> bool:
         """Atomically deletes status hash and ACKs the final processing stream event."""
-        if not match_id or type(match_id) is not int:
-            logger.error(f"match_id {match_id} has invalid type {type(match_id)} or missing")
-            return False
-        elif not event_id_to_ack:
-            logger.error("event_id cannot be missing")
-            return False
-
-        match_id_str = str(match_id)
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
-                pipe.delete(f"{MATCH_STATUS}:{match_id_str}")
+                pipe.delete(f"{MATCH_STATUS}:{match_id}")
                 pipe.xack(STREAM_PENDING_COMPLETION, COMPLETION_GROUP, event_id_to_ack)
                 await pipe.execute()
             return True
@@ -260,7 +294,12 @@ class RedisService:
     # Failed Events management
 
     async def handle_processing_failure(
-        self, event_data: StreamMatchEventData, event_id: str, error: Exception, consumer_group: str, event_stream: str
+        self,
+        event_data: ConsumedEvent[PayloadModel],
+        event_id: str,
+        error: Exception,
+        consumer_group: str,
+        event_stream: str,
     ) -> None:
         """Handles processing failures by recording them in Redis."""
         try:
