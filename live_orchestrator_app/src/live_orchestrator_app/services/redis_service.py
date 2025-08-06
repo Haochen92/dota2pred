@@ -3,7 +3,7 @@ from redis.asyncio.client import Pipeline
 import asyncio
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
-from typing import List, Set, Type
+from typing import List, Set, Type, Tuple, Dict
 from pydantic import ValidationError, BaseModel
 
 from dota_oracle_common.models.redis.schema import (
@@ -36,6 +36,8 @@ from dota_oracle_common.constants.redis_constants import (
 
 logger = get_logger(__name__)
 
+DecodedStreamResponse = List[Tuple[str, List[Tuple[str, Dict[str, str]]]]]
+
 
 class RedisService:
     def __init__(self, redis_client: redis.Redis):
@@ -66,6 +68,7 @@ class RedisService:
     async def _create_group(self, stream: str, group: str) -> None:
         """Creates a consumer group if it doesn't exist. Idempotent."""
         try:
+            # Use "0" to read all messages from the beginning (important for tests)
             await self.redis.xgroup_create(stream, group, id="0", mkstream=True)
             logger.info(f"Created/confirmed consumer group '{group}' for stream '{stream}'")
         except redis.ResponseError as e:
@@ -78,6 +81,21 @@ class RedisService:
     """
     Generic Helper Functions
     """
+
+    async def _publish_event(self, pipe: Pipeline, stream_name: str, match_id: int, payload: BaseModel) -> None:
+        """
+        Generic helper to construct, serialize, and add an event to a stream
+        within a Redis pipeline transaction.
+        """
+        # 1. Create the specific event envelope using the provided payload
+        EventModel = EventToPublish[type(payload)]
+        event_to_publish = EventModel(match_id=match_id, payload=payload)
+
+        event_dict = event_to_publish.model_dump(mode="json")
+        event_dict["payload"] = payload.model_dump_json()
+
+        # 3. Add the XADD command to the pipeline
+        pipe.xadd(stream_name, event_dict)  # type: ignore
 
     async def _fetch_events(
         self, group: str, consumer: str, stream: str, payload_model: Type[PayloadModel], batch: int
@@ -94,15 +112,14 @@ class RedisService:
                 streams={stream: "0"},  # Read pending unacknowledged messages
                 count=batch,
             )
-
             # STEP 2: No pending messages - poll for new ones
-            if not raw_events_response:
+            if not raw_events_response or (raw_events_response and not raw_events_response[0][1]):
                 raw_events_response = await self.redis.xreadgroup(
                     groupname=group,
                     consumername=consumer,
                     streams={stream: ">"},  # Read new messages
                     count=batch,
-                    block=1000,
+                    block=1000,  # 1 second timeout
                 )
 
             if not raw_events_response:
@@ -116,8 +133,19 @@ class RedisService:
 
             for event_id, data_dict in events_list:
                 try:
-                    data_dict["event_id"] = event_id  # fill in event_id
+                    payload_json = data_dict.get("payload", None)
+                    if not payload_json:
+                        logger.warning(f"Event {event_id} from stream {stream} is missing payload.")
+                        continue
+
+                    parsed_payload = json.loads(payload_json)
+
+                    # Fill in the parsed and newly created event_id
+                    data_dict["event_id"] = event_id
+                    data_dict["payload"] = parsed_payload
+
                     parsed_event = ExpectedEventModel.model_validate(data_dict)
+
                     parsed_events.append(parsed_event)
                 except ValidationError as ve:
                     logger.warning(
@@ -130,22 +158,6 @@ class RedisService:
         except Exception as e:
             logger.error(f"Critical Error reading and parsing stream {stream} for group {group}: {e}", exc_info=True)
             raise
-
-    async def _publish_event(self, pipe: Pipeline, stream_name: str, match_id: int, payload: BaseModel) -> None:
-        """
-        Generic helper to construct, serialize, and add an event to a stream
-        within a Redis pipeline transaction.
-        """
-        # 1. Create the specific event envelope using the provided payload
-        EventModel = EventToPublish[type(payload)]
-        event_to_publish = EventModel(match_id=match_id, payload=payload)
-
-        # 2. Serialize and flatten the event for Redis
-        event_dict = event_to_publish.model_dump(mode="json")
-        flat_event_data = {key: str(value) for key, value in event_dict.items()}
-
-        # 3. Add the XADD command to the pipeline
-        pipe.xadd(stream_name, flat_event_data)  # type: ignore
 
     # ============================================
     #   Stage 1: New Match -> Feature Engineering
