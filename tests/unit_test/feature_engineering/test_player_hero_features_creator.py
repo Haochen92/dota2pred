@@ -60,12 +60,12 @@ async def test_create_features_skips_match_with_missing_data(
     mock_logger_error = mocker.patch(f"{FUNCTION_FP}.logger.error")
 
     # Act
-    result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_async_session, match_instances=[match_instance]
-    )
+    with pytest.raises(ValueError):
+        await player_hero_features_creator.create_player_hero_features(
+            session=mock_async_session, match_instances=[match_instance]
+        )
 
     # Assert
-    assert len(result) == 0, f"Expected 0 results, got {len(result)}"
     mock_logger_error.assert_called_once()
 
 
