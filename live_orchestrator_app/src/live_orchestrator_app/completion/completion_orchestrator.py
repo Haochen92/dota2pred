@@ -56,8 +56,8 @@ class CompletionOrchestrator:
             original_event = task_result.inputs
             match_id = original_event.match_id
             try:
-                result = task_result.inputs
-                if isinstance(result, Exception):
+                result = task_result.outcome
+                if isinstance(result, BaseException):
                     raise result
                 await self.redis.mark_match_as_completed(match_id=match_id, event_id_to_ack=event_id)
                 count_success += 1
