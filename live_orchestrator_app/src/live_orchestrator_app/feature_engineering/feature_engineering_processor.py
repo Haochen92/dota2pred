@@ -2,6 +2,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 from ..services.feature_engineering_service import FeatureEngineeringService
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from dota_oracle_common.models.redis.schema import ConsumedEvent, FeatureEngineeringPayload, PredictionPayload
+from dota_oracle_common.models.match import MatchTable
 
 
 logger = get_logger(__name__)
@@ -34,12 +35,18 @@ class FeatureEngineeringEventProcessor:
                 try:
                     logger.debug(f"Processing feature engineering for match_id={match_id}")
 
+                    match_table_data = MatchTable.model_validate(match_details)
                     # Create and store features with session
                     hero_features, team_features, player_hero_features = (
-                        await self.feature_engineering_service.create_and_store_features(match_details, session)
+                        await self.feature_engineering_service.create_and_store_features(match_table_data, session)
                     )
 
                     logger.debug(f"Successfully processed feature engineering for match_id={match_id}")
+                    return PredictionPayload(
+                        hero_features=hero_features,
+                        team_features=team_features,
+                        player_hero_features=player_hero_features,
+                    )
 
                 except Exception as e:
                     logger.error(
@@ -47,7 +54,3 @@ class FeatureEngineeringEventProcessor:
                         exc_info=True,
                     )
                     raise e
-
-        return PredictionPayload(
-            hero_features=hero_features, team_features=team_features, player_hero_features=player_hero_features
-        )
