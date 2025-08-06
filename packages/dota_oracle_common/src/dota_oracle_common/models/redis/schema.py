@@ -1,9 +1,10 @@
-from pydantic import BaseModel, field_serializer, Field
+from pydantic import BaseModel, field_serializer, Field, model_validator
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Any, TypeVar, Generic
+from typing import Any, TypeVar, Generic, List, Dict
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features import HeroFeaturesTable, PlayerHeroFeatureTable, TeamFeaturesTable
+
 
 PayloadModel = TypeVar("PayloadModel", bound=BaseModel)
 
@@ -121,3 +122,68 @@ class FailureRecord(BaseModel, Generic[PayloadModel]):
     @field_serializer("failure_timestamp")
     def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
         return dt.isoformat()
+
+
+# --- Pydantic Parsers for XREADGROUP Response. To do: in future refactoring
+
+
+class RedisStreamMessage(BaseModel, Generic[PayloadModel]):
+    """
+    Represents a single raw message from a Redis Stream.
+    Its primary job is to parse the (id, data_dict) tuple and construct
+    a high-level ConsumedEvent object.
+    """
+
+    id: str = Field(description="The unique ID of the stream message (e.g., '1677694800000-0').")
+
+    # This field holds your fully parsed, high-level event object.
+    event: ConsumedEvent[PayloadModel]
+
+    @model_validator(mode="before")
+    @classmethod
+    def assemble_consumed_event(cls, data: Any) -> Dict[str, Any]:
+        """
+        Validator to transform the raw (id, dict) tuple from Redis
+        into a dictionary that Pydantic can use to build this model.
+
+        """
+        if not isinstance(data, tuple) or len(data) != 2:
+            raise ValueError("RedisStreamMessage must be created from an (id, data_dict) tuple.")
+
+        event_id = data[0]
+        event_data_dict = data[1]
+
+        assembled_event = {**event_data_dict, "event_id": event_id}
+
+        # Return the dictionary in the shape of this model's fields.
+        return {"id": event_id, "event": assembled_event}
+
+
+# 2. The model for a batch of messages from one stream: ('stream_name', [messages...])
+class RedisStreamBatch(BaseModel, Generic[PayloadModel]):
+    """
+    Represents the complete batch of messages returned for a single stream.
+    """
+
+    stream_name: str
+    messages: List[RedisStreamMessage[PayloadModel]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_from_redis_tuple(cls, data: Any) -> Dict[str, Any]:
+        """Validates and parses the ('stream_name', [messages...]) tuple."""
+        if isinstance(data, tuple) and len(data) == 2:
+            return {"stream_name": data[0], "messages": data[1]}
+        if isinstance(data, dict):  # For testing/factory support
+            return data
+        raise ValueError("RedisStreamBatch must be created from a (stream_name, messages_list) tuple or a dict")
+
+
+# 3. The top-level model for the entire response: [batch1, batch2, ...]
+class XReadGroupResponse(BaseModel, Generic[PayloadModel]):
+    """
+    The top-level model representing the entire raw response from XREADGROUP.
+    Wraps the list of batches in a standard `BaseModel` for readability.
+    """
+
+    root: List[RedisStreamBatch[PayloadModel]]
