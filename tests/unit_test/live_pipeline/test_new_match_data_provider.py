@@ -2,7 +2,9 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(new_match_data_provider, ongoing_league_game_factory, mocker) -> None:
+async def test_get_new_ongoing_matches_successfully(
+    new_match_data_provider, ongoing_league_game_factory, mocker
+) -> None:
     # mock live_league_games
     mock_list_ongoing_matches = ongoing_league_game_factory.batch(3)
 
@@ -18,7 +20,7 @@ async def test_get_work_items_successfully(new_match_data_provider, ongoing_leag
     )
 
     # ACT
-    actual_work_items = await new_match_data_provider.get_work_items()
+    actual_work_items = await new_match_data_provider.get_new_ongoing_matches()
 
     # ASSERT
     assert len(actual_work_items) == 2
