@@ -1,7 +1,6 @@
 from typing import List
 from dota_oracle_common.utils.set_logging import get_logger
 from live_orchestrator_app.services.redis_service import RedisService
-import datetime
 
 from dota_oracle_common.models.redis.schema import (
     ConsumedEvent,
@@ -37,14 +36,6 @@ class FeatureEngineeringDataProvider:
         if not pending_events:
             logger.info("No events pending feature engineering")
             return []
-
-        pending_event = pending_events[0]
-        start_time = pending_event.payload.match_details.start_time
-
-        assert isinstance(
-            start_time, datetime.datetime
-        ), f"Type error: start_time must be a datetime object, but got {type(start_time)}"
-        # -------------------------
 
         logger.info(f"Retrieved {len(pending_events)} pending events from Redis stream for feature engineering")
 
