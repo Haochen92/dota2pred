@@ -1,6 +1,7 @@
 import redis.asyncio as redis
 from redis.asyncio.client import Pipeline
 import asyncio
+import json
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
 from typing import List, Set, Type, Tuple, Dict
@@ -18,7 +19,6 @@ from dota_oracle_common.models.redis.schema import (
     PayloadModel,
 )
 from dota_oracle_common.models.match import MatchTable
-import json
 
 # Constants
 from dota_oracle_common.constants.redis_constants import (
@@ -91,11 +91,13 @@ class RedisService:
         EventModel = EventToPublish[type(payload)]
         event_to_publish = EventModel(match_id=match_id, payload=payload)
 
-        event_dict = event_to_publish.model_dump(mode="json")
-        event_dict["payload"] = payload.model_dump_json()
+        payload_json = payload.model_dump_json()
+        event_json = event_to_publish.model_dump(mode="json")
+
+        event_json["payload"] = payload_json
 
         # 3. Add the XADD command to the pipeline
-        pipe.xadd(stream_name, event_dict)  # type: ignore
+        pipe.xadd(stream_name, event_json)  # type: ignore
 
     async def _fetch_events(
         self, group: str, consumer: str, stream: str, payload_model: Type[PayloadModel], batch: int
@@ -133,20 +135,19 @@ class RedisService:
 
             for event_id, data_dict in events_list:
                 try:
-                    payload_json = data_dict.get("payload", None)
-                    if not payload_json:
-                        logger.warning(f"Event {event_id} from stream {stream} is missing payload.")
-                        continue
+                    payload_json = data_dict.get("payload")
+                    parsed_payload = payload_model.model_validate_json(payload_json)
 
-                    parsed_payload = json.loads(payload_json)
+                    final_event_data = {
+                        "event_id": event_id,
+                        "timestamp": data_dict.get("timestamp"),
+                        "match_id": data_dict.get("match_id"),
+                        "payload": parsed_payload,
+                    }
 
-                    # Fill in the parsed and newly created event_id
-                    data_dict["event_id"] = event_id
-                    data_dict["payload"] = parsed_payload
+                    consumed_event = ExpectedEventModel.model_validate(final_event_data)
 
-                    parsed_event = ExpectedEventModel.model_validate(data_dict)
-
-                    parsed_events.append(parsed_event)
+                    parsed_events.append(consumed_event)
                 except ValidationError as ve:
                     logger.warning(
                         f"Pydantic validation failed for event ID '{event_id}' from stream '{stream}'. Error: {ve} "
