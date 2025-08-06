@@ -76,7 +76,7 @@ class TeamFeatureCreator:
                 logger.error(
                     f"Unexpected error processing match {getattr(instance, 'match_id', 'unknown')}: {e}", exc_info=True
                 )
-                continue
+                raise e
 
         logger.info(f"Created {len(all_match_features)} / {len(match_instances)} team features")
         return all_match_features
@@ -111,8 +111,8 @@ class TeamFeatureCreator:
             return wins / total_games if total_games > 0 else 0.5
 
         except Exception as e:
-            logger.warning(f"Error calculating win rate for team '{team_name}': {e}")
-            return 0.5
+            logger.error(f"Error calculating win rate for team '{team_name}': {e}", exc_info=True)
+            raise
 
     async def _calculate_matchup_win_rate(
         self,
@@ -155,5 +155,5 @@ class TeamFeatureCreator:
             return win_rate
 
         except Exception as e:
-            logger.warning(f"Error calculating matchup rate for '{team_name}' vs '{opponent_name}': {e}")
-            return 0.5
+            logger.error(f"Error calculating matchup rate for '{team_name}' vs '{opponent_name}': {e}", exc_info=True)
+            raise

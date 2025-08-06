@@ -47,10 +47,10 @@ class PlayerHeroFeaturesCreator:
 
             except ValueError as ve:
                 logger.error(f"Skipping match {match_id} due to missing player data: {ve}")
-                continue
+                raise ve
             except Exception as e:
                 logger.error(f"Error processing match {match_id}: {e}", exc_info=True)
-                continue
+                raise e
 
         logger.info(f"Created {len(player_hero_features_list)} player-hero feature rows")
         return player_hero_features_list
@@ -75,5 +75,7 @@ class PlayerHeroFeaturesCreator:
             return win_rate
 
         except Exception as e:
-            logger.warning(f"Error calculating win rate for account_id {account_id}, hero_id {hero_id}: {e}")
-            return 0.5
+            logger.error(
+                f"Error calculating win rate for account_id {account_id}, hero_id {hero_id}: {e}", exc_info=True
+            )
+            raise
