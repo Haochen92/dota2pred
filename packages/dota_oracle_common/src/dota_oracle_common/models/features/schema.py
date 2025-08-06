@@ -8,12 +8,15 @@ class TeamFeatures(SQLModel):
     Links to matches table with computed team features.
 
     Attributes:
-        match_id: Primary/foreign key to matches (BigInteger)
+        match_id: Primary/foreign key to matches (int)
         radiant_dire_matchup: Team matchup strength (float)
         radiant_win_rate: Radiant team win rate (float)
         dire_win_rate: Dire team win rate (float)
 
     """
+
+    # Match identifier
+    match_id: int
 
     # Feature columns
     radiant_dire_matchup: float
@@ -25,10 +28,13 @@ class HeroFeatures(SQLModel):
     """Base Model for hero-based features.
 
     Attributes:
-        match_id: Primary/foreign key to matches (BigInteger)
-        hero_picks: List of hero picks stored as JSON (List[str])
+        match_id: Primary/foreign key to matches (int)
+        hero_picks: List of hero picks stored as JSON (List[int])
 
     """
+
+    # Match identifier
+    match_id: int
 
     # Feature columns
     hero_picks: List[int]
@@ -38,10 +44,13 @@ class PlayerHeroFeature(SQLModel):
     """Base Model for player-hero combination features.
 
     Attributes:
-        match_id: Primary/foreign key to matches (BigInteger)
+        match_id: Primary/foreign key to matches (int)
         player_hero_*_win_rate: Win rates for all 10 player-hero combinations (float)
 
     """
+
+    # Match identifier
+    match_id: int
 
     # Features
     player_hero_0_win_rate: float
@@ -64,6 +73,9 @@ class AllFeaturesDTO(TeamFeatures, HeroFeatures, PlayerHeroFeature):
 
     # By re-declaring the fields here, we enforce a specific order.
     # The types and other metadata are inherited from the parent classes.
+
+    # 0. Match identifier
+    match_id: int
 
     # 1. Team Features
     radiant_win_rate: float
