@@ -2,8 +2,8 @@ from pydantic import BaseModel, field_serializer, Field, model_validator
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Any, TypeVar, Generic, List, Dict
-from dota_oracle_common.models.match import MatchTable
-from dota_oracle_common.models.features import HeroFeaturesTable, PlayerHeroFeatureTable, TeamFeaturesTable
+from dota_oracle_common.models.match.base import Match
+from dota_oracle_common.models.features.schema import TeamFeatures, HeroFeatures, PlayerHeroFeature
 
 
 PayloadModel = TypeVar("PayloadModel", bound=BaseModel)
@@ -33,7 +33,7 @@ class FeatureEngineeringPayload(BaseModel):
     Contains all the raw data needed to generate features.
     """
 
-    match_details: MatchTable
+    match_details: Match
 
 
 class PredictionPayload(BaseModel):
@@ -42,9 +42,9 @@ class PredictionPayload(BaseModel):
     Contains the fully processed features ready for the model.
     """
 
-    hero_features: HeroFeaturesTable
-    team_features: TeamFeaturesTable
-    player_hero_features: PlayerHeroFeatureTable
+    hero_features: HeroFeatures
+    team_features: TeamFeatures
+    player_hero_features: PlayerHeroFeature
 
 
 class CompletionPayload(BaseModel):
