@@ -5,7 +5,7 @@ from dota_oracle_common.models.utils import AsyncTask
 from dota_oracle_common.constants.redis_constants import PREDICTION_GROUP, STREAM_PENDING_PREDICTION
 from live_orchestrator_app.prediction.prediction_data_provider import PredictionDataProvider
 from live_orchestrator_app.prediction.prediction_event_processor import PredictionEventProcessor
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 
 logger = get_logger(__name__)
 

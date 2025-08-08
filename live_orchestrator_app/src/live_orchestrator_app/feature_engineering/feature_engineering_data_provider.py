@@ -1,6 +1,6 @@
 from typing import List
 from dota_oracle_common.utils.set_logging import get_logger
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 
 from dota_oracle_common.models.redis.schema import (
     ConsumedEvent,

@@ -12,6 +12,7 @@ from live_orchestrator_app.services.fetch_outcome_service import FetchOutcomeSer
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
 from live_orchestrator_app.services.model_inference_service import ModelInferenceService
+from live_orchestrator_app.services.stale_match_service import StaleMatchService
 
 
 # ================================
@@ -47,6 +48,11 @@ def mock_model_inference_service() -> ModelInferenceService:
 @pytest.fixture
 def mock_fetch_outcome_service() -> FetchOutcomeService:
     return AsyncMock(spec=FetchOutcomeService)
+
+
+@pytest.fixture
+def mock_stale_match_service() -> StaleMatchService:
+    return AsyncMock(spec=StaleMatchService)
 
 
 # ================================

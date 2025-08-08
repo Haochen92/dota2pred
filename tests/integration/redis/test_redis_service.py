@@ -2,6 +2,9 @@ import pytest
 from redis.asyncio import Redis as AIORedis
 from typing import Set, List, Type
 import json
+from datetime import datetime, timedelta, timezone
+
+from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
 
 from dota_oracle_common.models.redis.schema import (
     FailureRecord,
@@ -26,7 +29,7 @@ from dota_oracle_common.constants.redis_constants import (
     FAILED_EVENTS_MAPPING,
 )
 
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 
 # Import factory fixtures
 from ...factories.redis_models_factory import (
@@ -59,28 +62,22 @@ from pydantic import BaseModel
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
-###
-# Helper function to seed streams for tests
-###
 async def _seed_stream_with_event(redis_client: AIORedis, stream_name: str, match_id: int, payload: BaseModel) -> str:
-    """
-    ### CORRECTED: Helper to create and add an event to a stream using the
-    ### new hybrid/flattened data model.
-    """
+    """Helper to create and add an event to a stream using the flattened data model."""
     EventModel = EventToPublish[type(payload)]
     event_to_publish = EventModel(match_id=match_id, payload=payload)
 
-    # Create the flattened dictionary, mirroring the new publish logic
     event_dict = event_to_publish.model_dump(mode="json")
     event_dict["payload"] = payload.model_dump_json()
 
-    # Add the flattened dictionary to the stream
     return await redis_client.xadd(stream_name, event_dict)  # type: ignore
 
 
-###
-# Test Cases
-###
+def _create_old_event_id(seconds_in_past: int) -> str:
+    """Creates a Redis stream ID that appears to be from the past."""
+    past_timestamp = datetime.now(timezone.utc) - timedelta(seconds=seconds_in_past)
+    timestamp_ms = int(past_timestamp.timestamp() * 1000)
+    return f"{timestamp_ms}-0"
 
 
 async def test_initialize_redis_service(redis_service_test_subject: RedisService, test_redis_client: AIORedis) -> None:
@@ -419,3 +416,142 @@ async def test_record_failure_and_ack_serialization_error(
     assert not any(
         p["message_id"] == original_event_id for p in pending_after_ack
     ), "Message was not ACKed after serialization failure."
+
+
+class TestRedisJanitorService:
+    """
+    Integration tests for the Janitor/recovery functionality of the RedisService,
+    specifically for handling expired or stale events.
+    """
+
+    STREAM_NAME = STREAM_PENDING_COMPLETION
+    GROUP_NAME = COMPLETION_GROUP
+    CONSUMER_1 = "test_consumer_alpha"
+    JANITOR_CONSUMER = "janitor_worker_001"
+
+    async def test_fetch_expired_events(
+        self,
+        redis_service_test_subject: RedisService,
+        test_redis_client: AIORedis,
+        completion_payload_factory: CompletionPayloadFactory,
+    ):
+        """
+        Tests that fetch_expired_events correctly identifies events older than
+        the specified duration based on their creation timestamp.
+        """
+        # ARRANGE - Complete cleanup for isolation
+        try:
+            await test_redis_client.xgroup_destroy(self.STREAM_NAME, self.GROUP_NAME)
+        except Exception:
+            pass
+        try:
+            await test_redis_client.delete(self.STREAM_NAME)  # Complete stream deletion
+        except Exception:
+            pass
+        await test_redis_client.xgroup_create(self.STREAM_NAME, self.GROUP_NAME, id="0", mkstream=True)
+
+        # --- Seed Events with specific timestamps ---
+        old_id = _create_old_event_id(seconds_in_past=2000)  # Will be expired (older than 1800s)
+        recent_id = _create_old_event_id(seconds_in_past=200)  # Will not be expired
+
+        payload = completion_payload_factory.build()
+        payload_2 = completion_payload_factory.build()
+
+        await test_redis_client.xadd(
+            self.STREAM_NAME, {"payload": payload.model_dump_json(), "match_id": "100"}, id=old_id
+        )
+        await test_redis_client.xadd(
+            self.STREAM_NAME, {"payload": payload_2.model_dump_json(), "match_id": "200"}, id=recent_id
+        )
+
+        await test_redis_client.xreadgroup(self.GROUP_NAME, self.CONSUMER_1, {self.STREAM_NAME: ">"}, count=2)
+        expired_ids = await redis_service_test_subject.fetch_expired_events(
+            stream_name=self.STREAM_NAME, consumer_group=self.GROUP_NAME, duration=1800
+        )
+        assert len(expired_ids) == 1
+        assert expired_ids[0] == old_id
+        assert recent_id not in expired_ids
+
+    async def test_claim_and_parse_expired_events(
+        self,
+        redis_service_test_subject: RedisService,
+        test_redis_client: AIORedis,
+        completion_payload_factory: CompletionPayloadFactory,
+    ):
+        """
+        Tests the full workflow:
+        1. Identify expired event IDs.
+        2. Claim those events, which transfers ownership and returns their content.
+        3. Parse the claimed events back into Pydantic models.
+        """
+        # ARRANGE - Complete cleanup for isolation
+        try:
+            await test_redis_client.xgroup_destroy(self.STREAM_NAME, self.GROUP_NAME)
+        except Exception:
+            pass
+        try:
+            await test_redis_client.delete(self.STREAM_NAME)  # Complete stream deletion
+        except Exception:
+            pass
+        await test_redis_client.xgroup_create(self.STREAM_NAME, self.GROUP_NAME, id="0", mkstream=True)
+
+        expired_id_1 = _create_old_event_id(seconds_in_past=4000)
+        expired_id_2 = _create_old_event_id(seconds_in_past=3700)
+        recent_id = _create_old_event_id(seconds_in_past=300)
+
+        payload = completion_payload_factory.build(match_id=111)
+        payload_2 = completion_payload_factory.build(match_id=222)
+        payload_3 = completion_payload_factory.build(match_id=333)
+
+        current_time_iso = get_current_utc_iso_timestamp().isoformat()
+
+        await test_redis_client.xadd(
+            self.STREAM_NAME,
+            {"payload": payload.model_dump_json(), "match_id": "111", "timestamp": current_time_iso},
+            id=expired_id_1,
+        )
+        await test_redis_client.xadd(
+            self.STREAM_NAME,
+            {"payload": payload_2.model_dump_json(), "match_id": "222", "timestamp": current_time_iso},
+            id=expired_id_2,
+        )
+        await test_redis_client.xadd(
+            self.STREAM_NAME,
+            {"payload": payload_3.model_dump_json(), "match_id": "333", "timestamp": current_time_iso},
+            id=recent_id,
+        )
+
+        await test_redis_client.xreadgroup(self.GROUP_NAME, self.CONSUMER_1, {self.STREAM_NAME: ">"}, count=3)
+        expired_ids_to_claim = await redis_service_test_subject.fetch_expired_events(
+            stream_name=self.STREAM_NAME, consumer_group=self.GROUP_NAME, duration=3600
+        )
+        assert set(expired_ids_to_claim) == {expired_id_1, expired_id_2}
+
+        claimed_and_parsed_events = await redis_service_test_subject.claim_expired_events(
+            events_id_list=expired_ids_to_claim,
+            stream_name=self.STREAM_NAME,
+            consumer_group=self.GROUP_NAME,
+            consumer_name=self.JANITOR_CONSUMER,
+            payload_model=CompletionPayload,
+        )
+
+        assert len(claimed_and_parsed_events) == 2
+        claimed_match_ids = {event.match_id for event in claimed_and_parsed_events}
+        assert claimed_match_ids == {111, 222}
+
+        for event in claimed_and_parsed_events:
+            assert isinstance(event, ConsumedEvent)
+            assert isinstance(event.payload, CompletionPayload)
+            assert event.event_id in [expired_id_1, expired_id_2]
+
+        # Verify that the messages are now owned by the janitor by checking all pending messages
+        all_pending = await test_redis_client.xpending_range(
+            self.STREAM_NAME, self.GROUP_NAME, min="-", max="+", count=10
+        )
+
+        # Separate messages by consumer
+        janitor_pending_ids = {msg["message_id"] for msg in all_pending if msg["consumer"] == self.JANITOR_CONSUMER}
+        original_consumer_pending_ids = {msg["message_id"] for msg in all_pending if msg["consumer"] == self.CONSUMER_1}
+
+        assert janitor_pending_ids == {expired_id_1, expired_id_2}
+        assert original_consumer_pending_ids == {recent_id}

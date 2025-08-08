@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from testcontainers.redis import RedisContainer
 import redis.asyncio as aioredis
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)

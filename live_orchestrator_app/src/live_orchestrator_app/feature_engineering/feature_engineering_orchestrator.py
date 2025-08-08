@@ -5,7 +5,7 @@ from dota_oracle_common.models.utils import AsyncTask
 from dota_oracle_common.constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
 from .feature_engineering_data_provider import FeatureEngineeringDataProvider
 from .feature_engineering_processor import FeatureEngineeringEventProcessor
-from ..services.redis_service import RedisService
+from ..redis_services.redis_service import RedisService
 
 logger = get_logger(__name__)
 

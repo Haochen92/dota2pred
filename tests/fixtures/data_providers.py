@@ -12,7 +12,7 @@ from live_orchestrator_app.feature_engineering.feature_engineering_data_provider
 from live_orchestrator_app.prediction.prediction_data_provider import PredictionDataProvider
 
 # Service imports
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 
 
 # ================================

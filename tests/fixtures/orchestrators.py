@@ -22,7 +22,7 @@ from live_orchestrator_app.prediction.prediction_data_provider import Prediction
 from live_orchestrator_app.prediction.prediction_event_processor import PredictionEventProcessor
 
 # Service imports
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 
 

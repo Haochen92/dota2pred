@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any
+import re
 
 
 def get_current_utc_iso_timestamp() -> datetime:
@@ -72,3 +73,20 @@ def to_utc_datetime_object(time_input: Any) -> datetime:
         raise ValueError(f"Could not convert input '{time_input}' to a UTC datetime object.")
 
     return dt_object_utc
+
+
+def convert_redis_timestamp(event_id: str) -> datetime:
+    pattern = r"^\d+"
+    match = re.match(pattern, event_id)
+    if not match:
+        raise ValueError(f"Invalid redis event Id format: {event_id}")
+
+    timestamp_str = match.group()
+
+    try:
+        timestamp_ms = int(timestamp_str)
+        timestamp_sec = timestamp_ms / 1000.0
+        dt_object_utc = datetime.fromtimestamp(timestamp_sec, tz=timezone.utc)
+        return dt_object_utc
+    except (ValueError, OSError) as e:
+        raise ValueError(f"Invalid timestamp: {timestamp_str}") from e

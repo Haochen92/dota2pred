@@ -15,7 +15,7 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from dota_oracle_common.models.inference.table import MatchPredictionTable
-from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
+from dota_oracle_common.models.live_games.schema import LiveLeagueGame, ScoreBoard, Faction
 from dota_oracle_common.models.match.schema import ProMatchOutcome
 from dota_oracle_common.models.match.table import MatchOutcomeTable, MatchTable
 from live_orchestrator_app.app_container import AppContainer
@@ -45,17 +45,18 @@ class TestLivePipelineE2E:
     DIRE_SLOT_IDS = list(range(128, 133))
 
     @pytest.fixture(scope="function")
-    def live_league_data(self, ongoing_league_game_factory, player_factory) -> Dict[int, OngoingLeagueGame]:
-
+    def live_league_data(self, ongoing_league_game_factory, player_factory) -> Dict[int, LiveLeagueGame]:
+        """Create LiveLeagueGame objects that will be processed through the real pipeline."""
         matches = {}
         # Use realistic timestamps (recent dates)
         base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc).timestamp()
 
         for i, match_id in enumerate(self.MATCH_IDS):
-            match = ongoing_league_game_factory.build(match_id=match_id)
+            # Start with an ongoing game to get proper structure
+            ongoing_match = ongoing_league_game_factory.build(match_id=match_id)
 
             # Override with valid timestamp (stagger matches by 30 minutes)
-            match.start_time = base_timestamp + (i * 1800)  # 1800 seconds = 30 minutes
+            start_time = base_timestamp + (i * 1800)  # 1800 seconds = 30 minutes
 
             # Override player and hero slot values to reflect true data
             # Use well-known valid hero IDs from Dota 2
@@ -64,40 +65,51 @@ class TestLivePipelineE2E:
             radiant_hero_ids = [1, 2, 3, 4, 5]  # Anti-Mage, Axe, Bane, Bloodseeker, Crystal Maiden
             dire_hero_ids = [6, 7, 8, 9, 14]  # Drow Ranger, Earthshaker, Juggernaut, Mirana, Pudge
 
-            match.scoreboard.radiant.players = [
+            radiant_players = [
                 player_factory.build(
                     player_slot=i, account_id=i + 2000, hero_id=radiant_hero_ids[i], name=f"player_{i}"
                 )
                 for i in self.RADIANT_SLOT_IDS
             ]
-            match.scoreboard.dire.players = [
+            dire_players = [
                 player_factory.build(
                     player_slot=i, account_id=i + 2000, hero_id=dire_hero_ids[i - 128], name=f"player_{i}"
                 )
                 for i in self.DIRE_SLOT_IDS
             ]
 
-            matches[match_id] = match
+            # Create LiveLeagueGame directly (simulating API response)
+            live_game = LiveLeagueGame(
+                match_id=match_id,
+                league_id=ongoing_match.league_id,
+                start_time=start_time,
+                radiant_team=ongoing_match.radiant_team,
+                dire_team=ongoing_match.dire_team,
+                scoreboard=ScoreBoard(
+                    duration=ongoing_match.scoreboard.duration,
+                    radiant=Faction(players=radiant_players),
+                    dire=Faction(players=dire_players),
+                ),
+            )
+
+            matches[match_id] = live_game
 
         return matches
 
     @pytest.fixture(scope="function")
-    def cycle1_live_games(self, live_league_data: Dict[int, OngoingLeagueGame]) -> List[LiveLeagueGame]:
+    def cycle1_live_games(self, live_league_data: Dict[int, LiveLeagueGame]) -> List[LiveLeagueGame]:
         """Cycle 1: Two new matches."""
-        games = [live_league_data[self.MATCH_IDS[0]], live_league_data[self.MATCH_IDS[1]]]
-        return [LiveLeagueGame.model_validate(g.model_dump()) for g in games]
+        return [live_league_data[self.MATCH_IDS[0]], live_league_data[self.MATCH_IDS[1]]]
 
     @pytest.fixture(scope="function")
-    def cycle2_live_games(self, live_league_data: Dict[int, OngoingLeagueGame]) -> List[LiveLeagueGame]:
+    def cycle2_live_games(self, live_league_data: Dict[int, LiveLeagueGame]) -> List[LiveLeagueGame]:
         """Cycle 2: Previous matches + one new match."""
-        games = [live_league_data[match_id] for match_id in self.MATCH_IDS]
-        return [LiveLeagueGame.model_validate(g.model_dump()) for g in games]
+        return [live_league_data[match_id] for match_id in self.MATCH_IDS]
 
     @pytest.fixture(scope="function")
-    def cycle3_live_games(self, live_league_data: Dict[int, OngoingLeagueGame]) -> List[LiveLeagueGame]:
+    def cycle3_live_games(self, live_league_data: Dict[int, LiveLeagueGame]) -> List[LiveLeagueGame]:
         """Cycle 3: First match completed."""
-        games = [live_league_data[self.MATCH_IDS[1]], live_league_data[self.MATCH_IDS[2]]]
-        return [LiveLeagueGame.model_validate(g.model_dump()) for g in games]
+        return [live_league_data[self.MATCH_IDS[1]], live_league_data[self.MATCH_IDS[2]]]
 
     @pytest.fixture(scope="function")
     def completed_match_outcomes(self) -> List[ProMatchOutcome]:

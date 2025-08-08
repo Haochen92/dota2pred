@@ -7,7 +7,7 @@ F_PATH = "live_orchestrator_app.completion.completion_data_provider"
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(mock_redis_service, mocker) -> None:
+async def test_get_work_items_successfully(mock_redis_service, mock_stale_match_service, mocker) -> None:
     # ARRANGE
     match_id = 12345
     event_id = "event_123"
@@ -26,8 +26,10 @@ async def test_get_work_items_successfully(mock_redis_service, mocker) -> None:
         f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={match_id: mock_outcome}
     )
 
+    mock_stale_matches = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
+
     # create
-    provider = CompletionDataProvider(mock_redis_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -37,6 +39,7 @@ async def test_get_work_items_successfully(mock_redis_service, mocker) -> None:
 
     mock_fetch_matches.assert_awaited_once()
     mock_fetch_outcome.assert_awaited_once()
+    mock_stale_matches.assert_awaited_once()
 
     actual_work_item = result[0]
 
@@ -48,11 +51,11 @@ async def test_get_work_items_successfully(mock_redis_service, mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_no_events(mock_redis_service, mocker) -> None:
+async def test_get_work_items_no_events(mock_redis_service, mock_stale_match_service, mocker) -> None:
     # ARRANGE
     mock_fetch_matches = mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", return_value=[])
 
-    provider = CompletionDataProvider(mock_redis_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -63,7 +66,7 @@ async def test_get_work_items_no_events(mock_redis_service, mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_no_outcomes(mock_redis_service, mocker) -> None:
+async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_service, mocker) -> None:
     # ARRANGE
     match_id = 12345
     event_id = "event_123"
@@ -79,7 +82,7 @@ async def test_get_work_items_no_outcomes(mock_redis_service, mocker) -> None:
     # Mock FetchOutcomeService to return empty outcomes
     mock_fetch_outcome = mocker.patch(f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={})
 
-    provider = CompletionDataProvider(mock_redis_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
 
     # ACT
     result = await provider.get_work_items()
