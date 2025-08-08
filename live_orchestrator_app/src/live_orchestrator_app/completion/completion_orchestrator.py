@@ -1,6 +1,6 @@
 import pydantic
 from dota_oracle_common.utils.set_logging import get_logger
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider

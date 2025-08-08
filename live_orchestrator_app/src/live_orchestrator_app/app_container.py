@@ -19,11 +19,12 @@ from dota_oracle_pipeline.feature_engineering.player_hero_features_creator impor
 from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
-from .services.redis_service import RedisService
+from .redis_services.redis_service import RedisService
 from .services.feature_engineering_service import FeatureEngineeringService
 from .services.history_update_service import HistoryUpdateService
 from .services.match_prediction_service import MatchPredictionService
 from .services.feature_preparation_service import FeaturePreparationService
+from .services.stale_match_service import StaleMatchService
 
 # --- Pipeline Data Providers ---
 from .data_fetching.new_match_data_provider import NewMatchDataProvider
@@ -92,6 +93,8 @@ class AppContainer(containers.DeclarativeContainer):
         model_inference_service=model_inference_service,
     )
 
+    stale_match_service = providers.Factory(StaleMatchService, redis_service=redis_service)
+
     # --- Data Providers ---
     new_match_data_provider = providers.Factory(NewMatchDataProvider, redis_service=redis_service)
 
@@ -102,7 +105,9 @@ class AppContainer(containers.DeclarativeContainer):
         redis_service=redis_service,
     )
 
-    completion_data_provider = providers.Factory(CompletionDataProvider, redis_service=redis_service)
+    completion_data_provider = providers.Factory(
+        CompletionDataProvider, redis_service=redis_service, stale_match_service=stale_match_service
+    )
 
     # --- Event Processors ---
     new_match_event_processor = providers.Factory(NewMatchEventProcessor, db_session_factory=db_session_factory)

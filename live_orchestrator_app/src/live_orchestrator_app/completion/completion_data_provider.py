@@ -1,7 +1,8 @@
 from dota_oracle_common.utils.set_logging import get_logger
 from typing import List
-from ..services.redis_service import RedisService
+from ..redis_services.redis_service import RedisService
 from ..services.fetch_outcome_service import FetchOutcomeService
+from ..services.stale_match_service import StaleMatchService
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletedMatchPayload
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION
 
@@ -9,11 +10,9 @@ logger = get_logger(__name__)
 
 
 class CompletionDataProvider:
-    def __init__(
-        self,
-        redis_service: RedisService,
-    ):
+    def __init__(self, redis_service: RedisService, stale_match_service: StaleMatchService):
         self.redis = redis_service
+        self.stale_match_service = stale_match_service
 
     async def get_work_items(
         self, consumer_name: str = "default_consumer"
@@ -47,5 +46,10 @@ class CompletionDataProvider:
                 completed_match_list.append(
                     ConsumedEvent[CompletedMatchPayload](event_id=event_id, payload=payload, match_id=match_id)
                 )
+
+        # Fetch completed matches from stale pending matches
+        completed_stale_matches = await self.stale_match_service.run_stream_cleaning_cycle("stale_match_consumer")
+
+        completed_match_list.extend(completed_stale_matches)
 
         return completed_match_list
