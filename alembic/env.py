@@ -9,7 +9,7 @@ from alembic import context
 from dota_oracle_common import models
 
 
-_ = models  # Use for side effect
+_ = models  # Use for side effect. Keep this line to prevent pre-commit hooks from removing
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
