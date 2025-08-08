@@ -6,6 +6,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from dota_oracle_common import models
+
+
+_ = models  # Use for side effect
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
