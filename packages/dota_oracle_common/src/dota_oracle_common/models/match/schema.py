@@ -60,7 +60,7 @@ class MatchesAPIResponse(BaseModel):
     dire_name: Optional[str] = None
     dire_team_id: Optional[int] = None
 
-    league: LeagueData
+    league: Optional[LeagueData] = None
     players: List[PlayerData]
 
 
