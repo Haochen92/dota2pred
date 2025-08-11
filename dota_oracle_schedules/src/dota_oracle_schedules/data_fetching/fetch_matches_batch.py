@@ -109,26 +109,26 @@ async def find_existing_Ids(session: AsyncSession, ids_to_check: List[int]) -> S
 
 async def fetch_completed_matches_concurrently(match_ids_set: Set[int]) -> List[MatchWithOutcome]:
 
-    concurrent_task_lists: List[AsyncTask[int, MatchWithOutcome]] = []
+    concurrent_task_lists: List[AsyncTask[int, int, MatchWithOutcome]] = []
     for match_id in match_ids_set:
-        task = AsyncTask(key=match_id, coro=fetch_and_parse_match(match_id))
+        task = AsyncTask(key=match_id, inputs=match_id, coro=fetch_and_parse_match(match_id))
         concurrent_task_lists.append(task)
 
     completed_matches: List[MatchWithOutcome] = []
-    failed_to_fetch: List[int] = []
+    failure_count = 0
 
-    res: List[TaskResult[int, MatchWithOutcome]] = await TaskRunner.run_concurrently(concurrent_task_lists, 20)
+    res: List[TaskResult[int, int, MatchWithOutcome]] = await TaskRunner.run_concurrently(concurrent_task_lists, 20)
 
     for result in res:
-        if result.exception is not None:
-            failed_to_fetch.append(result.key)
-        elif result.result is not None:
-            completed_matches.append(result.result)
+        if isinstance(result.outcome, BaseException):
+            failure_count += 1
+        else:
+            completed_matches.append(result.outcome)
 
     logger.info(
         f"""
             Successfully fetched {len(completed_matches)} matches,
-            and {len(failed_to_fetch)} failed: {failed_to_fetch}
+            and {failure_count} matches failed
         """
     )
 
