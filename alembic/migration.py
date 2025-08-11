@@ -13,7 +13,8 @@ def run_migrations(db_url, description):
     logger.info(f"Running migrations for {description}")
 
     # Create Alembic configuration
-    alembic_cfg = Config("alembic.ini")
+    alembic_cfg = Config("../alembic.ini")
+    alembic_cfg.set_main_option("script_location", ".")
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
     try:
