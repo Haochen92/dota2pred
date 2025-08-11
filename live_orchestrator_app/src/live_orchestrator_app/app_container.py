@@ -25,6 +25,7 @@ from .services.history_update_service import HistoryUpdateService
 from .services.match_prediction_service import MatchPredictionService
 from .services.feature_preparation_service import FeaturePreparationService
 from .services.stale_match_service import StaleMatchService
+from .services.notifications_service import NotificationService
 
 # --- Pipeline Data Providers ---
 from .data_fetching.new_match_data_provider import NewMatchDataProvider
@@ -94,6 +95,10 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     stale_match_service = providers.Factory(StaleMatchService, redis_service=redis_service)
+
+    notification_service = providers.Factory(
+        NotificationService, redis_service=redis_service, db_session_factory=db_session_factory
+    )
 
     # --- Data Providers ---
     new_match_data_provider = providers.Factory(NewMatchDataProvider, redis_service=redis_service)
