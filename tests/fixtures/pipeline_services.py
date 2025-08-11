@@ -13,7 +13,7 @@ from live_orchestrator_app.services.history_update_service import HistoryUpdateS
 from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
 from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 from live_orchestrator_app.services.stale_match_service import StaleMatchService
-
+from live_orchestrator_app.services.notifications_service import NotificationService
 
 # ================================
 # SERVICE MOCKS (ESSENTIAL!)
@@ -55,6 +55,11 @@ def mock_stale_match_service() -> StaleMatchService:
     return AsyncMock(spec=StaleMatchService)
 
 
+@pytest.fixture
+def mock_notification_service() -> NotificationService:
+    return AsyncMock(spec=NotificationService)
+
+
 # ================================
 # SERVICE COMPONENT FIXTURES
 # ================================
@@ -73,3 +78,8 @@ def feature_preparation_service(
 async def model_inference_service() -> ModelInferenceService:
     service = await ModelInferenceService.create()
     return service
+
+
+@pytest.fixture
+def notification_service(mock_redis_service, mock_db_session_factory):
+    return NotificationService(redis_service=mock_redis_service, db_session_factory=mock_db_session_factory)
