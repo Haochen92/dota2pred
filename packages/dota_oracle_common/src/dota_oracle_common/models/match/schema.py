@@ -1,5 +1,6 @@
 from pydantic import BaseModel, RootModel
 from typing import Optional, List
+from .base import Match, MatchWithOutcome
 
 
 class LeagueData(BaseModel):
@@ -84,3 +85,26 @@ class ProMatchAPIResponse(RootModel[List[ProMatchOutcome]]):
     """
 
     root: List[ProMatchOutcome]
+
+
+# API Payloads DTO
+
+
+class MatchNotifcationAPIPayload(Match):
+    """Match model combined with prediction data.
+
+    Inherits from Match and adds prediciton result
+
+    Attributes:
+        model_prediction: predicted outcome for the match
+    """
+
+    predicted_outcome: Optional[bool] = None
+
+
+class CompletedMatchAPIPayload(MatchWithOutcome):
+    """Completed Match with predictions and actual outcome
+    Inherits from Match with Outcome and add prediction results
+    """
+
+    predicted_outcome: bool
