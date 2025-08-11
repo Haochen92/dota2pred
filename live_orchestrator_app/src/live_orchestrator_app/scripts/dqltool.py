@@ -3,7 +3,8 @@ import argparse
 import json
 from typing import Dict, List, Type
 
-from redis_services.redis_service import RedisService
+# NOTE: No changes needed in redis_service.py
+from live_orchestrator_app.redis_services.redis_service import RedisService
 from dota_oracle_common.constants.redis_constants import (
     STREAM_NEW_MATCHES,
     STREAM_PENDING_PREDICTION,
@@ -39,6 +40,7 @@ class DlqTool:
         """Fetches all failed events from a given DLQ Hash and parses them."""
         print(f"\nFetching events from DLQ: '{dlq_hash_name}'...")
         try:
+            # hgetall returns Dict[str, str] because decode_responses=True
             raw_events = await self.redis.hgetall(dlq_hash_name)
             if not raw_events:
                 print("No failed events found in this DLQ.")
@@ -63,7 +65,8 @@ class DlqTool:
                     parsed_events.append(parsed_event)
 
                 except (json.JSONDecodeError, KeyError, Exception) as e:
-                    print(f"⚠️  Could not parse event data for ID {event_id.decode()}: {e}")
+                    # FIX: Removed .decode() from event_id as it's already a string.
+                    print(f"⚠️  Could not parse event data for ID {event_id}: {e}")
 
             return sorted(parsed_events, key=lambda r: r.failure_timestamp)
         except Exception as e:
@@ -89,12 +92,15 @@ class DlqTool:
                 pipe.hdel(FAILED_EVENTS_MAPPING[target_stream], record.original_event_id)
                 results = await pipe.execute()
 
-            new_event_id = results[0].decode()
+            # FIX: Removed .decode() as results are already strings due to decode_responses=True
+            new_event_id = results[0]
             print(f"✅ Success! Re-injected as new event ID: {new_event_id}")
             print(f"✅ Removed original failed event {record.original_event_id} from DLQ.")
             return True
 
         except Exception as e:
+            # This will now correctly catch the 'WRONGTYPE' error if you try to reinject
+            # into a corrupted stream key, without crashing the tool on startup.
             print(f"❌ CRITICAL: Failed to reinject event {record.original_event_id}: {e}")
             print("   The event has NOT been removed from the DLQ.")
             return False
@@ -134,15 +140,12 @@ async def main():
         print(f"❌ Could not connect to Redis: {e}")
         return
 
-    # Create RedisService instance
-    try:
-        redis_service = await RedisService.create(redis_client)
-        tool = DlqTool(redis_service)
-    except Exception as e:
-        print(f"❌ Could not initialize RedisService: {e}")
-        print("This might be due to conflicting data types in Redis. Consider flushing the DB if safe to do so.")
-        await redis_client.aclose()
-        return
+    # FIX: Instantiate RedisService directly without calling the .create() classmethod.
+    # This avoids the consumer group initialization which was causing the WRONGTYPE crash.
+    # The DLQ tool does not need consumer groups to function.
+    redis_service = RedisService(redis_client)
+    tool = DlqTool(redis_service)
+
     dlq_hashes = list(FAILED_EVENTS_MAPPING.values())
 
     # --- Interactive Loop ---
@@ -212,7 +215,7 @@ async def main():
                 print(f"Unknown action '{action}'.")
 
     print("Exiting tool. Goodbye!")
-    await redis_client.close()
+    await redis_client.aclose()
 
 
 if __name__ == "__main__":
