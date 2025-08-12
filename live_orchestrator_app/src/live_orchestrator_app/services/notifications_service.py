@@ -40,7 +40,7 @@ class NotificationService:
             if live_match_set:
                 logger.info(f"Found {len(live_match_set)} live matches. Fetching full payloads.")
                 match_payloads = await self.fetch_match_payloads(live_match_set)
-                final_payload["live_matches"] = [p.model_dump() for p in match_payloads]
+                final_payload["live_matches"] = [p.model_dump(mode="json") for p in match_payloads]
 
             logger.info(f"Sending notification payload with {len(final_payload['live_matches'])} matches.")
             api_response = await self.call_api_endpoint(final_payload)
