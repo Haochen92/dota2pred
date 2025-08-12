@@ -8,6 +8,8 @@ import redis.asyncio as aioredis
 from live_orchestrator_app.app_container import AppContainer
 from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from dota_oracle_common.models.heroes.table import HeroDataTable
+from dependency_injector import providers
+from live_orchestrator_app.services.model_inference_service import ModelInferenceService
 
 logger = get_logger(__name__)
 
@@ -134,14 +136,13 @@ async def test_app_container(e2e_redis_client, e2e_postgres_engine) -> AppContai
 
 
 @pytest_asyncio.fixture(scope="function")
-async def configured_test_container(test_app_container, model_meta_data_api_response_factory, http_client):
-    from dependency_injector import providers
+async def configured_test_container(test_app_container, http_client):
 
     container = test_app_container
 
     # Configure model metadata for testing
-    test_metadata = model_meta_data_api_response_factory.build()
-    container.model_metadata.override(providers.Object(test_metadata))
+    model_metadata = await ModelInferenceService.fetch_model_metadata(http_client)
+    container.model_metadata.override(providers.Object(model_metadata))
 
     # Configure http client for testing
     container.http_client.override(providers.Object(http_client))
