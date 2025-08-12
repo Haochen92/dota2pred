@@ -41,26 +41,32 @@ class TestComprehensiveE2EWiring:
         return model_prediction_api_response_factory()
 
     async def test_complete_pipeline_wiring_with_realistic_data(
-        self, test_app_container, mock_live_games_data, mock_match_details_data, mock_prediction_response
+        self,
+        test_app_container,
+        mock_live_games_data,
+        mock_match_details_data,
+        mock_prediction_response,
+        model_meta_data_api_response_factory,
     ) -> None:
         """
         Test complete pipeline wiring from new match discovery through completion.
         Mocks all external API calls while using realistic data structures.
         """
 
-        # Mock the problematic model inference service initialization
+        # Mock the model metadata and http client for proper dependency injection
+        from dependency_injector import providers
+
+        # Create mock metadata using the factory
+        mock_metadata = model_meta_data_api_response_factory.build()
+        test_app_container.model_metadata.override(providers.Object(mock_metadata))
+
+        # Create mock http client
+        mock_http_client = AsyncMock()
+        test_app_container.http_client.override(providers.Object(mock_http_client))
+
+        # Override prediction response for model inference service
         mock_model_service = AsyncMock()
-        mock_model_service.predict_match_outcome = AsyncMock(return_value=mock_prediction_response)
-        mock_model_service.feature_columns = ["feature1", "feature2", "feature3"]  # Mock feature columns
-        mock_model_service.model_metadata = AsyncMock()
-        mock_model_service.model_metadata.feature_columns = ["feature1", "feature2", "feature3"]
-
-        # Override the model service with our mock
-        test_app_container.model_inference_service.override(lambda: mock_model_service)
-
-        # Mock the feature preparation service to avoid complex initialization
-        mock_prep_service = AsyncMock()
-        test_app_container.feature_preparation_service.override(lambda _: mock_prep_service)
+        mock_model_service.get_prediction = AsyncMock(return_value=mock_prediction_response)
 
         try:
             # Initialize container resources
@@ -68,7 +74,7 @@ class TestComprehensiveE2EWiring:
 
             # Validate all critical components are wired correctly
             redis_service = await test_app_container.redis_service()
-            model_service = mock_model_service
+            model_service = test_app_container.model_inference_service()
 
             assert redis_service is not None
             assert model_service is not None
@@ -113,6 +119,8 @@ class TestComprehensiveE2EWiring:
         # Test that all providers are defined and configured
         assert test_app_container.redis_async_pool is not None
         assert test_app_container.db_session_factory is not None
+        assert test_app_container.http_client is not None
+        assert test_app_container.model_metadata is not None
         assert test_app_container.team_feature_creator is not None
         assert test_app_container.player_hero_features_creator is not None
         assert test_app_container.model_inference_service is not None
@@ -121,6 +129,8 @@ class TestComprehensiveE2EWiring:
         assert test_app_container.feature_engineering_service is not None
         assert test_app_container.history_update_service is not None
         assert test_app_container.match_prediction_service is not None
+        assert test_app_container.stale_match_service is not None
+        assert test_app_container.notification_service is not None
 
         # Test data providers
         assert test_app_container.new_match_data_provider is not None
