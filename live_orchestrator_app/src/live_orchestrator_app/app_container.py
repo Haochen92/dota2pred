@@ -11,6 +11,12 @@ from dota_oracle_common.redis_component.redis_client_factory import RedisClientF
 # database
 from dota_oracle_common.postgresql import DatabaseManager
 
+# HTTPX client
+from dota_oracle_common.http_client import http_client_provider
+
+# Model metadata
+from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
+
 # --- Feature Engineering Components ---
 from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamFeatureCreator
 from dota_oracle_pipeline.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
@@ -66,18 +72,25 @@ class AppContainer(containers.DeclarativeContainer):
     # --- Clients ---
     redis_async_pool = providers.Resource(RedisClientFactory.create_instance)
     db_session_factory = providers.Resource(DatabaseManager.get_session_factory)
+    http_client = providers.Resource(http_client_provider)
+
+    # --- Configuration Provider ---
+    # This will hold the metadata object once we fetch it.
+    model_metadata = providers.Singleton(ModelMetaDataAPIResponse)
 
     # --- Feature Engineering Components ---
     team_feature_creator = providers.Factory(TeamFeatureCreator)
     player_hero_features_creator = providers.Factory(PlayerHeroFeaturesCreator)
 
     # --- Inference Components ---
-    model_inference_service = providers.Resource(ModelInferenceService.create)
+    model_inference_service = providers.Factory(
+        ModelInferenceService,
+        http_client=http_client,
+        model_metadata=model_metadata,
+    )
 
     # --- Core Pipeline Services ---
-    feature_preparation_service = providers.Factory(
-        FeaturePreparationService, model_inference_service=model_inference_service
-    )
+    feature_preparation_service = providers.Factory(FeaturePreparationService, model_metadata=model_metadata)
 
     redis_service = providers.Resource(RedisService.create, redis_client=redis_async_pool)
 
@@ -97,7 +110,7 @@ class AppContainer(containers.DeclarativeContainer):
     stale_match_service = providers.Factory(StaleMatchService, redis_service=redis_service)
 
     notification_service = providers.Factory(
-        NotificationService, redis_service=redis_service, db_session_factory=db_session_factory
+        NotificationService, redis_service=redis_service, db_session_factory=db_session_factory, http_client=http_client
     )
 
     # --- Data Providers ---
@@ -168,6 +181,7 @@ class AppContainer(containers.DeclarativeContainer):
         feature_engineering_orchestrator=feature_engineering_orchestrator,
         prediction_orchestrator=prediction_orchestrator,
         completion_orchestrator=completion_orchestrator,
+        notification_service=notification_service,
     )
 
 
@@ -185,6 +199,14 @@ async def start_application() -> None:
         logger.debug("Initializing container resources...")
         await container.init_resources()  # type: ignore
         logger.info("Container resources initialized.")
+
+        # --- LIFT STATE UP: Fetch config at startup ---
+        http_client = await container.http_client()  # Get the initialized client
+        logger.info("Fetching model metadata for configuration...")
+        metadata = await ModelInferenceService.fetch_model_metadata(http_client)
+        container.model_metadata.override(providers.Object(metadata))
+        logger.info("Model metadata configured.")
+        # ---
 
         # Get the main app after resources are initialized
         application = await container.app()  # type: ignore

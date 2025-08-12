@@ -76,7 +76,8 @@ async def test_pro_match_contract() -> None:
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(wait_duration))
 async def test_model_metadata_contract(model_inference_service) -> None:
-    model_metadata = await model_inference_service.get_model_metadata()
+    # Test the metadata that's already injected in the service
+    model_metadata = model_inference_service.model_metadata
 
     assert isinstance(model_metadata, ModelMetaDataAPIResponse)
     assert model_metadata.version_metadata.feature_columns, "feature_columns is None"

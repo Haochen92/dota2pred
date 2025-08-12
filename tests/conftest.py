@@ -8,6 +8,7 @@ pytest_plugins = [
     "tests.fixtures.event_processors",
     "tests.fixtures.orchestrators",
     "tests.fixtures.feature_engineering",
+    "tests.fixtures.http_clients",
     "tests.factories.repository_factories",
     "tests.factories.unit_test_factory",
     "tests.factories.redis_models_factory",

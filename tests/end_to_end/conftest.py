@@ -134,8 +134,18 @@ async def test_app_container(e2e_redis_client, e2e_postgres_engine) -> AppContai
 
 
 @pytest_asyncio.fixture(scope="function")
-async def configured_test_container(test_app_container):
+async def configured_test_container(test_app_container, model_meta_data_api_response_factory, http_client):
+    from dependency_injector import providers
+
     container = test_app_container
+
+    # Configure model metadata for testing
+    test_metadata = model_meta_data_api_response_factory.build()
+    container.model_metadata.override(providers.Object(test_metadata))
+
+    # Configure http client for testing
+    container.http_client.override(providers.Object(http_client))
+
     await container.init_resources()
 
     return container

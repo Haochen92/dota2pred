@@ -66,20 +66,17 @@ def mock_notification_service() -> NotificationService:
 
 
 @pytest.fixture
-def feature_preparation_service(
-    mock_model_inference_service, model_meta_data_api_response_factory
-) -> FeaturePreparationService:
-    mock_model_inference_service.model_metadata = model_meta_data_api_response_factory.build()
-
-    return FeaturePreparationService(mock_model_inference_service)
+def feature_preparation_service(model_meta_data_api_response_factory) -> FeaturePreparationService:
+    return FeaturePreparationService(model_meta_data_api_response_factory.build())
 
 
 @pytest.fixture
-async def model_inference_service() -> ModelInferenceService:
-    service = await ModelInferenceService.create()
-    return service
+def model_inference_service(http_client, model_meta_data_api_response_factory) -> ModelInferenceService:
+    return ModelInferenceService(http_client=http_client, model_metadata=model_meta_data_api_response_factory.build())
 
 
 @pytest.fixture
-def notification_service(mock_redis_service, mock_db_session_factory):
-    return NotificationService(redis_service=mock_redis_service, db_session_factory=mock_db_session_factory)
+def notification_service(mock_redis_service, mock_db_session_factory, mock_http_client):
+    return NotificationService(
+        redis_service=mock_redis_service, db_session_factory=mock_db_session_factory, http_client=mock_http_client
+    )

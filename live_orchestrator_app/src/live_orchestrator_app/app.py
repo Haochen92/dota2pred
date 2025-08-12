@@ -6,6 +6,7 @@ from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
 from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator
 from .prediction.prediction_orchestrator import PredictionOrchestrator
 from .completion.completion_orchestrator import CompletionOrchestrator
+from .services.notifications_service import NotificationService
 
 
 logger = get_logger(__name__)
@@ -20,11 +21,13 @@ class MatchPipelineOrchestrator:
         feature_engineering_orchestrator: FeatureEngineeringOrchestrator,
         prediction_orchestrator: PredictionOrchestrator,
         completion_orchestrator: CompletionOrchestrator,
+        notification_service: NotificationService,
     ):
         self.new_match_orchestrator = new_match_orchestrator
         self.feature_engineering_orchestrator = feature_engineering_orchestrator
         self.prediction_orchestrator = prediction_orchestrator
         self.completion_orchestrator = completion_orchestrator
+        self.notification_service = notification_service
 
     async def run_cycle(self) -> None:
         """Runs one cycle of the live match processing pipeline."""
@@ -48,6 +51,10 @@ class MatchPipelineOrchestrator:
                 f"Predicted={count_predicted}, "
                 f"Completed={count_completed}"
             )
+
+            total_counts = count_new_matches + count_features_engineered + count_predicted + count_completed
+            if total_counts:
+                await self.notification_service.notify_state_change()
 
         except Exception as e:
             logger.error(f"Error in MatchPipelineOrchestrator run_cycle: {str(e)}", exc_info=True)

@@ -1,14 +1,16 @@
 import pytest
 import httpx
 
-
 # Mark all tests in this file as async
 pytestmark = pytest.mark.asyncio
 
-f_path = "live_orchestrator_app.services.notifications_service"
+F_PATH = "live_orchestrator_app.services.notifications_service"
 
 
 class TestNotificationService:
+    """Tests for the NotificationService, aligned with modern exception handling."""
+
+    # --- Tests for the main public method: notify_state_change ---
 
     async def test_notify_state_change_success_with_live_matches(
         self,
@@ -22,71 +24,63 @@ class TestNotificationService:
         """
         GIVEN there are live match IDs in Redis and the DB fetch is successful
         WHEN notify_state_change is called
-        THEN it should fetch details, build a payload, and call the API endpoint successfully
+        THEN it should fetch details, call the API, and return a success dictionary
         """
         # --- ARRANGE ---
-        # 1. Mock Redis to return a set of live match IDs
         live_match_ids = {101, 102}
         mock_redis_service.get_live_match_ids.return_value = live_match_ids
 
-        # 2. Mock the MatchRepository to return mock data
-        # Create mock DB objects using your factories
-        mock_prediction_1 = match_prediction_table_factory.build(prediction=True)
-        mock_prediction_2 = match_prediction_table_factory.build(prediction=True)
         mock_db_matches = [
-            match_table_factory.build(match_id=101, predictions=[mock_prediction_1]),
-            match_table_factory.build(match_id=102, predictions=[mock_prediction_2]),
+            match_table_factory.build(
+                match_id=101, predictions=[match_prediction_table_factory.build(prediction=True)]
+            ),
+            match_table_factory.build(
+                match_id=102, predictions=[match_prediction_table_factory.build(prediction=False)]
+            ),
         ]
-
-        # Mock the MatchRepository class
-        MockRepo = mocker.patch(f"{f_path}.MatchRepository", return_value=mock_match_repository)
+        MockRepo = mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
         mock_match_repository.get_match_details.return_value = mock_db_matches
 
-        # 3. Mock the internal call_api_endpoint to simulate a successful API call
         mock_call_api = mocker.patch.object(
             notification_service,
             "call_api_endpoint",
-            new_callable=mocker.AsyncMock,
-            return_value={"successful": True, "status_code": 200, "error": None},
+            autospec=True,
+            return_value={"status_code": 200},
         )
 
         # --- ACT ---
         result = await notification_service.notify_state_change()
 
         # --- ASSERT ---
-        # Verify dependencies were called correctly
         mock_redis_service.get_live_match_ids.assert_awaited_once()
         MockRepo.assert_called_once()
         mock_match_repository.get_match_details.assert_awaited_once_with(
             input_id_list=list(live_match_ids), relationship_fields=["predictions"]
         )
 
-        # Verify the API was called with the correct payload structure
+        # Verify the API was called with a correctly mapped payload
         mock_call_api.assert_awaited_once()
-        sent_payload = mock_call_api.call_args[0][0]  # Get the first positional arg
-        assert "live_matches" in sent_payload
+        sent_payload = mock_call_api.call_args[0][0]
         assert len(sent_payload["live_matches"]) == 2
         assert sent_payload["live_matches"][0]["match_id"] == 101
-        assert sent_payload["live_matches"][0]["predicted_outcome"] is True  # Check mapper logic
+        assert sent_payload["live_matches"][0]["predicted_outcome"] is True
 
-        # Verify the final result is the success status from the API call
-        assert result["successful"] is True
-        assert result["status_code"] == 200
+        # REVISION: The final result is constructed by notify_state_change itself.
+        assert result == {"successful": True, "status_code": 200}
 
     async def test_notify_state_change_with_no_live_matches(self, notification_service, mock_redis_service, mocker):
         """
         GIVEN there are no live match IDs in Redis
         WHEN notify_state_change is called
-        THEN it should send a payload with an empty list and return the API status
+        THEN it should send an empty payload and return a success dictionary
         """
         # --- ARRANGE ---
-        mock_redis_service.get_live_match_ids.return_value = set()  # Empty set
-
+        mock_redis_service.get_live_match_ids.return_value = set()
         mock_call_api = mocker.patch.object(
             notification_service,
             "call_api_endpoint",
-            new_callable=mocker.AsyncMock,
-            return_value={"successful": True, "status_code": 200, "error": None},
+            autospec=True,
+            return_value={"status_code": 200},
         )
 
         # --- ACT ---
@@ -94,93 +88,105 @@ class TestNotificationService:
 
         # --- ASSERT ---
         mock_redis_service.get_live_match_ids.assert_awaited_once()
-
-        # Verify the API was called with the correct empty payload
         mock_call_api.assert_awaited_once_with({"live_matches": []})
-        assert result["successful"] is True
+        assert result == {"successful": True, "status_code": 200}
 
-    async def test_notify_state_change_fails_on_db_error(
+    async def test_notify_state_change_handles_api_failure(self, notification_service, mock_redis_service, mocker):
+        """
+        GIVEN a call to the API endpoint will ultimately fail (e.g., after all retries)
+        WHEN notify_state_change is called
+        THEN it should CATCH the exception and return a failure dictionary
+        """
+        # --- ARRANGE ---
+        mock_redis_service.get_live_match_ids.return_value = set()
+        api_error = httpx.RequestError("Could not connect to endpoint")
+
+        mock_call_api = mocker.patch.object(
+            notification_service,
+            "call_api_endpoint",
+            autospec=True,
+            side_effect=api_error,
+        )
+
+        # --- ACT ---
+        result = await notification_service.notify_state_change()
+
+        # --- ASSERT ---
+        mock_call_api.assert_awaited_once()
+        assert result["successful"] is False
+        assert str(api_error) in result["error"]
+
+    async def test_notify_state_change_returns_failure_on_db_error(
         self, notification_service, mock_redis_service, mock_match_repository, mocker
     ):
         """
-        GIVEN Redis returns live match IDs
-        WHEN the database fetch raises an exception
-        THEN notify_state_change should re-raise that exception and NOT call the API
+        GIVEN Redis returns IDs but the database fetch fails
+        WHEN notify_state_change is called
+        THEN it should CATCH the DB exception, NOT call the API, and return a failure dictionary
         """
         # --- ARRANGE ---
         mock_redis_service.get_live_match_ids.return_value = {101}
         db_error = ValueError("Database connection failed")
 
-        # Mock the MatchRepository class
-        mocker.patch(f"{f_path}.MatchRepository", return_value=mock_match_repository)
+        mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
         mock_match_repository.get_match_details.side_effect = db_error
 
-        # Mock the API call method
-        mock_call_api = mocker.patch.object(notification_service, "call_api_endpoint", new_callable=mocker.AsyncMock)
+        mock_call_api = mocker.patch.object(notification_service, "call_api_endpoint", autospec=True)
 
-        # --- ACT & ASSERT ---
-        # Use pytest.raises to assert that the specific exception is raised
-        with pytest.raises(ValueError, match="Database connection failed"):
-            await notification_service.notify_state_change()
+        # --- ACT ---
+        result = await notification_service.notify_state_change()
 
-        # Verify the API was never called
+        # --- ASSERT ---
+        assert result["successful"] is False
+        assert "An unexpected error occurred" in result["error"]
+        assert "Database connection failed" in result["error"]
+
         mock_call_api.assert_not_awaited()
 
-    async def test_call_api_endpoint_retries_on_network_error_and_fails(self, notification_service, mocker):
+    # --- Tests for the internal method: call_api_endpoint ---
+    # These tests ensure the retry logic and exception raising works as expected.
+
+    async def test_call_api_endpoint_retries_and_then_raises(self, notification_service):
         """
-        GIVEN the httpx client will raise a network error
+        GIVEN the HTTP client will consistently raise a retryable network error
         WHEN call_api_endpoint is called
-        THEN it should retry 3 times and return a failure status
+        THEN it should retry 3 times and then RAISE the final exception
         """
         # --- ARRANGE ---
         network_error = httpx.ConnectError("Connection refused")
+        # To test tenacity, we mock the object it's calling: the http_client's post method.
+        # mock_post = AsyncMock(side_effect=network_error)
+        # notification_service.http_client.post = mock_post
+        mock_post = notification_service.http_client.post
+        mock_post.side_effect = network_error
 
-        # Mock the http_client's post method directly
-        mock_post = mocker.patch.object(
-            notification_service.http_client, "post", new_callable=mocker.AsyncMock, side_effect=network_error
-        )
+        # --- ACT & ASSERT ---
+        # REVISION: Assert that the function RAISES the exception after exhausting retries.
+        with pytest.raises(httpx.ConnectError, match="Connection refused"):
+            await notification_service.call_api_endpoint(payload={"live_matches": []})
 
-        payload = {"live_matches": []}
+        # Verify tenacity retried the correct number of times (1 initial call + 2 retries)
+        assert mock_post.await_count == 3
 
-        # --- ACT ---
-        result = await notification_service.call_api_endpoint(payload)
-
-        # --- ASSERT ---
-        # Verify tenacity retried the correct number of times
-        assert mock_post.await_count == 3  # 1 initial call + 2 retries
-
-        # Verify the final status is failure
-        assert result["successful"] is False
-        assert result["error"] == "Network request failed after all retry attempts"
-
-    async def test_call_api_endpoint_does_not_retry_on_http_status_error(self, notification_service, mocker):
+    async def test_call_api_endpoint_fails_immediately_on_non_retryable_error(self, notification_service):
         """
-        GIVEN the httpx client will raise an HTTP status error (e.g., 500)
+        GIVEN the HTTP client will raise a non-retryable error (e.g., 400 Bad Request)
         WHEN call_api_endpoint is called
-        THEN it should NOT retry and immediately return a failure status
+        THEN it should attempt the call only ONCE and immediately RAISE the exception
         """
         # --- ARRANGE ---
-        # Create a proper mock request and response
-        mock_request = httpx.Request("POST", "http://api-service:8000/internal/live-state-update")
-        mock_response = httpx.Response(status_code=500, request=mock_request)
-        mock_response._text = "Internal Server Error"
-        http_error = httpx.HTTPStatusError(message="Server error", request=mock_request, response=mock_response)
+        mock_request = httpx.Request("POST", "http://test.url")
+        # Use a 4xx error code, which is_retryable_error should return False for.
+        mock_response = httpx.Response(status_code=400, request=mock_request, text="Bad Request")
+        http_error = httpx.HTTPStatusError(message="Bad Request", request=mock_request, response=mock_response)
 
-        # Mock the http_client's post method directly
-        mock_post = mocker.patch.object(
-            notification_service.http_client, "post", new_callable=mocker.AsyncMock, side_effect=http_error
-        )
+        mock_post = notification_service.http_client.post
+        mock_post.side_effect = http_error
 
-        payload = {"live_matches": []}
+        # --- ACT & ASSERT ---
+        # REVISION: Assert that the function RAISES the exception immediately.
+        with pytest.raises(httpx.HTTPStatusError, match="Bad Request"):
+            await notification_service.call_api_endpoint(payload={"live_matches": []})
 
-        # --- ACT ---
-        result = await notification_service.call_api_endpoint(payload)
-
-        # --- ASSERT ---
         # Verify it was called only ONCE
         assert mock_post.await_count == 1
-
-        # Verify the final status reflects the HTTP error
-        assert result["successful"] is False
-        assert result["status_code"] == 500
-        assert "API service returned an error" in result["error"]

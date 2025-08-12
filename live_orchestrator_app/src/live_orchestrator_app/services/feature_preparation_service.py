@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, List
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
 from dota_oracle_pipeline.feature_transformation import FeatureEncoder
-from live_orchestrator_app.services.model_inference_service import ModelInferenceService
+from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
 
 from dota_oracle_common.utils.set_logging import get_logger
 
@@ -23,18 +23,11 @@ PLAYER_HERO_KEY = "player_hero"
 
 
 class FeaturePreparationService:
-    def __init__(self, model_inference_service: ModelInferenceService):
-        self.model_inference_service = model_inference_service
-        self.model_feature_names = self._extract_feature_columns()
-
-    def _extract_feature_columns(self) -> List[str]:
-        model_metadata = self.model_inference_service.model_metadata
-        feature_columns = model_metadata.version_metadata.feature_columns
-
-        if not feature_columns:
-            raise ValueError(f"feature_columns returned invalid value of {feature_columns}")
-
-        return list(feature_columns)
+    def __init__(self, model_metadata: ModelMetaDataAPIResponse):
+        # Now it depends on the data it actually needs.
+        self.model_feature_names = list(model_metadata.version_metadata.feature_columns)
+        if not self.model_feature_names:
+            raise ValueError("feature_columns in metadata is empty")
 
     async def prepare_features_for_inference(
         self, raw_features: PredictionPayload, db_session: AsyncSession
