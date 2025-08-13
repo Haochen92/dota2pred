@@ -85,7 +85,19 @@ async def redis_pubsub_service(redis_container_instance: RedisContainer):
 
 @pytest.fixture
 def mock_redis_client() -> aioredis.Redis:
-    return AsyncMock(spec=aioredis.Redis)
+    mock = AsyncMock(spec=aioredis.Redis)
+    # Manually override methods that return coroutines in redis-py
+    mock.publish = AsyncMock()
+    mock.get = AsyncMock()
+    mock.set = AsyncMock()
+    mock.delete = AsyncMock()
+    mock.exists = AsyncMock()
+    mock.expire = AsyncMock()
+    mock.ttl = AsyncMock()
+    mock.subscribe = AsyncMock()
+    mock.get_message = AsyncMock()
+    # Add other async methods as needed for your use cases
+    return mock
 
 
 @pytest.fixture
