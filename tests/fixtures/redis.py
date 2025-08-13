@@ -6,7 +6,9 @@ import pytest
 import pytest_asyncio
 from testcontainers.redis import RedisContainer
 import redis.asyncio as aioredis
+from unittest.mock import AsyncMock
 from live_orchestrator_app.redis_services.redis_service import RedisService
+from api_service.streaming.redis_pubsub_service import RedisPubSubService
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
@@ -56,8 +58,36 @@ async def redis_service_test_subject(redis_container_instance: RedisContainer):
     await pool.disconnect()
 
 
+@pytest_asyncio.fixture(scope="function")
+async def redis_pubsub_service(redis_container_instance: RedisContainer):
+    """
+    Provides an instance of your RedisService configured to use the
+    Testcontainer's Redis. This is the "subject under test".
+    """
+    host = redis_container_instance.get_container_host_ip()
+    port = redis_container_instance.get_exposed_port(6379)
+
+    pool = aioredis.ConnectionPool(host=host, port=int(port), decode_responses=True)
+    service_redis_client = aioredis.Redis(connection_pool=pool)
+
+    # Instantiate your service with this dedicated client
+    service = RedisPubSubService(redis_client=service_redis_client)
+
+    yield service
+    # Clean up the client used by the service
+    await pool.disconnect()
+
+
+# ========================
+# Mock Fixtures
+# ========================
+
+
 @pytest.fixture
 def mock_redis_service() -> RedisService:
-    from unittest.mock import AsyncMock
-
     return AsyncMock(spec=RedisService)
+
+
+@pytest.fixture
+def mock_redis_pubsub_service() -> RedisPubSubService:
+    return AsyncMock(spec=RedisPubSubService)
