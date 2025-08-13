@@ -79,7 +79,7 @@ class NotificationService:
     )
     async def call_api_endpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Sends notification payload to API service with automatic retry on network failures."""
-        notification_endpoint = f"{API_SERVICE_URL}/internal/live-state-update"
+        notification_endpoint = f"{API_SERVICE_URL}/live-state-update"
 
         try:
             response = await self.http_client.post(notification_endpoint, json=payload)
