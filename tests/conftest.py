@@ -9,7 +9,9 @@ pytest_plugins = [
     "tests.fixtures.orchestrators",
     "tests.fixtures.feature_engineering",
     "tests.fixtures.http_clients",
+    "tests.fixtures.api_service",
     "tests.factories.repository_factories",
     "tests.factories.unit_test_factory",
     "tests.factories.redis_models_factory",
+    "tests.factories.api_service_factory",
 ]
