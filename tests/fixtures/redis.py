@@ -84,6 +84,11 @@ async def redis_pubsub_service(redis_container_instance: RedisContainer):
 
 
 @pytest.fixture
+def mock_redis_client() -> aioredis.Redis:
+    return AsyncMock(spec=aioredis.Redis)
+
+
+@pytest.fixture
 def mock_redis_service() -> RedisService:
     return AsyncMock(spec=RedisService)
 
@@ -91,3 +96,18 @@ def mock_redis_service() -> RedisService:
 @pytest.fixture
 def mock_redis_pubsub_service() -> RedisPubSubService:
     return AsyncMock(spec=RedisPubSubService)
+
+
+# ==============================
+# For Unit Tests
+# ===============================
+
+
+@pytest.fixture
+def redis_service_subject(mock_redis_client) -> RedisService:
+    return RedisService(redis_client=mock_redis_client)
+
+
+@pytest.fixture
+def redis_pubsub_service_subject(mock_redis_client) -> RedisPubSubService:
+    return RedisPubSubService(redis_client=mock_redis_client)
