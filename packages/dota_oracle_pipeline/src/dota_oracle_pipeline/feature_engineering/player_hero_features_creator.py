@@ -47,7 +47,7 @@ class PlayerHeroFeaturesCreator:
 
             except ValueError as ve:
                 logger.error(f"Skipping match {match_id} due to missing player data: {ve}")
-                raise ve
+                continue
             except Exception as e:
                 logger.error(f"Error processing match {match_id}: {e}", exc_info=True)
                 raise e

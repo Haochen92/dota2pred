@@ -58,10 +58,13 @@ async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = N
     # Paid api calls using API_KEY
     timeout = aiohttp.ClientTimeout(total=60)
     url = f"{BASE_URL}{BASE_PATH}{endpoint}"
+
+    final_params = params.copy() if params else {}
+    final_params["api_key"] = API_KEY
+
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        params = {"api_key": API_KEY}
         try:
-            async with session.get(url, params=params) as res:
+            async with session.get(url, params=final_params) as res:
                 res.raise_for_status()
                 json_data: dict[Any, Any] = await res.json()
                 return json_data
