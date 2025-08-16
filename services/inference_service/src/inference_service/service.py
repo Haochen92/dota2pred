@@ -1,7 +1,7 @@
 import bentoml
 from bentoml.models import BentoModel
-from dota_oracle_common.models.inference import ModelPredictionAPIResponse
-from typing import Dict, Any
+from dota_oracle_common.models.inference import ModelPredictionAPIResponse, PredictionInputPayload
+from typing import Dict, Any, List
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
@@ -21,41 +21,54 @@ my_image = (
 )
 
 
-@bentoml.service(name="match_prediction", image=my_image)
-class MatchPredictionService:
+@bentoml.service(name="dota_prediction_service", image=my_image)
+class DotaPredictionService:
 
-    rf_model = BentoModel("dota_oracle_random_forest:latest")  # bentoml use this tag to load the saved model
+    pro_match_model_ref = BentoModel("dota_oracle_pro_match_model:latest")
+    pub_match_model_ref = BentoModel("dota_oracle_pub_match_model:latest")
 
     def __init__(self) -> None:
-        self.model = bentoml.sklearn.load_model(self.rf_model)
-        self.model_metadata = self.rf_model.info.metadata
+        """Initializes the service by loading both models into memory."""
+        logger.info("Initializing DotaPredictionService...")
+        self.pro_model = bentoml.sklearn.load_model(self.pro_match_model_ref)
+        self.pub_model = bentoml.sklearn.load_model(self.pub_match_model_ref)
+        logger.info("Service initialized successfully with two models.")
 
-    @bentoml.api  # type: ignore[misc]
-    def predict(self, input_data: Dict[str, Any]) -> ModelPredictionAPIResponse:
-
-        features = input_data.get("input_features", {})
-
-        if not features:
-            logger.error("No input features provided")
-            raise ValueError("Cannot make prediction: no input features provided")
-
-        if not isinstance(features, list):
-            raise ValueError(f"input features is {type(features)} but list is required")
-
+    def _predict(self, model, features: List[List[float]]) -> ModelPredictionAPIResponse:
+        """Private helper to run prediction and format the output, reducing duplication."""
         try:
-            prediction = self.model.predict(features)
-            output = ModelPredictionAPIResponse(prediction=prediction.tolist())
-            return output
-
+            prediction = model.predict(features)
+            return ModelPredictionAPIResponse(prediction=prediction.tolist())
         except Exception as e:
-            logger.error(f"prediction failed, {e}", exc_info=True)
+            logger.error(f"Prediction failed for model {model}: {e}", exc_info=True)
             raise bentoml.exceptions.InternalServerError(f"Prediction failed: {e}")
 
-    @bentoml.api  # type: ignore[misc]
-    def get_metadata(self) -> Dict[str, Any]:
-        metadata: Dict[str, Any] = self.model_metadata
-        return metadata
+    # --- API Endpoints ---
 
-    @bentoml.api(route="/readyz")  # type: ignore[misc]
+    @bentoml.api(route="/predict/pro")
+    def predict_pro_match(self, data: PredictionInputPayload) -> ModelPredictionAPIResponse:
+        """Predicts the outcome for a professional match."""
+        # The Pydantic model handles all validation automatically.
+        # The logic is now a simple, clean call to our helper.
+        return self._predict(self.pro_model, data.input_features)
+
+    @bentoml.api(route="/predict/public")
+    def predict_pub_match(self, data: PredictionInputPayload) -> ModelPredictionAPIResponse:
+        """Predicts the outcome for a public match."""
+        # --- CRITICAL BUG FIX: Use self.pub_model here ---
+        return self._predict(self.pub_model, data.input_features)
+
+    @bentoml.api(route="/metadata/pro")
+    def get_pro_model_metadata(self) -> Dict[str, Any]:
+        """Returns metadata for the professional match model."""
+        return self.pro_match_model_ref.info.metadata
+
+    @bentoml.api(route="/metadata/public")
+    def get_pub_model_metadata(self) -> Dict[str, Any]:
+        """Returns metadata for the public match model."""
+        return self.pub_match_model_ref.info.metadata
+
+    @bentoml.api(route="/readyz")
     def is_ready(self) -> str:
+        """Health check endpoint."""
         return "OK"

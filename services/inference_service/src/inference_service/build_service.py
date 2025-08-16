@@ -15,7 +15,7 @@ def build_bento() -> bentoml.Bento:
     logger.info("building bento... ")
     try:
         bento = bentoml.build(
-            service="service:MatchPredictionService",  # reference the file:class
+            service="service:DotaPredictionService",  # reference the file:class
         )
         print(f"{bento} has been successfully created")
         return bento
@@ -30,7 +30,9 @@ def containerize_bento(bento: bentoml.Bento) -> Any:
     """
     logger.info("Building containerized environment for bento...")
     try:
-        container = bentoml.container.build(bento_tag=str(bento.tag), image_tag=("match_prediction:latest",))  # tuple
+        container = bentoml.container.build(
+            bento_tag=str(bento.tag), image_tag=("dota_prediction_service:latest",)
+        )  # tuple
         print(f"Container for {bento.tag} built successfully")
         return container
     except Exception as e:
