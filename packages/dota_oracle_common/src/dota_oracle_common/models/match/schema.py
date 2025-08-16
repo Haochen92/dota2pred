@@ -108,3 +108,37 @@ class CompletedMatchAPIPayload(MatchWithOutcome):
     """
 
     predicted_outcome: bool
+
+
+class PublicMatch(BaseModel):
+    """
+    Parsed Match Data from Opendota publicMatches Endpoint
+
+    Fields:
+    match_id: int (UUID of match)
+    start_time: int (Unix Timestamp of match start time)
+    duration: int (Duration of game in seconds)
+    avg_rank_tier:int (A numerical representation of the match's skill bracket)
+
+
+    radiant_team: List[int] (A List of integers representing hero ids in team radiant)
+    dire_team: List[int] (A List of integers representing hero ids in team dire)
+    """
+
+    match_id: int
+    start_time: int
+    duration: int
+    avg_rank_tier: int
+    num_rank_tier: int
+    radiant_win: bool
+
+    radiant_team: List[int]
+    dire_team: List[int]
+
+
+class PublicMatchAPIResponse(RootModel[List[PublicMatch]]):
+    """
+    API response from Opendota's PublicMatch endpoint
+    """
+
+    root: List[PublicMatch]

@@ -7,6 +7,8 @@ from .schema import (
     ProMatchOutcome,
     MatchNotifcationAPIPayload,
     CompletedMatchAPIPayload,
+    PublicMatch,
+    PublicMatchAPIResponse,
 )
 from .table import MatchTable, MatchOutcomeTable
 
@@ -23,4 +25,6 @@ __all__ = [
     "CompletedMatchAPIPayload",
     "MatchTable",
     "MatchOutcomeTable",
+    "PublicMatch",
+    "PublicMatchAPIResponse",
 ]
