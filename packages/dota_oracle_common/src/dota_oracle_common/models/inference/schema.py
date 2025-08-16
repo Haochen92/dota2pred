@@ -99,3 +99,7 @@ class MatchPrediction(SQLModel):
 
     predictor_version: str = Field(default="v1.0")
     prediction_date: datetime
+
+
+class PredictionInputPayload(BaseModel):
+    input_features: List[List[float]]
