@@ -3,7 +3,7 @@ services:
   db:
     image: postgres:14
     container_name: my-postgres
-    env_file: ./.env
+    env_file: ./.env.production
     ports:
       - "6000:5432"
     volumes:
@@ -36,7 +36,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin-web
-    env_file: ./.env
+    env_file: ./.env.production
     ports:
       - "5050:80"
     volumes:
@@ -55,7 +55,7 @@ services:
     container_name: prefect-server
     restart: always
     command: prefect server start --host 0.0.0.0
-    env_file: ./.env
+    env_file: ./.env.production
     depends_on:
       db:
         condition: service_healthy
@@ -74,10 +74,16 @@ services:
     container_name: api-service
     ports:
       - "8000:8000"
-    env_file: ./.env
+    env_file: ./.env.production
     depends_on:
       - db
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     networks:
       - dota-pred
 
@@ -86,7 +92,7 @@ services:
       context: .
       dockerfile: ./live_orchestrator_app/Dockerfile
     container_name: live-orchestrator-app
-    env_file: ./.env
+    env_file: ./.env.production
     depends_on:
       prefect-server:
         condition: service_started
@@ -104,7 +110,7 @@ services:
       context: .
       dockerfile: ./dota_oracle_schedules/Dockerfile
     container_name: dota-oracle-schedules
-    env_file: ./.env
+    env_file: ./.env.production
     depends_on:
       prefect-server:
         condition: service_started
@@ -114,6 +120,19 @@ services:
         condition: service_healthy
     volumes:
       - ~/.prefect/storage:/root/.prefect/storage
+    networks:
+      - dota-pred
+
+  bentoml:
+    container_name: bentoml
+    image: dota_prediction_service:latest
+    ports:
+      - "3333:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/readyz"]
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - dota-pred
 
