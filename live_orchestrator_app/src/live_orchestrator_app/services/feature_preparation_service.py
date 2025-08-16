@@ -43,9 +43,9 @@ class FeaturePreparationService:
             player_hero_features = raw_features.player_hero_features
 
             # Convert features to dataframe
-            team_df = pd.DataFrame([team_features.model_dump(exclude={"match"})])
-            hero_df = pd.DataFrame([hero_features.model_dump(exclude={"match"})])
-            player_hero_df = pd.DataFrame([player_hero_features.model_dump(exclude={"match"})])
+            team_df = pd.DataFrame([team_features.model_dump()])
+            hero_df = pd.DataFrame([hero_features.model_dump()])
+            player_hero_df = pd.DataFrame([player_hero_features.model_dump()])
 
             # Encode hero_df
             encoded_hero_df = await self._encode_hero_feature(heroes_repository, hero_df)
