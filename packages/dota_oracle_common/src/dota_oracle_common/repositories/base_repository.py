@@ -33,12 +33,7 @@ class BaseRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def _insert_data(
-        self,
-        *,
-        model_class: Type[T],
-        instances: Union[T, List[T]],
-    ) -> bool:
+    async def _insert_data(self, *, model_class: Type[T], instances: Union[T, List[T]], batch_size: int = 2000) -> bool:
 
         try:
             logger.info("Validating inputs...")
@@ -48,9 +43,16 @@ class BaseRepository:
 
             on_conflict_keys = self._get_primary_key_names(model_class)
 
-            stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(index_elements=on_conflict_keys)
+            for i in range(0, len(input_values), batch_size):
+                batch = input_values[i : i + batch_size]
+                if not batch:
+                    continue
 
-            await self.session.execute(stmt)
+                logger.info(f"Inserting batch {i // batch_size + 1}...")
+
+                stmt = pg_insert(model_class).values(batch).on_conflict_do_nothing(index_elements=on_conflict_keys)
+                await self.session.execute(stmt)
+
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -59,12 +61,7 @@ class BaseRepository:
             logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
             raise
 
-    async def _upsert_data(
-        self,
-        *,
-        model_class: Type[T],
-        instances: Union[T, List[T]],
-    ) -> bool:
+    async def _upsert_data(self, *, model_class: Type[T], instances: Union[T, List[T]], batch_size: int = 2000) -> bool:
 
         try:
             logger.info("Validating inputs...")
@@ -76,13 +73,21 @@ class BaseRepository:
 
             update_dict = self._get_update_excluded_dict(model_class)
 
-            stmt = (
-                pg_insert(model_class)
-                .values(input_values)
-                .on_conflict_do_update(index_elements=on_conflict_keys, set_=update_dict)
-            )
+            for i in range(0, len(input_values), batch_size):
+                batch = input_values[i : i + batch_size]
+                if not batch:
+                    continue
 
-            await self.session.execute(stmt)
+                logger.info(f"Upserting batch {i // batch_size + 1}...")
+
+                stmt = (
+                    pg_insert(model_class)
+                    .values(batch)
+                    .on_conflict_do_update(index_elements=on_conflict_keys, set_=update_dict)
+                )
+
+                await self.session.execute(stmt)
+
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
