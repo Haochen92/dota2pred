@@ -11,7 +11,7 @@ from .streaming.router import router as streaming_router
 
 from .inference.router import router as inference_router
 
-from .matchtable.router import router as matchtable_router
+from .matches.router import router as matchtable_router
 
 # Instantiate supporting services
 logger = get_logger(__name__)
