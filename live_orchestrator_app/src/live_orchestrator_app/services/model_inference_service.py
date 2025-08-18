@@ -27,7 +27,7 @@ class ModelInferenceService:
     )
     async def get_prediction(self, input_features: np.ndarray) -> ModelPredictionAPIResponse:
         """Get prediction from model endpoint using the injected persistent client."""
-        url = f"{self.base_url}/predict"
+        url = f"{self.base_url}/predict/pro"
         logger.info(f"Calling model endpoint for prediction: {url}")
         request_data = {"input_data": {"input_features": input_features.tolist()}}
 
@@ -52,7 +52,7 @@ class ModelInferenceService:
     async def fetch_model_metadata(http_client: httpx.AsyncClient) -> ModelMetaDataAPIResponse:
         """Static helper to fetch model metadata. Used during container initialization."""
         base_url = os.getenv("MODEL_ENDPOINT")
-        url = f"{base_url}/get_metadata"
+        url = f"{base_url}/metadata/pro"
         try:
             response = await http_client.post(url, json={})
             response.raise_for_status()
