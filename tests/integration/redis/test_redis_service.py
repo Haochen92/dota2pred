@@ -80,9 +80,11 @@ def _create_old_event_id(seconds_in_past: int) -> str:
     return f"{timestamp_ms}-0"
 
 
-async def test_initialize_redis_service(redis_service_test_subject: RedisService, test_redis_client: AIORedis) -> None:
+async def test_initialize_redis_service(
+    integration_test_redis_service: RedisService, test_redis_client: AIORedis
+) -> None:
     """Tests that consumer groups and streams are created idempotently."""
-    await redis_service_test_subject.initialize_async_service()
+    await integration_test_redis_service.initialize_async_service()
 
     expected_streams_and_groups = [
         (STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP),
@@ -100,7 +102,7 @@ async def test_initialize_redis_service(redis_service_test_subject: RedisService
 
 @pytest.mark.parametrize(UPDATE_LIVE_MATCH_SCENARIOS_ARGS, UPDATE_LIVE_MATCH_SCENARIOS)
 async def test_update_live_match_set_and_get_new(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     test_id: str,
     initial_redis_match_set: Set[int],
@@ -113,7 +115,7 @@ async def test_update_live_match_set_and_get_new(
     if initial_redis_match_set:
         await test_redis_client.sadd(MATCH_SET, *[str(id_val) for id_val in initial_redis_match_set])  # type: ignore
 
-    returned_new_ids = await redis_service_test_subject.update_live_match_set_and_get_new(input_current_ids)
+    returned_new_ids = await integration_test_redis_service.update_live_match_set_and_get_new(input_current_ids)
     assert returned_new_ids == expected_new_ids_returned, f"Test ID '{test_id}': Incorrect set of new IDs returned."
 
     actual_final_redis_match_set_str = await test_redis_client.smembers(MATCH_SET)  # type: ignore
@@ -125,7 +127,7 @@ async def test_update_live_match_set_and_get_new(
 
 @pytest.mark.parametrize(PUBLISH_NEW_MATCH_SCENARIOS_ARGS, PUBLISH_NEW_MATCH_SCENARIOS)
 async def test_publish_new_match_to_feature_eng(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     match_table_factory: MatchTableFactory,
     test_id: str,
@@ -138,7 +140,7 @@ async def test_publish_new_match_to_feature_eng(
     await test_redis_client.xtrim(STREAM_NEW_MATCHES, maxlen=0)
 
     match_details = match_table_factory.build(match_id=match_id)
-    actual_return_value = await redis_service_test_subject.publish_new_match_to_feature_eng(match_details)
+    actual_return_value = await integration_test_redis_service.publish_new_match_to_feature_eng(match_details)
 
     assert actual_return_value == expected_return_value
 
@@ -160,7 +162,7 @@ async def test_publish_new_match_to_feature_eng(
 
 @pytest.mark.parametrize(PUBLISH_FEATURES_SCENARIOS_ARGS, PUBLISH_FEATURES_SCENARIOS)
 async def test_publish_features_to_prediction(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     feature_engineering_payload_factory: FeatureEngineeringPayloadFactory,
     prediction_payload_factory: PredictionPayloadFactory,
@@ -179,7 +181,7 @@ async def test_publish_features_to_prediction(
     await test_redis_client.xreadgroup(FEATURE_ENGINEER_GROUP, "test-consumer", {STREAM_NEW_MATCHES: event_id_to_ack})
 
     features_payload = prediction_payload_factory.build()
-    actual_return_val = await redis_service_test_subject.publish_features_to_prediction(
+    actual_return_val = await integration_test_redis_service.publish_features_to_prediction(
         match_id=match_id, features=features_payload, event_id_to_ack=event_id_to_ack
     )
 
@@ -207,7 +209,7 @@ async def test_publish_features_to_prediction(
 
 @pytest.mark.parametrize(PUBLISH_PREDICTION_SCENARIOS_ARGS, PUBLISH_PREDICTION_SCENARIOS)
 async def test_publish_prediction_to_completion(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     prediction_payload_factory: PredictionPayloadFactory,
     completion_payload_factory: CompletionPayloadFactory,
@@ -228,7 +230,7 @@ async def test_publish_prediction_to_completion(
     await test_redis_client.xreadgroup(PREDICTION_GROUP, "test-consumer", {STREAM_PENDING_PREDICTION: event_id_to_ack})
 
     completion_payload = completion_payload_factory.build(match_id=match_id)
-    actual_return_val = await redis_service_test_subject.publish_prediction_to_completion(
+    actual_return_val = await integration_test_redis_service.publish_prediction_to_completion(
         match_id=match_id, prediction=completion_payload, event_id_to_ack=event_id_to_ack
     )
 
@@ -257,7 +259,7 @@ async def test_publish_prediction_to_completion(
 
 @pytest.mark.parametrize(FETCH_MATCHES_SCENARIOS_ARGS, FETCH_MATCHES_SCENARIOS)
 async def test_fetch_events(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     feature_engineering_payload_factory: FeatureEngineeringPayloadFactory,
     prediction_payload_factory: PredictionPayloadFactory,
@@ -304,7 +306,7 @@ async def test_fetch_events(
     except Exception:
         pass
 
-    fetched_events: List[ConsumedEvent] = await getattr(redis_service_test_subject, method_to_call)(
+    fetched_events: List[ConsumedEvent] = await getattr(integration_test_redis_service, method_to_call)(
         consumer=consumer_name, count=fetch_count
     )
 
@@ -319,7 +321,7 @@ async def test_fetch_events(
 
 @pytest.mark.parametrize(FAILURE_RECORD_SCENARIO_ARGS, FAILURE_RECORD_SCENARIO)
 async def test_record_failure_and_ack(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     consumed_event_factory: ConsumedEventFactory,
     failure_record_factory: FailureRecordFactory,
@@ -351,7 +353,7 @@ async def test_record_failure_and_ack(
         original_event_id=original_event_id,
     )
 
-    actual_return_value = await redis_service_test_subject._record_failure_and_ack(failure_record)
+    actual_return_value = await integration_test_redis_service._record_failure_and_ack(failure_record)
 
     if not target_dlq_hash:
         assert not actual_return_value
@@ -372,7 +374,7 @@ async def test_record_failure_and_ack(
 
 
 async def test_record_failure_and_ack_serialization_error(
-    redis_service_test_subject: RedisService,
+    integration_test_redis_service: RedisService,
     test_redis_client: AIORedis,
     consumed_event_factory: ConsumedEventFactory,
     failure_record_factory: FailureRecordFactory,
@@ -401,7 +403,7 @@ async def test_record_failure_and_ack_serialization_error(
 
     mocker.patch.object(FailureRecord, "model_dump_json", side_effect=TypeError("Serialization failed"))
 
-    actual_return_value = await redis_service_test_subject._record_failure_and_ack(test_failure_record)
+    actual_return_value = await integration_test_redis_service._record_failure_and_ack(test_failure_record)
     assert actual_return_value
 
     stored_fallback_json = await test_redis_client.hget(target_dlq_hash, original_event_id)  # type: ignore
@@ -431,7 +433,7 @@ class TestRedisJanitorService:
 
     async def test_fetch_expired_events(
         self,
-        redis_service_test_subject: RedisService,
+        integration_test_redis_service: RedisService,
         test_redis_client: AIORedis,
         completion_payload_factory: CompletionPayloadFactory,
     ):
@@ -465,7 +467,7 @@ class TestRedisJanitorService:
         )
 
         await test_redis_client.xreadgroup(self.GROUP_NAME, self.CONSUMER_1, {self.STREAM_NAME: ">"}, count=2)
-        expired_ids = await redis_service_test_subject.fetch_expired_events(
+        expired_ids = await integration_test_redis_service.fetch_expired_events(
             stream_name=self.STREAM_NAME, consumer_group=self.GROUP_NAME, duration=1800
         )
         assert len(expired_ids) == 1
@@ -474,7 +476,7 @@ class TestRedisJanitorService:
 
     async def test_claim_and_parse_expired_events(
         self,
-        redis_service_test_subject: RedisService,
+        integration_test_redis_service: RedisService,
         test_redis_client: AIORedis,
         completion_payload_factory: CompletionPayloadFactory,
     ):
@@ -522,12 +524,12 @@ class TestRedisJanitorService:
         )
 
         await test_redis_client.xreadgroup(self.GROUP_NAME, self.CONSUMER_1, {self.STREAM_NAME: ">"}, count=3)
-        expired_ids_to_claim = await redis_service_test_subject.fetch_expired_events(
+        expired_ids_to_claim = await integration_test_redis_service.fetch_expired_events(
             stream_name=self.STREAM_NAME, consumer_group=self.GROUP_NAME, duration=3600
         )
         assert set(expired_ids_to_claim) == {expired_id_1, expired_id_2}
 
-        claimed_and_parsed_events = await redis_service_test_subject.claim_expired_events(
+        claimed_and_parsed_events = await integration_test_redis_service.claim_expired_events(
             events_id_list=expired_ids_to_claim,
             stream_name=self.STREAM_NAME,
             consumer_group=self.GROUP_NAME,

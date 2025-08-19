@@ -13,7 +13,7 @@ F_PATH = "live_orchestrator_app.services.feature_preparation_service"
 
 @pytest.mark.asyncio
 async def test_prepare_features_for_inference_happy_path(
-    feature_preparation_service,
+    unit_test_feature_preparation_service,
     mock_async_session,
     mocker,
     prediction_payload_factory,
@@ -23,7 +23,7 @@ async def test_prepare_features_for_inference_happy_path(
     """
     # ARRANGE
     expected_feature_names = ["f1", "f2", "f3", "rh_1", "dh_2"]
-    feature_preparation_service.model_feature_names = expected_feature_names
+    unit_test_feature_preparation_service.model_feature_names = expected_feature_names
 
     # Create a prediction payload with the required features
     prediction_payload = prediction_payload_factory.build()
@@ -33,14 +33,16 @@ async def test_prepare_features_for_inference_happy_path(
 
     # Mock the encoding result
     encoded_hero_df = pd.DataFrame([[123, 1, 2]], columns=["match_id", "rh_1", "dh_2"])
-    mocker.patch.object(feature_preparation_service, "_encode_hero_feature", return_value=encoded_hero_df)
+    mocker.patch.object(unit_test_feature_preparation_service, "_encode_hero_feature", return_value=encoded_hero_df)
 
     # Mock the final merge result
     final_df = pd.DataFrame([[10, 20, 30, 1, 2]], columns=expected_feature_names)
-    mocker.patch.object(feature_preparation_service, "_merge_and_filter_dataframe", return_value=final_df)
+    mocker.patch.object(unit_test_feature_preparation_service, "_merge_and_filter_dataframe", return_value=final_df)
 
     # ACT
-    result = await feature_preparation_service.prepare_features_for_inference(prediction_payload, mock_async_session)
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(
+        prediction_payload, mock_async_session
+    )
 
     # ASSERT
     assert result is not None
@@ -51,7 +53,7 @@ async def test_prepare_features_for_inference_happy_path(
 
 @pytest.mark.asyncio
 async def test_prepare_features_for_inference_encoding_returns_none(
-    feature_preparation_service,
+    unit_test_feature_preparation_service,
     mock_async_session,
     mocker,
     prediction_payload_factory,
@@ -61,10 +63,12 @@ async def test_prepare_features_for_inference_encoding_returns_none(
     prediction_payload = prediction_payload_factory.build()
 
     mocker.patch(f"{F_PATH}.HeroesRepository")
-    mocker.patch.object(feature_preparation_service, "_encode_hero_feature", return_value=None)
+    mocker.patch.object(unit_test_feature_preparation_service, "_encode_hero_feature", return_value=None)
 
     # ACT
-    result = await feature_preparation_service.prepare_features_for_inference(prediction_payload, mock_async_session)
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(
+        prediction_payload, mock_async_session
+    )
 
     # ASSERT
     assert result is None
@@ -72,7 +76,7 @@ async def test_prepare_features_for_inference_encoding_returns_none(
 
 @pytest.mark.asyncio
 async def test_prepare_features_for_inference_encoding_returns_empty(
-    feature_preparation_service,
+    unit_test_feature_preparation_service,
     mock_async_session,
     mocker,
     prediction_payload_factory,
@@ -82,10 +86,12 @@ async def test_prepare_features_for_inference_encoding_returns_empty(
     prediction_payload = prediction_payload_factory.build()
 
     mocker.patch(f"{F_PATH}.HeroesRepository")
-    mocker.patch.object(feature_preparation_service, "_encode_hero_feature", return_value=pd.DataFrame())
+    mocker.patch.object(unit_test_feature_preparation_service, "_encode_hero_feature", return_value=pd.DataFrame())
 
     # ACT
-    result = await feature_preparation_service.prepare_features_for_inference(prediction_payload, mock_async_session)
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(
+        prediction_payload, mock_async_session
+    )
 
     # ASSERT
     assert result is None
@@ -93,7 +99,7 @@ async def test_prepare_features_for_inference_encoding_returns_empty(
 
 @pytest.mark.asyncio
 async def test_prepare_features_for_inference_merge_returns_none(
-    feature_preparation_service,
+    unit_test_feature_preparation_service,
     mock_async_session,
     mocker,
     prediction_payload_factory,
@@ -104,11 +110,13 @@ async def test_prepare_features_for_inference_merge_returns_none(
 
     mocker.patch(f"{F_PATH}.HeroesRepository")
     encoded_hero_df = pd.DataFrame([[123, 1, 2]], columns=["match_id", "rh_1", "dh_2"])
-    mocker.patch.object(feature_preparation_service, "_encode_hero_feature", return_value=encoded_hero_df)
-    mocker.patch.object(feature_preparation_service, "_merge_and_filter_dataframe", return_value=None)
+    mocker.patch.object(unit_test_feature_preparation_service, "_encode_hero_feature", return_value=encoded_hero_df)
+    mocker.patch.object(unit_test_feature_preparation_service, "_merge_and_filter_dataframe", return_value=None)
 
     # ACT
-    result = await feature_preparation_service.prepare_features_for_inference(prediction_payload, mock_async_session)
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(
+        prediction_payload, mock_async_session
+    )
 
     # ASSERT
     assert result is None
@@ -118,7 +126,7 @@ async def test_prepare_features_for_inference_merge_returns_none(
 
 
 @pytest.mark.asyncio
-async def test_encode_hero_feature_success(feature_preparation_service, mocker):
+async def test_encode_hero_feature_success(unit_test_feature_preparation_service, mocker):
     """Tests successful hero feature encoding."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
@@ -132,7 +140,7 @@ async def test_encode_hero_feature_success(feature_preparation_service, mocker):
     mocker.patch(f"{F_PATH}.FeatureEncoder.encode_hero_features", return_value=expected_df)
 
     # ACT
-    result = await feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
+    result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
 
     # ASSERT
     assert result is not None
@@ -141,7 +149,7 @@ async def test_encode_hero_feature_success(feature_preparation_service, mocker):
 
 
 @pytest.mark.asyncio
-async def test_encode_hero_feature_no_hero_map(feature_preparation_service):
+async def test_encode_hero_feature_no_hero_map(unit_test_feature_preparation_service):
     """Tests when hero map is missing."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
@@ -149,14 +157,14 @@ async def test_encode_hero_feature_no_hero_map(feature_preparation_service):
     input_df = pd.DataFrame([{"match_id": 123}])
 
     # ACT
-    result = await feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
+    result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
 
     # ASSERT
     assert result is None
 
 
 @pytest.mark.asyncio
-async def test_encode_hero_feature_empty_hero_map(feature_preparation_service):
+async def test_encode_hero_feature_empty_hero_map(unit_test_feature_preparation_service):
     """Tests when hero map is empty."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
@@ -164,7 +172,7 @@ async def test_encode_hero_feature_empty_hero_map(feature_preparation_service):
     input_df = pd.DataFrame([{"match_id": 123}])
 
     # ACT
-    result = await feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
+    result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
 
     # ASSERT
     assert result is None
@@ -173,17 +181,17 @@ async def test_encode_hero_feature_empty_hero_map(feature_preparation_service):
 # --- Tests for _merge_and_filter_dataframe (Private Method) ---
 
 
-def test_merge_and_filter_dataframe_success(feature_preparation_service):
+def test_merge_and_filter_dataframe_success(unit_test_feature_preparation_service):
     """Tests successful merging and filtering of dataframes."""
     # ARRANGE
-    feature_preparation_service.model_feature_names = ["f1", "f2", "f3"]
+    unit_test_feature_preparation_service.model_feature_names = ["f1", "f2", "f3"]
 
     hero_df = pd.DataFrame([{"match_id": 123, "f1": 10}])
     team_df = pd.DataFrame([{"match_id": 123, "f2": 20}])
     player_hero_df = pd.DataFrame([{"match_id": 123, "f3": 30}])
 
     # ACT
-    result = feature_preparation_service._merge_and_filter_dataframe(
+    result = unit_test_feature_preparation_service._merge_and_filter_dataframe(
         hero_features=hero_df, team_features=team_df, player_hero_features=player_hero_df
     )
 
@@ -195,7 +203,7 @@ def test_merge_and_filter_dataframe_success(feature_preparation_service):
     assert result.iloc[0]["f3"] == 30
 
 
-def test_merge_and_filter_dataframe_missing_match_id(feature_preparation_service):
+def test_merge_and_filter_dataframe_missing_match_id(unit_test_feature_preparation_service):
     """Tests when match_id is missing from one of the dataframes."""
     # ARRANGE
     hero_df = pd.DataFrame([{"f1": 10}])  # Missing match_id
@@ -203,7 +211,7 @@ def test_merge_and_filter_dataframe_missing_match_id(feature_preparation_service
     player_hero_df = pd.DataFrame([{"match_id": 123, "f3": 30}])
 
     # ACT
-    result = feature_preparation_service._merge_and_filter_dataframe(
+    result = unit_test_feature_preparation_service._merge_and_filter_dataframe(
         hero_features=hero_df, team_features=team_df, player_hero_features=player_hero_df
     )
 
@@ -211,17 +219,17 @@ def test_merge_and_filter_dataframe_missing_match_id(feature_preparation_service
     assert result is None
 
 
-def test_merge_and_filter_dataframe_missing_required_column(feature_preparation_service):
+def test_merge_and_filter_dataframe_missing_required_column(unit_test_feature_preparation_service):
     """Tests when required feature columns are missing."""
     # ARRANGE
-    feature_preparation_service.model_feature_names = ["f1", "f2", "f3", "missing_col"]
+    unit_test_feature_preparation_service.model_feature_names = ["f1", "f2", "f3", "missing_col"]
 
     hero_df = pd.DataFrame([{"match_id": 123, "f1": 10}])
     team_df = pd.DataFrame([{"match_id": 123, "f2": 20}])
     player_hero_df = pd.DataFrame([{"match_id": 123, "f3": 30}])
 
     # ACT
-    result = feature_preparation_service._merge_and_filter_dataframe(
+    result = unit_test_feature_preparation_service._merge_and_filter_dataframe(
         hero_features=hero_df, team_features=team_df, player_hero_features=player_hero_df
     )
 
@@ -229,17 +237,17 @@ def test_merge_and_filter_dataframe_missing_required_column(feature_preparation_
     assert result is None
 
 
-def test_merge_and_filter_dataframe_empty_after_merge(feature_preparation_service):
+def test_merge_and_filter_dataframe_empty_after_merge(unit_test_feature_preparation_service):
     """Tests when merge results in empty dataframe."""
     # ARRANGE
-    feature_preparation_service.model_feature_names = ["f1", "f2", "f3"]
+    unit_test_feature_preparation_service.model_feature_names = ["f1", "f2", "f3"]
 
     hero_df = pd.DataFrame([{"match_id": 123, "f1": 10}])
     team_df = pd.DataFrame([{"match_id": 456, "f2": 20}])  # Different match_id
     player_hero_df = pd.DataFrame([{"match_id": 123, "f3": 30}])
 
     # ACT
-    result = feature_preparation_service._merge_and_filter_dataframe(
+    result = unit_test_feature_preparation_service._merge_and_filter_dataframe(
         hero_features=hero_df, team_features=team_df, player_hero_features=player_hero_df
     )
 
