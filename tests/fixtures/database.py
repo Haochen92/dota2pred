@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 from sqlmodel import SQLModel
 from testcontainers.postgres import PostgresContainer
 from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.postgresql import DatabaseManager
 
 logger = get_logger(__name__)
 
@@ -85,3 +86,9 @@ def mock_db_session_factory(mock_async_session: AsyncSession) -> async_sessionma
     factory.return_value.__aenter__.return_value = mock_async_session
     factory.return_value.__aexit__.return_value = None
     return factory
+
+
+@pytest.fixture
+def mock_database_manager() -> DatabaseManager:
+    """Mock DatabaseManager for scheduler tests."""
+    return MagicMock(spec=DatabaseManager)
