@@ -7,6 +7,7 @@ from dota_oracle_common.models.live_games.schema import OngoingLeagueGame, Playe
 from dota_oracle_common.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
 from dota_oracle_common.models.match.schema import MatchesAPIResponse, PlayerData
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
+from dota_oracle_common.models.patches.schema import DotaPatch, DotaPatchAPIResponse
 
 
 # ================================
@@ -57,4 +58,14 @@ class TaskResultFactory(ModelFactory[TaskResult]):
 
 @register_fixture
 class AsyncTaskFactory(ModelFactory[AsyncTask]):
+    pass
+
+
+@register_fixture
+class DotaPatchFactory(ModelFactory[DotaPatch]):
+    pass
+
+
+@register_fixture
+class DotaPatchAPIResponseFactory(ModelFactory[DotaPatchAPIResponse]):
     pass
