@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 # Instantiate APIrouter
 router = APIRouter(
-    prefix="streaming",
+    prefix="/streaming",
     tags=["streaming"],
     responses={404: {"description": "Streaming endpoint not available"}},
 )

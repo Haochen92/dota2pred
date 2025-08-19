@@ -103,6 +103,9 @@ class BaseRepository:
         id_filters: Optional[List[int]] = None,
         relationships: Optional[List[str]] = None,
         limit: Optional[int] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        time_column: str = "start_time",
     ) -> List[T]:
 
         pk_attributes = self._get_primary_key_attribute(model_class)
@@ -117,6 +120,8 @@ class BaseRepository:
 
             if id_filters:
                 stmt = self._filter_by_ids(single_pk_attribute, id_filters, stmt)
+            if start_time is not None or end_time is not None:
+                stmt = self._filter_by_time_range(model_class, stmt, start_time, end_time, time_column)
             if relationships:
                 stmt = self._add_relationships(model_class, relationships, stmt)
             if limit:
@@ -176,6 +181,36 @@ class BaseRepository:
             return stmt
 
         stmt = stmt.where(pk_attribute.in_(id_filters))
+
+        return stmt
+
+    def _filter_by_time_range(
+        self, model_class: Type[T], stmt: Any, start_time: Optional[int], end_time: Optional[int], time_column: str
+    ) -> Any:
+        """
+        Apply time range filters to the SQL statement.
+
+        Args:
+            model_class: The SQLModel class being queried
+            stmt: The SQLAlchemy select statement
+            start_time: Optional start time (inclusive)
+            end_time: Optional end time (exclusive)
+            time_column: Name of the time column to filter on
+
+        Returns:
+            Modified SQL statement with time filters applied
+        """
+        if not hasattr(model_class, time_column):
+            if start_time is not None or end_time is not None:
+                logger.warning(
+                    f"Date range filtering requested but column '{time_column}' not found on {model_class.__name__}"
+                )
+            return stmt
+
+        if start_time is not None:
+            stmt = stmt.where(getattr(model_class, time_column) >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(getattr(model_class, time_column) < end_time)  # Use '<' for exclusive end
 
         return stmt
 

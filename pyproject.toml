@@ -43,6 +43,7 @@ optional = false
 # Local workspace packages (This is correct)
 dota-oracle-common = {path = "packages/dota_oracle_common", develop = true}
 dota-oracle-pipeline = {path = "packages/dota_oracle_pipeline", develop = true}
+dota-oracle-schedules = {path = "dota_oracle_schedules", develop = true}
 model-factory = {path = "model_factory", develop = true}
 prediction-service = {path = "services/inference_service", develop = true}
 live-orchestrator-app = {path = "live_orchestrator_app", develop = true}

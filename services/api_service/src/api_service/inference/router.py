@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 # Instantiate APIrouter
 router = APIRouter(
-    prefix="matchtable",
+    prefix="/matchtable",
     tags=["matchtable"],
 )
 

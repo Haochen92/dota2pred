@@ -1,4 +1,4 @@
-from . import redis, match, live_games, leagues, inference, histories, heroes, features, api
+from . import redis, match, live_games, leagues, inference, histories, heroes, features, api, patches, pagination
 
 __all__ = [
     "redis",
@@ -10,4 +10,6 @@ __all__ = [
     "heroes",
     "features",
     "api",
+    "patches",
+    "pagination",
 ]

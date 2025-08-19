@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.redis_component.redis_client_factory import RedisClientFactory
+from dota_oracle_common.postgresql import DatabaseManager
 from contextlib import asynccontextmanager
 
 # import from routes
@@ -24,8 +25,12 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Starting up API Gateway...")
 
-    redis_client = RedisClientFactory.create_instance()
+    # Initialize database
+    session_factory = DatabaseManager.get_session_factory()
+    app.state.db_session_factory = session_factory
 
+    # Initialize Redis
+    redis_client = RedisClientFactory.create_instance()
     app.state.pubsub_service = RedisPubSubService(redis_client=redis_client)
 
     logger.info("API Gateway startup complete")
@@ -34,8 +39,10 @@ async def lifespan(app: FastAPI):
         yield
 
     finally:  # Guarantee proper shut down from unexpected errors
-        # Close Redis connection
         logger.info("Shutting down API Gateway...")
+        # Close database connection
+        await DatabaseManager.close_engine()
+        # Close Redis connection
         await RedisClientFactory.close_instance()
 
     logger.info("API Gateway shutdown complete")

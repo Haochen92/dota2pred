@@ -40,7 +40,7 @@ class MatchRepository(BaseRepository):
         args: instances: A list of MatchOutcomeTable Instances
 
         Description:
-        Upsert a match outcome using INSERT ... ON CONFLICT DO UPDATE.
+        Insert a match outcome using INSERT ... ON CONFLICT DO UPDATE.
         """
         if not instances:
             logger.debug("No MatchOutcomeTable instances provided for insert_match_outcome.")
@@ -93,17 +93,35 @@ class MatchRepository(BaseRepository):
         input_id_list: Optional[List[int]] = [],
         relationship_fields: Optional[List[str]] = None,
         limit: Optional[int] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
     ) -> List[MatchTable]:
         """
-        Retrieves a list of match_details with optional relationships if any
+        Retrieves a list of match_details with optional relationships and time range filtering.
+
+        Args:
+            input_id_list: Optional list of match IDs to filter by
+            relationship_fields: Optional list of relationship names to eagerly load
+            limit: Optional limit on number of results
+            start_time: Optional start time (inclusive) for time range filtering
+            end_time: Optional end time (exclusive) for time range filtering
+
+        Returns:
+            List of MatchTable instances matching the criteria
         """
         logger.debug(
-            f"Fetching MatchTable details. IDs: {input_id_list}, Relationships: {relationship_fields}, Limit: {limit}"
+            f"Fetching MatchTable details. IDs: {input_id_list}, Relationships: {relationship_fields}, Limit: {limit}, "
+            f"Start time: {start_time}, End time: {end_time}"
         )
 
         try:
             match_details_list = await self._get_data(
-                model_class=MatchTable, id_filters=input_id_list, relationships=relationship_fields, limit=limit
+                model_class=MatchTable,
+                id_filters=input_id_list,
+                relationships=relationship_fields,
+                limit=limit,
+                start_time=start_time,
+                end_time=end_time,
             )
 
             if not match_details_list:
