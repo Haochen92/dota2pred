@@ -3,6 +3,8 @@ from prefect import flow
 
 import asyncio
 
+from typing import Dict
+
 from dependency_injector import providers, containers
 
 # Redis client
@@ -17,12 +19,16 @@ from dota_oracle_common.http_client import http_client_provider
 # Model metadata
 from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
 
+# Endpoint configurations
+from dota_oracle_common.constants.endpoint_configs import service_url
+
 # --- Feature Engineering Components ---
 from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamFeatureCreator
 from dota_oracle_pipeline.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
+from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 
 # --- Inference Components ---
-from live_orchestrator_app.services.model_inference_service import ModelInferenceService
+from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
 
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .redis_services.redis_service import RedisService
@@ -51,6 +57,9 @@ from .feature_engineering.feature_engineering_orchestrator import FeatureEnginee
 from .prediction.prediction_orchestrator import PredictionOrchestrator
 from .completion.completion_orchestrator import CompletionOrchestrator
 
+# --- Hero Repository for fetching hero map ---
+from dota_oracle_common.repositories.heroes_repository import HeroesRepository
+
 # --- Root Application ---
 from .app import MatchPipelineOrchestrator
 
@@ -77,20 +86,34 @@ class AppContainer(containers.DeclarativeContainer):
     # --- Configuration Provider ---
     # This will hold the metadata object once we fetch it.
     model_metadata = providers.Singleton(ModelMetaDataAPIResponse)
+    hero_map = providers.Singleton(Dict[int, str])
 
     # --- Feature Engineering Components ---
     team_feature_creator = providers.Factory(TeamFeatureCreator)
     player_hero_features_creator = providers.Factory(PlayerHeroFeaturesCreator)
+
+    # --- NEW: Add the stateful FeatureEncoder as a Singleton ---
+    # It depends on the `hero_map` provider. It will be created only once
+    # when first requested, using the `hero_map` that we override at startup.
+    feature_encoder = providers.Singleton(
+        FeatureEncoder,
+        hero_map=hero_map,
+    )
 
     # --- Inference Components ---
     model_inference_service = providers.Factory(
         ModelInferenceService,
         http_client=http_client,
         model_metadata=model_metadata,
+        prediction_url=service_url.PRO_MATCHES_INFERENCE_URL,
     )
 
     # --- Core Pipeline Services ---
-    feature_preparation_service = providers.Factory(FeaturePreparationService, model_metadata=model_metadata)
+    feature_preparation_service = providers.Factory(
+        FeaturePreparationService,
+        model_metadata=model_metadata,
+        feature_encoder=feature_encoder,
+    )
 
     redis_service = providers.Resource(RedisService.create, redis_client=redis_async_pool)
 
@@ -188,39 +211,43 @@ class AppContainer(containers.DeclarativeContainer):
 @flow(name="start live orchestrator")
 async def start_application() -> None:
     """
-    Main entry point for the application.
-    Initializes the container and its resources, then run application cycle.
+    Main entry point. Initializes the container, fetches dynamic configuration,
+    and runs the main application logic.
     """
     container = AppContainer()
-    # todo: container.config.from_yaml('config.yml') # Load config if implemented
 
     try:
-        # Initialize resources
-        logger.debug("Initializing container resources...")
-        await container.init_resources()  # type: ignore
+        # 1. Initialize all basic resources (DB pools, HTTP clients, etc.)
+        logger.info("Initializing container resources...")
+        await container.init_resources()
         logger.info("Container resources initialized.")
 
-        # --- LIFT STATE UP: Fetch config at startup ---
-        http_client = await container.http_client()  # Get the initialized client
-        logger.info("Fetching model metadata for configuration...")
-        metadata = await ModelInferenceService.fetch_model_metadata(http_client)
+        # Fetch Model Metadata
+        http_client = await container.http_client()
+        logger.info("Fetching model metadata...")
+        metadata = await ModelInferenceService.fetch_model_metadata(http_client, service_url.PRO_MATCHES_METADATA_URL)
         container.model_metadata.override(providers.Object(metadata))
-        logger.info("Model metadata configured.")
-        # ---
+        logger.info(f"Model metadata configured for version: {metadata.version_metadata}")
 
-        # Get the main app after resources are initialized
-        application = await container.app()  # type: ignore
+        # Fetch Hero Map
+        async with container.db_session_factory()() as session:
+            logger.info("Fetching hero map from database...")
+            hero_repo = HeroesRepository(session=session)
+            hero_map_data = await hero_repo.get_hero_id_map()
+            container.hero_map.override(providers.Object(hero_map_data))
+        logger.info(f"Hero map configured with {len(hero_map_data)} heroes.")
 
-        logger.debug("Running pipeline cycle...")
+        application = await container.app()
+
+        logger.info("Running pipeline cycle...")
         await application.run_cycle()
 
     except Exception as e:
-        logger.error(f"Pipeline failed: {e}", exc_info=True)
+        logger.error(f"Critical application failure: {e}", exc_info=True)
         raise
     finally:
-        # Shutdown resources
-        logger.debug("Shutting down container resources...")
-        await container.shutdown_resources()  # type: ignore
+        logger.info("Shutting down container resources...")
+        await container.shutdown_resources()
         logger.info("Container resources shut down.")
 
 
