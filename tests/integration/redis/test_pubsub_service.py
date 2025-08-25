@@ -8,7 +8,9 @@ from tests.factories.api_service_factory import LiveStateUpdateRequestFactory
 
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.integration
-async def test_subscriber_receives_all_messages_from_finite_publisher(redis_pubsub_service: RedisPubSubService):
+async def test_subscriber_receives_all_messages_from_finite_publisher(
+    integration_test_redis_pubsub_service: RedisPubSubService,
+):
     """
     Tests a continuous subscriber against a finite publisher.
     - The subscriber runs in the background, simulating a permanent service.
@@ -32,7 +34,7 @@ async def test_subscriber_receives_all_messages_from_finite_publisher(redis_pubs
         # 1. Define the continuous subscriber task (unchanged).
         async def subscriber():
             try:
-                async for message_str in redis_pubsub_service.listen_to_channel(test_channel):
+                async for message_str in integration_test_redis_pubsub_service.listen_to_channel(test_channel):
                     await results_queue.put(message_str)
             except asyncio.CancelledError:
                 print("Subscriber task cancelled.")
@@ -45,7 +47,7 @@ async def test_subscriber_receives_all_messages_from_finite_publisher(redis_pubs
             for i in range(message_count_to_send):
                 payload = LiveStateUpdateRequestFactory.build()
                 payload.live_matches[0].match_id = i + 1
-                await redis_pubsub_service.publish_live_update(test_channel, payload)
+                await integration_test_redis_pubsub_service.publish_live_update(test_channel, payload)
             print("Publisher finished sending all messages.")
 
         # 3. Start both tasks.
