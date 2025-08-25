@@ -1,33 +1,33 @@
 """
-Unit tests for the Main FastAPI Application.
+Integration Test for the Main FastAPI Application.
 """
 
 from unittest.mock import patch, MagicMock
 
 
-def test_app_startup_and_basic_functionality(test_client_with_all_routers):
+def test_app_startup_and_basic_functionality(api_layer_client):
     """Test that the app can start and basic functionality works."""
     # ACT & ASSERT - The fixture setup itself tests app startup
     # If we get here, the app started successfully with all routers
 
     # Test that we can make requests to different routers
-    matches_response = test_client_with_all_routers.get("/matches/")
+    matches_response = api_layer_client.get("/matches/")
     assert matches_response.status_code == 200
 
     # Test inference endpoint exists
-    inference_response = test_client_with_all_routers.post("/matchtable/predict", json={"test": "data"})
+    inference_response = api_layer_client.post("/inference/predict", json={"test": "data"})
     # Will fail with validation error but shows endpoint exists
     assert inference_response.status_code in [200, 422, 500]
 
     # Test streaming endpoint exists
-    streaming_response = test_client_with_all_routers.get("/streaming/sse/live_matches")
+    streaming_response = api_layer_client.get("/streaming/sse/live_matches")
     assert streaming_response.status_code == 200
 
 
-def test_cors_middleware_applied(test_client_with_all_routers):
+def test_cors_middleware_applied(api_layer_client):
     """Test that CORS middleware is properly configured."""
     # ACT
-    response = test_client_with_all_routers.options("/matches/")
+    response = api_layer_client.options("/matches/")
 
     # ASSERT
     # CORS headers should be present (though exact behavior depends on browser)
@@ -88,7 +88,7 @@ def test_all_routers_included():
 
     # Check for routes from each router
     matches_routes = [path for path in all_paths if path.startswith("/matches")]
-    inference_routes = [path for path in all_paths if path.startswith("/matchtable")]
+    inference_routes = [path for path in all_paths if path.startswith("/inference")]
     streaming_routes = [path for path in all_paths if path.startswith("/streaming")]
 
     assert len(matches_routes) > 0, "Matches router not included"

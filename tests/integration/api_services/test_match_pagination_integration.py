@@ -81,9 +81,6 @@ class TestMatchPaginationServiceIntegration:
         assert result.matches[0].match_id == target_match_id
         assert result.total_count == 1
 
-    @pytest.mark.xfail(
-        reason="Hero name resolution issue - needs investigation. Heroes are seeded correctly but get_hero_id_map resolution logic may have issues."
-    )
     async def test_resolve_and_update_filters_hero_names(
         self, integration_test_match_pagination_service: MatchPaginationService, seed_pagination_test_data
     ):
@@ -103,9 +100,6 @@ class TestMatchPaginationServiceIntegration:
         assert 2 in filters.hero_ids  # Axe ID
         assert len(filters.hero_ids) == 2
 
-    @pytest.mark.xfail(
-        reason="Hero name resolution issue - this test depends on the hero resolution working correctly."
-    )
     async def test_resolve_and_update_filters_unknown_hero(
         self, integration_test_match_pagination_service: MatchPaginationService, seed_pagination_test_data
     ):
