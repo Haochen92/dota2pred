@@ -105,15 +105,13 @@ async def test_resolve_and_update_filters_hero_names_success(
     """Test successful hero name resolution to IDs."""
     # ARRANGE
     filters = PaginationFilters.model_validate({"hero_names[]": ["Anti-Mage", "Crystal Maiden"]})
-    hero_map = {1: "Anti-Mage", 2: "Crystal Maiden", 3: "Pudge"}
-    unit_test_match_pagination_service.hero_repository.get_hero_id_map.return_value = hero_map
+    # The service now has hero_map directly, so no need to mock hero_repository
 
     # ACT
     await unit_test_match_pagination_service._resolve_and_update_filters(filters)
 
     # ASSERT
-    assert filters.hero_ids == [1, 2]
-    unit_test_match_pagination_service.hero_repository.get_hero_id_map.assert_awaited_once()
+    assert filters.hero_ids == [1, 2]  # Based on the hero_map in the fixture
 
 
 @pytest.mark.asyncio
@@ -123,8 +121,7 @@ async def test_resolve_and_update_filters_hero_names_not_found(
     """Test hero name resolution raises HTTPException for unknown heroes."""
     # ARRANGE
     filters = PaginationFilters.model_validate({"hero_names[]": ["Unknown Hero", "Another Unknown"]})
-    hero_map = {1: "Anti-Mage", 2: "Crystal Maiden"}
-    unit_test_match_pagination_service.hero_repository.get_hero_id_map.return_value = hero_map
+    # The service now has hero_map directly from the fixture
 
     # ACT & ASSERT
     with pytest.raises(HTTPException) as exc_info:

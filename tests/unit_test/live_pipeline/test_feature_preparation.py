@@ -130,14 +130,13 @@ async def test_encode_hero_feature_success(unit_test_feature_preparation_service
     """Tests successful hero feature encoding."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
-    hero_map = {"hero_1": 1, "hero_2": 2}
-    mock_heroes_repository.get_hero_id_map.return_value = hero_map
-
     input_df = pd.DataFrame([{"match_id": 123, "radiant_hero_1": "hero_1", "dire_hero_1": "hero_2"}])
     expected_df = pd.DataFrame([{"match_id": 123, "rh_1": 1, "dh_1": 2}])
 
-    # Mock FeatureEncoder.encode_hero_features
-    mocker.patch(f"{F_PATH}.FeatureEncoder.encode_hero_features", return_value=expected_df)
+    # Mock the feature encoder's transform_batch method
+    mocker.patch.object(
+        unit_test_feature_preparation_service.feature_encoder, "transform_batch", return_value=expected_df
+    )
 
     # ACT
     result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
@@ -145,16 +144,18 @@ async def test_encode_hero_feature_success(unit_test_feature_preparation_service
     # ASSERT
     assert result is not None
     pd.testing.assert_frame_equal(result, expected_df)
-    mock_heroes_repository.get_hero_id_map.assert_awaited_once()
+    unit_test_feature_preparation_service.feature_encoder.transform_batch.assert_called_once_with(input_df)
 
 
 @pytest.mark.asyncio
-async def test_encode_hero_feature_no_hero_map(unit_test_feature_preparation_service):
-    """Tests when hero map is missing."""
+async def test_encode_hero_feature_returns_none(unit_test_feature_preparation_service, mocker):
+    """Tests when feature encoder returns None."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
-    mock_heroes_repository.get_hero_id_map.return_value = None
     input_df = pd.DataFrame([{"match_id": 123}])
+
+    # Mock the feature encoder's transform_batch method to return None
+    mocker.patch.object(unit_test_feature_preparation_service.feature_encoder, "transform_batch", return_value=None)
 
     # ACT
     result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
@@ -164,12 +165,16 @@ async def test_encode_hero_feature_no_hero_map(unit_test_feature_preparation_ser
 
 
 @pytest.mark.asyncio
-async def test_encode_hero_feature_empty_hero_map(unit_test_feature_preparation_service):
-    """Tests when hero map is empty."""
+async def test_encode_hero_feature_returns_empty(unit_test_feature_preparation_service, mocker):
+    """Tests when feature encoder returns empty DataFrame."""
     # ARRANGE
     mock_heroes_repository = AsyncMock()
-    mock_heroes_repository.get_hero_id_map.return_value = {}
     input_df = pd.DataFrame([{"match_id": 123}])
+
+    # Mock the feature encoder's transform_batch method to return empty DataFrame
+    mocker.patch.object(
+        unit_test_feature_preparation_service.feature_encoder, "transform_batch", return_value=pd.DataFrame()
+    )
 
     # ACT
     result = await unit_test_feature_preparation_service._encode_hero_feature(mock_heroes_repository, input_df)
