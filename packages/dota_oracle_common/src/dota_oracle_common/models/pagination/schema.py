@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from ..match.schema import CompletedMatchAPIPayload
@@ -6,6 +6,8 @@ from ..match.schema import CompletedMatchAPIPayload
 
 class PaginationFilters(BaseModel):
     """Comprehensive match filters including pagination and all filter options."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     # Pagination parameters
     page: int = Field(1, ge=1, description="Page number (1-indexed)")
