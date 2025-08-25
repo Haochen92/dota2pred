@@ -105,7 +105,7 @@ class RedisPubSubService:
             logger.info(f"Subscribed to Redis channel: {channel}")
 
             while True:
-                message_dict = await pubsub.get_message(ignore_subscribe_messages=True, timeout=10.0)
+                message_dict = await pubsub.get_message(ignore_subscribe_messages=True, timeout=5.0)
                 if message_dict:
                     try:
                         yield message_dict["data"]
