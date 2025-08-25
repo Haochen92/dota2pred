@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.models.pagination import PaginationFilters, PaginatedMatchResponse
 from ..dependencies import MatchPaginationSvc
@@ -30,4 +30,8 @@ async def get_matches(
     Returns completed matches in descending order of match ID (latest first).
     You can filter by hero names, patch numbers, and team names.
     """
-    return await pagination_service.get_paginated_matches(filters=filters)
+    try:
+        return await pagination_service.get_paginated_matches(filters=filters)
+    except Exception as e:
+        logger.error(f"Error getting paginated matches: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -2,12 +2,13 @@ from fastapi import HTTPException, status
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.match.schema import CompletedMatchAPIPayload
 from dota_oracle_common.models.pagination import PaginationFilters, PaginatedMatchResponse
-from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.repositories.patch_repository import PatchRepository
 from dota_oracle_common.utils import load_workspace_env, get_logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc
 from sqlalchemy.orm import selectinload
+
+from typing import Dict
 
 logger = get_logger(__name__)
 
@@ -18,11 +19,11 @@ class MatchPaginationService:
     def __init__(
         self,
         db_session: AsyncSession,
-        hero_repository: HeroesRepository,
         patch_repository: PatchRepository,
+        hero_map: Dict[int, str],
     ):
         self.session = db_session
-        self.hero_repository = hero_repository
+        self.hero_map = hero_map
         self.patch_repository = patch_repository
 
     async def get_paginated_matches(
@@ -108,7 +109,7 @@ class MatchPaginationService:
         """Translates user-friendly names/numbers into database-friendly IDs and date ranges."""
         # Resolve Hero Names to IDs
         if filters.hero_names and not filters.hero_ids:
-            hero_map = await self.hero_repository.get_hero_id_map()
+            hero_map = self.hero_map
             hero_name_to_id = {name.lower(): hero_id for hero_id, name in hero_map.items()}
 
             hero_ids = []
