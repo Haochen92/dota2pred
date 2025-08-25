@@ -35,6 +35,7 @@ httpx = "*"
 requests = "*"
 polyfactory = "^2.21.0"
 python-logging-loki = "^0.3.1"
+respx = "^0.22.0"
 
 [tool.poetry.group.workspace]
 optional = false
