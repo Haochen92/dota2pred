@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
-from dota_oracle_pipeline.feature_transformation import FeatureEncoder
+from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
 
 from dota_oracle_common.utils.set_logging import get_logger
@@ -23,11 +23,12 @@ PLAYER_HERO_KEY = "player_hero"
 
 
 class FeaturePreparationService:
-    def __init__(self, model_metadata: ModelMetaDataAPIResponse):
+    def __init__(self, model_metadata: ModelMetaDataAPIResponse, feature_encoder: FeatureEncoder):
         # Now it depends on the data it actually needs.
         self.model_feature_names = list(model_metadata.version_metadata.feature_columns)
         if not self.model_feature_names:
             raise ValueError("feature_columns in metadata is empty")
+        self.feature_encoder = feature_encoder
 
     async def prepare_features_for_inference(
         self, raw_features: PredictionPayload, db_session: AsyncSession
@@ -78,13 +79,8 @@ class FeaturePreparationService:
     async def _encode_hero_feature(
         self, heroes_repository: HeroesRepository, hero_dataframe: pd.DataFrame
     ) -> Optional[pd.DataFrame]:
-        # Get hero Map
-        hero_map = await heroes_repository.get_hero_id_map()
-        if not hero_map:
-            logger.warning("Missing hero_map. Unable to proceed with data encoding.")
-            return None
-
-        encoded_hero_df: Optional[pd.DataFrame] = FeatureEncoder.encode_hero_features(hero_dataframe, hero_map)
+        # Use the injected stateful FeatureEncoder instead of the static method
+        encoded_hero_df: Optional[pd.DataFrame] = self.feature_encoder.transform_batch(hero_dataframe)
 
         if encoded_hero_df is None or encoded_hero_df.empty:
             return None
