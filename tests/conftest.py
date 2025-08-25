@@ -10,6 +10,7 @@ pytest_plugins = [
     "tests.fixtures.feature_engineering",
     "tests.fixtures.http_clients",
     "tests.fixtures.api_service",
+    "tests.fixtures.api_mocks",
     "tests.factories.repository_factories",
     "tests.factories.unit_test_factory",
     "tests.factories.redis_models_factory",

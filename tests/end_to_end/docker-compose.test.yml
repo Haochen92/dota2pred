@@ -22,12 +22,11 @@ services:
       retries: 5
       start_period: 5s
 
-  # Comment out to use bentoml cloud for now
-  # bentoml:
-  #   image: match_prediction:latest
-  #   ports: ["3000"]
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:3000/readyz"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
+  bentoml:
+    image: dota_prediction_service:latest
+    ports: ["3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/readyz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
