@@ -21,10 +21,16 @@ from live_orchestrator_app.services.feature_preparation_service import FeaturePr
 from live_orchestrator_app.services.fetch_outcome_service import FetchOutcomeService
 from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from live_orchestrator_app.services.match_prediction_service import MatchPredictionService
-from live_orchestrator_app.services.model_inference_service import ModelInferenceService
+from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
 from live_orchestrator_app.services.stale_match_service import StaleMatchService
 from live_orchestrator_app.services.notifications_service import NotificationService
 from live_orchestrator_app.redis_services.redis_service import RedisService
+
+# Feature Transformation Components
+from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
+
+# Endpoint configurations
+from dota_oracle_common.constants.endpoint_configs import service_url
 
 
 # =================================================================================
@@ -77,22 +83,39 @@ def mock_redis_service() -> RedisService:
     return AsyncMock(spec=RedisService)
 
 
+@pytest.fixture
+def mock_feature_encoder() -> FeatureEncoder:
+    return AsyncMock(spec=FeatureEncoder)
+
+
 # =================================================================================
 # TIER 2: UNIT TEST SUBJECTS (SUTs) - (Business Logic Testing)
 # =================================================================================
 
 
 @pytest.fixture
-def unit_test_feature_preparation_service(model_meta_data_api_response_factory) -> FeaturePreparationService:
+def unit_test_feature_encoder() -> FeatureEncoder:
+    """Provides a FeatureEncoder instance for unit testing with a simple hero map."""
+    # Create a simple hero map for testing
+    test_hero_map = {1: "hero_1", 2: "hero_2", 3: "hero_3"}
+    return FeatureEncoder(test_hero_map)
+
+
+@pytest.fixture
+def unit_test_feature_preparation_service(
+    model_meta_data_api_response_factory, mock_feature_encoder
+) -> FeaturePreparationService:
     """Provides a FeaturePreparationService instance for unit testing."""
-    return FeaturePreparationService(model_meta_data_api_response_factory.build())
+    return FeaturePreparationService(model_meta_data_api_response_factory.build(), feature_encoder=mock_feature_encoder)
 
 
 @pytest.fixture
 def unit_test_model_inference_service(mock_http_client, model_meta_data_api_response_factory) -> ModelInferenceService:
     """Provides a ModelInferenceService instance with a mocked HTTP client."""
     return ModelInferenceService(
-        http_client=mock_http_client, model_metadata=model_meta_data_api_response_factory.build()
+        http_client=mock_http_client,
+        model_metadata=model_meta_data_api_response_factory.build(),
+        prediction_url=service_url.PRO_MATCHES_INFERENCE_URL,
     )
 
 
