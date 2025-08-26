@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
-from typing import AsyncGenerator, Dict
+from typing import AsyncGenerator, Dict, Generator
 
 from httpx import AsyncClient
 from fastapi import FastAPI
@@ -37,7 +37,7 @@ logger = get_logger(__name__)
 
 
 @pytest.fixture(scope="session")
-def e2e_environment() -> Dict[str, str]:
+def e2e_environment() -> Generator[Dict[str, str], None, None]:
     """
     Manages the lifecycle of the Docker Compose environment for E2E tests.
     Starts all services, waits for healthchecks, yields connection details,
