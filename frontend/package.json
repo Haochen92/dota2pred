@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-api-types": "openapi-typescript http://localhost:8000/openapi.json --output ./src/types/contracts/api.ts",
+    "sync:images": "tsx src/scripts/update-hero-images.ts",
+    "sync:images:dry-run": "tsx src/scripts/update-hero-images.ts --dry-run"
   },
   "dependencies": {
     "@mantine/charts": "^7.17.1",
@@ -15,18 +18,26 @@
     "@mantine/hooks": "^7.17.1",
     "@mantine/notifications": "^7.17.1",
     "@tabler/icons-react": "^3.31.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
-    "next": "15.2.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "recharts": "^2.15.1"
+    "next": "^15.5.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "recharts": "^2.15.1",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
+    "openapi-typescript": "^7.9.1",
     "postcss": "^8.5.3",
-    "postcss-preset-mantine": "^1.17.0",
-    "postcss-simple-vars": "^7.0.1"
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
