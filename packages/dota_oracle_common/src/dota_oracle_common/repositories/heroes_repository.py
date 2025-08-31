@@ -55,7 +55,7 @@ class HeroesRepository(BaseRepository):
         except Exception as e:
             logger.error(f"Unexpected error when attempting to create hero map: {e}", exc_info=True)
             raise
-    
+
     async def get_all_hero_data(self) -> List[HeroDataTable]:
         try:
             stmt = select(HeroDataTable)
@@ -65,7 +65,7 @@ class HeroesRepository(BaseRepository):
                 logger.warning("Missing Hero data")
                 return []
 
-            return heroes # type: ignore
+            return heroes  # type: ignore
         except SQLAlchemyError as e:
             logger.error(f"Database error when attempting to fetch all hero data: {e}", exc_info=True)
             raise
