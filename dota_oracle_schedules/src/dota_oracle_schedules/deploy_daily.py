@@ -3,20 +3,21 @@ from prefect import flow
 from dota_oracle_common.utils.set_logging import get_logger
 
 logger = get_logger(__name__)
+# Hot reload test comment
 
 
 fetch_completed_matches = flow.from_source(
-    source="./dota_oracle_schedules/src",
+    source="./",
     entrypoint="dota_oracle_schedules/data_fetching/fetch_matches_batch.py:batch_matches_orchestrator",
 )
 
 fetch_heros_data = flow.from_source(
-    source="./dota_oracle_schedules/src",
+    source="./",
     entrypoint="dota_oracle_schedules/data_fetching/fetch_hero_data.py:hero_data_orchestrator",
 )
 
 clear_prefect_cache = flow.from_source(
-    source="./dota_oracle_schedules/src",  # Fixed: removed extra dot
+    source="./",
     entrypoint="dota_oracle_schedules/maintenance/clear_prefect_cache.py:clear_prefect_cache",
 )
 
