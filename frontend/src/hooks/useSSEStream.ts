@@ -6,7 +6,7 @@ export default function useSSEStream() : LiveMatchData[] {
     const [data, setData] = useState<LiveMatchData[]>([]);
 
     useEffect(() => {
-        
+
         const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_BASE_URL}/streaming/sse/live_matches`);
 
         // Log when SSE connection opens
@@ -23,7 +23,7 @@ export default function useSSEStream() : LiveMatchData[] {
             } catch (error) {
                 console.error("Error parsing SSE event data:", error);
                 return;
-            }        
+            }
         };
 
         // Event listener for errors
@@ -35,7 +35,7 @@ export default function useSSEStream() : LiveMatchData[] {
 
             else if (eventSource.readyState === EventSource.CONNECTING) {
                 console.warn("SSE connection is reconnecting...");
-            } 
+            }
 
             else {
                 console.error(`SSE connection was closed by the server: ${error}`);

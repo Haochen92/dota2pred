@@ -5,7 +5,7 @@ import fetchHeroData  from "@/api/fetch-hero-data";
 interface HeroStoreState {
     heroes: HeroImageData[];
     isLoading: boolean;
-    hasFetched: boolean; 
+    hasFetched: boolean;
     error: Error | null;
     fetchHeroes: () => Promise<void>;
 }
@@ -15,7 +15,7 @@ export const useHeroStore = create<HeroStoreState>((set, get) => ({
     isLoading: false,
     hasFetched: false,
     error: null,
-    
+
     fetchHeroes: async () => {
         const { hasFetched, isLoading } = get();
 
@@ -27,7 +27,7 @@ export const useHeroStore = create<HeroStoreState>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             const heroDataArray = await fetchHeroData();
-            
+
             set({
                 heroes: heroDataArray,
                 isLoading: false,
