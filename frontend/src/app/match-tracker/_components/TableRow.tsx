@@ -15,9 +15,9 @@ type TableRowProps = {
 
 export default function TableRow({ matchData }: TableRowProps) {
     const startTime = parseISO(matchData.start_time);
-    
+
     // Format time to be like "4:32 PM"
-    const formattedTime = format(startTime, 'p'); 
+    const formattedTime = format(startTime, 'p');
     const formattedDate = isToday(startTime) ? 'Today' : format(startTime, 'MMM dd, yyyy');
     const heroPicks = extractHeroPicks(matchData);
 
@@ -41,13 +41,13 @@ export default function TableRow({ matchData }: TableRowProps) {
             </Group>
 
             {/* Column 3: Radiant Team */}
-            <TeamDisplay 
+            <TeamDisplay
                 teamName={matchData.radiant_name || ''}
                 heroPicks={heroPicks.radiant}
             />
 
             {/* Column 4: Dire Team */}
-            <TeamDisplay  
+            <TeamDisplay
                 teamName={matchData.dire_name || ''}
                 heroPicks={heroPicks.dire}
             />

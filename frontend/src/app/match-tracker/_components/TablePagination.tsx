@@ -5,4 +5,3 @@ export default function TableFooter() {
         <div>Footer</div>
     )
 }
-

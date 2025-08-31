@@ -3,10 +3,10 @@ import { TextSmBold } from "@/components/typography/TextVariants";
 
 export default function TableHeader() {
     return (
-        <Group 
-            w='100%' 
-            align="center" justify="flex-start" 
-            p={0} gap={0} wrap='nowrap' 
+        <Group
+            w='100%'
+            align="center" justify="flex-start"
+            p={0} gap={0} wrap='nowrap'
             style={{ borderBottom: '3px solid var(--mantine-color-default-border)'}}
         >
             {/* Column 1: Time & Date */}

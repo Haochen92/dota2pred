@@ -13,6 +13,6 @@ export default function MatchesClient() {
         <Container size={1280} c='white'>
             <MatchTable matchData={liveMatchData} />
         </Container>
-        
+
     )
 }

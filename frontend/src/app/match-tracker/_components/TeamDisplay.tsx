@@ -1,5 +1,5 @@
 import { Group, Stack } from '@mantine/core';
-import HeroIcon from '@/components/icons/HeroIcon'; 
+import HeroIcon from '@/components/icons/HeroIcon';
 import { TextMdRegular } from '@/components/typography/TextVariants';
 
 type TeamDisplayProps = {
@@ -10,9 +10,9 @@ type TeamDisplayProps = {
 export default function TeamDisplay({ teamName, heroPicks }: TeamDisplayProps) {
     return (
         <Stack align="flex-start" justify="center" gap={4} flex={2.5} h='100%' pt={8} pb={8} pl={12} pr={12}>
-            <Group 
-                w='80%' h='100%' gap={1} p={0} 
-                wrap="nowrap" style={{borderRadius:8, overflow:'clip'}} 
+            <Group
+                w='80%' h='100%' gap={1} p={0}
+                wrap="nowrap" style={{borderRadius:8, overflow:'clip'}}
                 align="start" justify="start"
             >
                 {heroPicks.map((heroId) => (
