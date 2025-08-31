@@ -7,6 +7,7 @@ from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 
 logger = get_logger(__name__)
 
+
 async def fetch_hero_image_urls(
     db_session: DatabaseSession,
 ) -> HeroImageResponse:
@@ -14,7 +15,7 @@ async def fetch_hero_image_urls(
     Fetches hero image URLs from Database
     """
     hero_repo = HeroesRepository(db_session)
-    
+
     hero_data_list = await hero_repo.get_all_hero_data()
 
     return await _convert_to_hero_image_response(hero_data_list)

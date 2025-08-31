@@ -27,8 +27,8 @@ router = APIRouter(
 )
 async def get_hero_image_urls(
     db_session: DatabaseSession,
-    ) -> HeroImageResponse:
-    
+) -> HeroImageResponse:
+
     try:
         heros_image_data = await fetch_hero_image_urls(db_session)
         if not heros_image_data.heroes:
@@ -37,4 +37,3 @@ async def get_hero_image_urls(
     except Exception as e:
         logger.error(f"Error fetching hero image URLs: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
