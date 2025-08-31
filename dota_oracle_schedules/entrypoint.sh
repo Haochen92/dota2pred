@@ -22,7 +22,12 @@ echo "[2/3] Registering all batch deployments..."
 python -m dota_oracle_schedules.deploy_daily
 # Add any new deployment scripts here in the future.
 
-# Step 3: Start the worker as the main and final process.
-# This worker will listen for jobs in the batch pool.
-echo "[3/3] Starting worker for pool '$POOL_NAME'. Handing over control..."
-exec prefect worker start --pool "$POOL_NAME"
+# Step 3: Production/Development runtime selection
+if [ "$#" -gt 0 ]; then
+  # Development mode: Execute custom command (e.g., from docker compose watch)
+  exec "$@"
+else
+  # Production mode: Start the standard Prefect worker
+  echo "[3/3] Starting worker for pool '$POOL_NAME'. Handing over control..."
+  exec prefect worker start --pool "$POOL_NAME"
+fi
