@@ -98,9 +98,7 @@ class RedisPubSubService:
                 attempt = 0
                 while True:
                     try:
-                        message_dict = await pubsub.get_message(
-                            ignore_subscribe_messages=True, timeout=30.0
-                        )
+                        message_dict = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30.0)
                         if message_dict:
                             dto = self._validate(message_dict["data"])
                             if dto is not None:
@@ -162,7 +160,7 @@ class RedisPubSubService:
         except Exception as e:
             logger.error(f"Failed to cache snapshot in Redis under key '{key}': {e}", exc_info=True)
             raise
-    
+
     async def get_cached_snapshot(self, key: str) -> LiveStateUpdateRequest | None:
         """
         Retrieves a cached snapshot from Redis as a raw JSON string.

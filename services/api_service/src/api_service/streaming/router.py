@@ -37,14 +37,14 @@ async def post_live_state_update(request_payload: LiveStateUpdateRequest, pubsub
     try:
         await asyncio.sleep(0.01)
         await pubsub_service.publish_live_update(channel=LIVE_MATCH_UPDATES_CHANNEL, payload=request_payload)
-        
+
         # Cache the latest snapshot for new clients
         await pubsub_service.cache_snapshot(key=LAST_LIVE_SNAPSHOT_KEY, payload=request_payload)
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Failed to publish live update: {e}")
         raise HTTPException(status_code=500, detail="Failed to publish live update")
-    
+
 
 async def sse_event_stream(request: Request, hub: PubSubHub, pubsub_service: RedisPubSubService):
     """
