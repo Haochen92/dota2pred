@@ -19,5 +19,5 @@ export default function HeroIcon ({hero_id} : HeroIconProps) {
     </Flex>
 
     )
-     
+
 }
