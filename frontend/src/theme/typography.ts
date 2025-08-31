@@ -2,10 +2,10 @@ import { createTheme, rem, Text } from '@mantine/core';
 
 const typographyTheme = createTheme({
   fontFamily: 'var(--my-font), sans-serif',
-  
+
   headings: {
     fontFamily: 'var(--my-font), sans-serif',
-    fontWeight: '700', 
+    fontWeight: '700',
     sizes: {
       // .heading4xl -> h1
       h1: { fontSize: rem(60), lineHeight: '1.2' },
@@ -26,19 +26,19 @@ const typographyTheme = createTheme({
    * 3. FONT SIZES (for Text component and fz prop)
    */
   fontSizes: {
-    xs: rem(14), 
-    sm: rem(15), 
-    md: rem(16), 
-    lg: rem(18), 
-    xl: rem(20), 
+    xs: rem(14),
+    sm: rem(15),
+    md: rem(16),
+    lg: rem(18),
+    xl: rem(20),
   },
 
   lineHeights: {
-    xs: '1.6', 
-    sm: '1.6', 
-    md: '1.55', 
-    lg: '1.6', 
-    xl: '1.5', 
+    xs: '1.6',
+    sm: '1.6',
+    md: '1.55',
+    lg: '1.6',
+    xl: '1.5',
   },
 
 
@@ -50,5 +50,3 @@ const typographyTheme = createTheme({
 });
 
 export default typographyTheme;
-
-

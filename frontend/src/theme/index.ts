@@ -8,7 +8,7 @@ import typographyTheme from "./typography";
 const customTheme = mergeThemeOverrides(
     typographyTheme,
     colorTheme,
-    componentsTheme 
+    componentsTheme
 );
 
 export default customTheme;
