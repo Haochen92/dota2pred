@@ -58,8 +58,7 @@ class HeroImageData(BaseModel):
     image_url: Optional[str] = None
     icon_url: Optional[str] = None
     primary_attr: Optional[str] = None
-    
-    
-    
+
+
 class HeroImageResponse(BaseModel):
     heroes: List[HeroImageData]
