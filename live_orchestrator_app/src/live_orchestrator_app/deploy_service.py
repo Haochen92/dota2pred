@@ -12,7 +12,7 @@ async def create_deployment():
     """
 
     flow_from_file = await flow.from_source(
-        source="./live_orchestrator_app/src",
+        source="./",
         entrypoint="live_orchestrator_app/app_container.py:start_application",
     )  # type: ignore
 

@@ -15,6 +15,12 @@ echo "Starting service..."
 python -m live_orchestrator_app.deploy_service
 
 
-# Start the Prefect worker
-echo "Starting the Prefect worker for the work pool 'dota-work-pool'..."
-exec prefect worker start -p "dota-work-pool"  # Run the worker in the background
+# Production/Development runtime selection
+if [ "$#" -gt 0 ]; then
+  # Development mode: Execute custom command (e.g., from docker compose watch)
+  exec "$@"
+else
+  # Production mode: Start the standard Prefect worker
+  echo "Starting the Prefect worker for the work pool 'dota-work-pool'..."
+  exec prefect worker start -p "dota-work-pool"
+fi

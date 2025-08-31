@@ -9,6 +9,7 @@ from ..redis_services.redis_service import RedisService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from dota_oracle_pipeline.data_transformation.api_payload_parser import map_match_table_to_notification_payload
 from dota_oracle_common.utils.retry_utils import is_retryable_error
+from dota_oracle_common.models.api import LiveStateUpdateRequest
 
 from typing import Set, List, Dict, Any
 
@@ -32,18 +33,18 @@ class NotificationService:
     async def notify_state_change(self) -> Dict[str, Any]:
         """Sends live match data to the API service using the shared http_client."""
         logger.info("Starting notification process for state changes...")
-        final_payload = {"live_matches": []}
+        final_request_payload = LiveStateUpdateRequest(live_matches=[])
 
         try:
             live_match_set = await self.redis_service.get_live_match_ids()
 
             if live_match_set:
                 logger.info(f"Found {len(live_match_set)} live matches. Fetching full payloads.")
-                match_payloads = await self.fetch_match_payloads(live_match_set)
-                final_payload["live_matches"] = [p.model_dump(mode="json") for p in match_payloads]
+                match_payloads = await self._fetch_match_payloads(live_match_set)
+                final_request_payload = LiveStateUpdateRequest(live_matches=match_payloads)
 
-            logger.info(f"Sending notification payload with {len(final_payload['live_matches'])} matches.")
-            api_response = await self.call_api_endpoint(final_payload)
+            logger.info(f"Sending notification payload with {len(final_request_payload.live_matches)} matches.")
+            api_response = await self.call_api_endpoint(final_request_payload)
 
             logger.info("Successfully sent status update to API service.")
             return {"successful": True, "status_code": api_response.get("status_code")}
@@ -56,7 +57,7 @@ class NotificationService:
             logger.error(f"A critical error occurred in the notification process: {e}", exc_info=True)
             return {"successful": False, "error": f"An unexpected error occurred: {e}"}
 
-    async def fetch_match_payloads(self, matches_to_fetch: Set[int]) -> List[MatchNotifcationAPIPayload]:
+    async def _fetch_match_payloads(self, matches_to_fetch: Set[int]) -> List[MatchNotifcationAPIPayload]:
         """Fetches match details from database."""
         logger.debug(f"Fetching payload details for match IDs: {matches_to_fetch}")
         async with self.local_session() as session:
@@ -77,12 +78,12 @@ class NotificationService:
         retry=retry_if_exception(is_retryable_error),
         reraise=True,
     )
-    async def call_api_endpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def call_api_endpoint(self, payload: LiveStateUpdateRequest) -> Dict[str, Any]:
         """Sends notification payload to API service with automatic retry on network failures."""
         notification_endpoint = f"{API_SERVICE_URL}/streaming/live-state-update"
 
         try:
-            response = await self.http_client.post(notification_endpoint, json=payload)
+            response = await self.http_client.post(notification_endpoint, json=payload.model_dump(mode="json"))
             response.raise_for_status()
 
             logger.info(f"Successfully sent live state update. Status: {response.status_code}")

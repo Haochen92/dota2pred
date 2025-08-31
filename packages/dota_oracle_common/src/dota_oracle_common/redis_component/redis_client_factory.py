@@ -20,7 +20,8 @@ class RedisClientFactory:
                 cls._pool = aioredis.ConnectionPool.from_url(
                     redis_url,
                     decode_responses=True,
-                    max_connections=20,
+                    max_connections=100,
+                    health_check_interval=30,
                 )
 
             cls._instance = aioredis.Redis(connection_pool=cls._pool)

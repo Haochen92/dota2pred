@@ -1,0 +1,10 @@
+.root{
+    &[data-variant='underline'] {
+        background-color:transparent;
+        color: var(--mantine-color-gray-5);
+        &:hover{
+            text-decoration: underline;
+            text-decoration-color: currentColor;
+        }
+    }
+}

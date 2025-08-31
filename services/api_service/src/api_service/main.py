@@ -15,12 +15,15 @@ from dota_oracle_common.utils import get_logger
 from .inference.router import router as inference_router
 from .matches.router import router as matchtable_router
 from .streaming.router import router as streaming_router
+from .heroes.router import router as heroes_router
+# Test hot-reload change
 
 # Import services needed for initialization
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
 from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 from .inference.pub_inference import PubInferenceService
 from .streaming.redis_pubsub_service import RedisPubSubService
+from .streaming.pubsub_hub import PubSubHub
 
 
 logger = get_logger(__name__)
@@ -39,6 +42,14 @@ async def setup_dependencies(app: FastAPI):
     app.state.redis_client = redis_client
     app.state.pubsub_service = RedisPubSubService(redis_client=redis_client)
     logger.info("Redis client and PubSub service created.")
+
+    # Start a single-process PubSub hub for fan-out to SSE clients
+    app.state.pubsub_hub = PubSubHub(
+        redis_service=app.state.pubsub_service,
+        channel="live-match-updates",
+    )
+    app.state.pubsub_hub.start()
+    logger.info("PubSub hub started.")
 
     # Initialize the entire inference service stack
     # The HTTP client is managed by the lifespan context and stored on the app state
@@ -78,9 +89,13 @@ async def setup_dependencies(app: FastAPI):
     logger.info("All application dependencies initialized successfully.")
 
 
-async def teardown_dependencies():
+async def teardown_dependencies(app: FastAPI):
     """Gracefully closes all application-level resources."""
     logger.info("Closing application dependencies...")
+    # Stop the PubSub hub first so it releases any listeners
+    hub = getattr(app.state, "pubsub_hub", None)
+    if hub is not None:
+        await hub.stop()
     await DatabaseManager.close_engine()
     await RedisClientFactory.close_instance()
     logger.info("All resources closed.")
@@ -94,7 +109,7 @@ async def lifespan(app: FastAPI):
         await setup_dependencies(app)
         logger.info("API Gateway startup complete.")
         yield
-        await teardown_dependencies()
+        await teardown_dependencies(app)
     logger.info("API Gateway shutdown complete.")
 
 
@@ -118,6 +133,11 @@ def create_app() -> FastAPI:
     app.include_router(inference_router, tags=["Inference"])
     app.include_router(matchtable_router, tags=["Matches"])
     app.include_router(streaming_router, tags=["Streaming"])
+    app.include_router(heroes_router, tags=["Heroes"])
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy"}
 
     return app
 

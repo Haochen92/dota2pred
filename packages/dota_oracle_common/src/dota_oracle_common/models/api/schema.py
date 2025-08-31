@@ -49,3 +49,17 @@ class PublicMatchPredictionRequest(BaseModel):
 class PublicMatchPredictionResponse(BaseModel):
     prediction: bool
     probability: Annotated[Optional[float], Field(ge=0.0, le=1.0)]
+
+
+# Hero Image Routes
+class HeroImageData(BaseModel):
+    hero_id: int
+    hero_name: str
+    image_url: Optional[str] = None
+    icon_url: Optional[str] = None
+    primary_attr: Optional[str] = None
+    
+    
+    
+class HeroImageResponse(BaseModel):
+    heroes: List[HeroImageData]

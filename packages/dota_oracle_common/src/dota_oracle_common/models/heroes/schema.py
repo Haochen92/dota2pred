@@ -17,6 +17,7 @@ class HeroData(BaseModel):
         id: Unique hero identifier (int)
         localized_name: Hero display name (str)
         roles: Hero role list (List[str])
+        img, icon: Image URLs (str) 
     """
 
     # Attributes
@@ -48,6 +49,10 @@ class HeroData(BaseModel):
     id: int
     localized_name: str
     roles: List[str] = []
+    
+    # image url
+    img: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class HeroesAPIResponse(RootModel[Dict[str, HeroData]]):

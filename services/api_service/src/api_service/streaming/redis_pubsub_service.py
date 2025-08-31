@@ -1,11 +1,11 @@
 import redis.asyncio as aioredis
+from pydantic import ValidationError
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.models.api import LiveStateUpdateRequest
 from typing import AsyncGenerator
-import asyncio
-import json
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, after_log
 import logging
+import asyncio
 
 logger = get_logger(__name__)
 
@@ -55,60 +55,132 @@ class RedisPubSubService:
             logger.error(f"Failed to publish to Redis channel '{channel}': {e}", exc_info=True)
             raise
 
-    async def listen_to_channel(self, channel: str) -> AsyncGenerator[str, None]:
+    # Helper methods for pubsub lifecycle
+    async def _create_pubsub(self):
+        return self.redis.pubsub()
+
+    async def _cleanup_pubsub(self, pubsub, channel: str) -> None:
+        logger.info(f"Unsubscribing and closing pubsub for channel: {channel}")
+        try:
+            await pubsub.unsubscribe(channel)
+        except Exception as e:
+            logger.warning(f"Ignoring error during pubsub unsubscribe: {e}")
+        try:
+            # redis.asyncio PubSub.close is awaitable
+            await pubsub.close()
+        except Exception as e:
+            logger.warning(f"Ignoring error during pubsub close: {e}")
+
+    def _validate(self, raw: str) -> LiveStateUpdateRequest | None:
+        try:
+            return LiveStateUpdateRequest.model_validate_json(raw)
+        except ValidationError as ve:
+            logger.warning("Dropping invalid message: %s", str(ve)[:200])
+            return None
+
+    async def subscribe_to_channel(self, channel: str) -> AsyncGenerator[LiveStateUpdateRequest | None, None]:
         """
-        A 'smart' public generator that provides a resilient stream of messages.
-
-        This method owns the reconnection policy. It will continuously attempt
-        to listen for messages, handling connection drops by sleeping and
-        re-establishing the subscription. It will give up and raise a
-        RuntimeError after a set number of consecutive failures.
-
-        Args:
-            channel: The Redis channel to subscribe to.
-            max_failures: The maximum number of consecutive connection failures
-                          before giving up.
-
-        Yields:
-            A string containing the message data..
+        Subscribe to a channel and yield LiveStateUpdateRequest DTOs (or None on heartbeat timeout).
+        - Validates each message against the DTO
+        - Cleanly unsubscribes/closes on exit
+        - Automatically reconnects on Redis connection errors with a small backoff
+        - Crucially: stops outer loop if the generator is closed (to avoid leaks)
         """
+        backoff = 1.0
+        attempt = 0
         while True:
+            pubsub = await self._create_pubsub()
+            closing = False
             try:
-                async for message in self._get_message_stream(channel):
-                    yield message
-            except aioredis.ConnectionError as e:
-                # Gracefully handle redis connection error, by continually retry
-                logger.warning(f"Redis connection lost: {e}. Reconnecting in 5 seconds...")
-                await asyncio.sleep(5)
-            except Exception as e:
-                logger.error(f"Error in Redis subscription for channel '{channel}': {e}", exc_info=True)
-                break
+                await pubsub.subscribe(channel)
+                logger.info(f"Subscribed to Redis channel: {channel}")
+                backoff = 1.0
+                attempt = 0
+                while True:
+                    try:
+                        message_dict = await pubsub.get_message(
+                            ignore_subscribe_messages=True, timeout=30.0
+                        )
+                        if message_dict:
+                            dto = self._validate(message_dict["data"])
+                            if dto is not None:
+                                yield dto
+                            # if invalid, skip
+                        else:
+                            # Idle heartbeat signal
+                            yield None
+                    except (asyncio.CancelledError, GeneratorExit):
+                        # Consumer closed the generator via aclose(); stop cleanly
+                        closing = True
+                        break
+                    except aioredis.ConnectionError as e:
+                        attempt += 1
+                        logger.warning(
+                            "Redis connection lost during listen (attempt %d): %s. Reconnecting in %.1fs...",
+                            attempt,
+                            e,
+                            backoff,
+                        )
+                        break  # break inner loop to recreate pubsub in outer loop
+                    except Exception as e:
+                        attempt += 1
+                        logger.error(
+                            "Unexpected error while listening on channel '%s' (attempt %d): %s",
+                            channel,
+                            attempt,
+                            e,
+                            exc_info=True,
+                        )
+                        break
+            finally:
+                await self._cleanup_pubsub(pubsub, channel)
 
-    async def _get_message_stream(self, channel: str) -> AsyncGenerator[str, None]:
+            if closing:
+                # Do not recreate pubsub; exit generator to prevent connection leaks
+                return
+
+            # Backoff before trying to resubscribe to avoid tight loop/log spam
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 5.0)
+
+    async def cache_snapshot(self, key: str, payload: LiveStateUpdateRequest) -> None:
         """
-        A 'dumb' private generator that makes ONE attempt to connect and yield messages.
-
-        It handles non-fatal, message-level errors internally but allows fatal
-        ConnectionErrors to propagate up to the caller for handling.
+        Caches a Pydantic model snapshot in Redis.
 
         Args:
-            channel: The Redis channel to subscribe to.
-
-        Yields:
-            A string containing the raw message data.
+            key: The Redis key under which to store the snapshot.
+            payload: The Pydantic model containing the data to be cached.
 
         Raises:
-            aioredis.ConnectionError: If the connection to Redis is lost during operation.
+            aioredis.ConnectionError: If there is a connection issue with Redis.
+            Exception: For any other unexpected errors during caching.
         """
-        async with self.redis.pubsub() as pubsub:
-            await pubsub.subscribe(channel)
-            logger.info(f"Subscribed to Redis channel: {channel}")
+        try:
+            message = payload.model_dump_json()
+            await self.redis.set(key, message)
+            logger.info(f"Cached snapshot under key '{key}'.")
+        except Exception as e:
+            logger.error(f"Failed to cache snapshot in Redis under key '{key}': {e}", exc_info=True)
+            raise
+    
+    async def get_cached_snapshot(self, key: str) -> LiveStateUpdateRequest | None:
+        """
+        Retrieves a cached snapshot from Redis as a raw JSON string.
 
-            while True:
-                message_dict = await pubsub.get_message(ignore_subscribe_messages=True, timeout=5.0)
-                if message_dict:
-                    try:
-                        yield message_dict["data"]
-                    except json.JSONDecodeError:
-                        logger.error(f"Error Decoding message: {message_dict['data']}, e")
-                        continue
+        Args:
+            key: The Redis key from which to retrieve the snapshot.
+
+        Returns:
+            The JSON string if found, otherwise None.
+        """
+        try:
+            message = await self.redis.get(key)
+            if message:
+                return LiveStateUpdateRequest.model_validate_json(message)
+            return None
+        except ValidationError as ve:
+            logger.warning(f"Cached snapshot under key '{key}' is invalid: {ve}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to retrieve cached snapshot from Redis under key '{key}': {e}", exc_info=True)
+            raise

@@ -53,3 +53,6 @@ htmlcov/
 
 # Testing Notebooks
 test.ipynb
+
+# Frontend public folder
+frontend/public/
