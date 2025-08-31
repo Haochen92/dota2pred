@@ -28,10 +28,10 @@ POETRY_DIRS=(
 update_poetry_lock() {
     local dir="$1"
     echo "📁 Updating poetry lock in: $dir"
-    
+
     if [ -f "$dir/pyproject.toml" ]; then
         cd "$dir"
-        
+
         # Check if poetry.lock exists
         if [ -f "poetry.lock" ]; then
             echo "  ↻ Updating existing poetry.lock"
@@ -40,7 +40,7 @@ update_poetry_lock() {
             echo "  ✨ Creating new poetry.lock"
             poetry lock
         fi
-        
+
         echo "  ✅ Done"
         cd - > /dev/null
     else
