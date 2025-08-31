@@ -16,4 +16,3 @@ export type LiveMatchData = components['schemas']['MatchNotifcationAPIPayload'];
 // For hero image data
 export type HeroImageData = components['schemas']['HeroImageData'];
 export type HeroImageResponse = components['schemas']['HeroImageResponse'];
-
