@@ -1,4 +1,4 @@
-# Development override for hot-reload functionality  
+# Development override for hot-reload functionality
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml watch
 
 services:
@@ -12,18 +12,18 @@ services:
           action: rebuild
         - path: ./services/api_service/pyproject.toml
           action: rebuild
-        
+
         # --- SYNC TRIGGERS ---
         # Sync main application source code
         - path: ./services/api_service/src/api_service
           target: /app/api_service
           action: sync
-        
+
         # Sync local common package
         - path: ./packages/dota_oracle_common/src/dota_oracle_common
           target: /app/dota_oracle_common
           action: sync
-        
+
         # Sync local pipeline package
         - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
           target: /app/dota_oracle_pipeline
@@ -38,18 +38,18 @@ services:
           action: rebuild
         - path: ./live_orchestrator_app/pyproject.toml
           action: rebuild
-        
+
         # --- SYNC TRIGGERS ---
         # Sync main application source code
         - path: ./live_orchestrator_app/src/live_orchestrator_app
           target: /app/live_orchestrator_app
           action: sync
-        
+
         # Sync local common package
         - path: ./packages/dota_oracle_common/src/dota_oracle_common
           target: /app/dota_oracle_common
           action: sync
-        
+
         # Sync local pipeline package
         - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
           target: /app/dota_oracle_pipeline
@@ -64,18 +64,18 @@ services:
           action: rebuild
         - path: ./dota_oracle_schedules/pyproject.toml
           action: rebuild
-        
+
         # --- SYNC TRIGGERS ---
         # Sync main application source code
         - path: ./dota_oracle_schedules/src/dota_oracle_schedules
           target: /app/dota_oracle_schedules
           action: sync
-        
+
         # Sync local common package
         - path: ./packages/dota_oracle_common/src/dota_oracle_common
           target: /app/dota_oracle_common
           action: sync
-        
+
         # Sync local pipeline package
         - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
           target: /app/dota_oracle_pipeline
