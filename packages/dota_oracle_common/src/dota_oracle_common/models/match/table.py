@@ -1,12 +1,13 @@
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, Relationship
-from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey
+from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey, Integer
 from datetime import datetime
 from .base import Match, MatchOutcome
 
 if TYPE_CHECKING:
     from ..inference.table import MatchPredictionTable
     from ..features.table import TeamFeaturesTable, PlayerHeroFeatureTable, HeroFeaturesTable
+    from ..leagues.table import LeagueTable
 
 
 class MatchTable(Match, table=True):
@@ -26,11 +27,17 @@ class MatchTable(Match, table=True):
         team_features: Team-based features (Optional[TeamFeaturesTable])
         player_hero_features: Player-hero features (Optional[PlayerHeroFeatureTable])
         hero_features: Hero-based features (Optional[HeroFeaturesTable])
+        league_data: Associated League information(Optional[LeagueTable])
     """
 
     __tablename__ = "matches"
     # Primary Key
     match_id: int = Field(sa_column=Column("match_id", BigInteger, primary_key=True))
+
+    # Foreign Keys
+    leagueid: Optional[int] = Field(
+        default=None, sa_column=Column(Integer, ForeignKey("leaguetable.leagueid"), nullable=True)
+    )
 
     # Columns for account IDs:
     slot_0_account_id: int = Field(sa_column=Column(BigInteger, nullable=False))
@@ -65,6 +72,10 @@ class MatchTable(Match, table=True):
     )
     hero_features: Optional["HeroFeaturesTable"] = Relationship(
         back_populates="match", sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"}
+    )
+
+    league_data: Optional["LeagueTable"] = Relationship(
+        back_populates="matches", sa_relationship_kwargs={"uselist": False}
     )
 
 

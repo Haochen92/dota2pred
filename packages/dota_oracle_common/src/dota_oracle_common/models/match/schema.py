@@ -61,7 +61,11 @@ class MatchesAPIResponse(BaseModel):
     dire_name: Optional[str] = None
     dire_team_id: Optional[int] = None
 
+    # league information
+    leagueid: Optional[int] = None
     league: Optional[LeagueData] = None
+
+    # Players and Picks
     players: List[PlayerData]
 
 
@@ -100,6 +104,7 @@ class MatchNotifcationAPIPayload(Match):
     """
 
     predicted_outcome: Optional[bool] = None
+    league_data: Optional[LeagueData] = None
 
 
 class CompletedMatchAPIPayload(MatchWithOutcome):
@@ -107,7 +112,8 @@ class CompletedMatchAPIPayload(MatchWithOutcome):
     Inherits from Match with Outcome and add prediction results
     """
 
-    predicted_outcome: bool
+    predicted_outcome: Optional[bool] = None
+    league_data: Optional[LeagueData] = None
 
 
 class PublicMatch(BaseModel):

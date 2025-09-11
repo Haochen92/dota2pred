@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field, model_validator
+from enum import IntEnum
 from ..match.schema import MatchNotifcationAPIPayload, CompletedMatchAPIPayload
 from typing import List, Optional, Annotated
+from datetime import datetime
 
 
 class LiveStateUpdateRequest(BaseModel):
@@ -51,6 +53,40 @@ class PublicMatchPredictionResponse(BaseModel):
     probability: Annotated[Optional[float], Field(ge=0.0, le=1.0)]
 
 
+# Model History endpoint
+
+
+class HistoryRange(IntEnum):
+    week = 7
+    month = 30
+    quarter = 90
+    year = 365
+    all_time = 0
+
+
+class AggregateBy(IntEnum):
+    day = 1
+    week = 7
+    month = 30
+
+
+class ModelHistoryRequest(BaseModel):
+    history_range: HistoryRange
+    aggregate_by: AggregateBy
+
+
+class ModelPerformanceEntry(BaseModel):
+    date: datetime
+    accuracy: float
+    log_loss: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+
+
+class ModelHistoryResponse(BaseModel):
+    history: List[ModelPerformanceEntry]
+
+
 # Hero Image Routes
 class HeroImageData(BaseModel):
     hero_id: int
@@ -62,3 +98,21 @@ class HeroImageData(BaseModel):
 
 class HeroImageResponse(BaseModel):
     heroes: List[HeroImageData]
+
+
+# Patches Routes
+class PatchDataAPIResponse(BaseModel):
+    """API response model for available patch identifiers."""
+
+    patches: List[str] = []
+
+
+# Leagues Routes
+class LeagueData(BaseModel):
+    leagueid: int
+    tier: Optional[str] = None
+    name: Optional[str] = None
+
+
+class LeagueDataResponse(BaseModel):
+    leagues: List[LeagueData]
