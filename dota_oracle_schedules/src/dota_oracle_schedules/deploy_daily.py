@@ -16,6 +16,16 @@ fetch_heros_data = flow.from_source(
     entrypoint="dota_oracle_schedules/data_fetching/fetch_hero_data.py:hero_data_orchestrator",
 )
 
+fetch_patch_data = flow.from_source(
+    source="./",
+    entrypoint="dota_oracle_schedules/data_fetching/fetch_patch_data.py:patch_data_orchestrator",
+)
+
+fetch_league_data = flow.from_source(
+    source="./",
+    entrypoint="dota_oracle_schedules/data_fetching/fetch_league_batch.py:league_data_orchestrator",
+)
+
 clear_prefect_cache = flow.from_source(
     source="./",
     entrypoint="dota_oracle_schedules/maintenance/clear_prefect_cache.py:clear_prefect_cache",
@@ -37,6 +47,11 @@ async def create_deployment():
     )
     logger.info("Deployment 'fetch_heros_data' applied successfully.")
 
+    await fetch_patch_data.deploy(
+        name="fetch_patch_data", work_pool_name="dota_oracle_scheduler", cron="0 2,14 * * *", concurrency_limit=1
+    )
+    logger.info("Deployment 'fetch_patch_data' applied successfully.")
+
     # Deploy clear prefect cache - every 3 days
     await clear_prefect_cache.deploy(
         name="clear_prefect_cache",
@@ -45,6 +60,11 @@ async def create_deployment():
         concurrency_limit=1,
     )
     logger.info("Deployment 'clear_prefect_cache' applied successfully.")
+
+    await fetch_league_data.deploy(
+        name="fetch_league_data", work_pool_name="dota_oracle_scheduler", cron="0 3 * * *", concurrency_limit=1
+    )
+    logger.info("Deployment 'fetch_league_data' applied successfully.")
 
     logger.info("All Prefect deployments applied successfully!")
 
