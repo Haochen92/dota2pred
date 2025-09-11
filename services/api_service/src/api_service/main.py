@@ -16,6 +16,8 @@ from .inference.router import router as inference_router
 from .matches.router import router as matchtable_router
 from .streaming.router import router as streaming_router
 from .heroes.router import router as heroes_router
+from .patches.router import router as patches_router
+from .leagues.router import router as leagues_router
 
 # Test hot-reload change
 
@@ -135,6 +137,8 @@ def create_app() -> FastAPI:
     app.include_router(matchtable_router, tags=["Matches"])
     app.include_router(streaming_router, tags=["Streaming"])
     app.include_router(heroes_router, tags=["Heroes"])
+    app.include_router(patches_router, tags=["Patches"])
+    app.include_router(leagues_router, tags=["Leagues"])
 
     @app.get("/health")
     async def health_check():

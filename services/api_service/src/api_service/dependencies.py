@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dota_oracle_common.repositories.patch_repository import PatchRepository
 from .streaming.redis_pubsub_service import RedisPubSubService
 from .matches.match_pagination_service import MatchPaginationService
+from .inference.model_history_service import ModelHistoryService
 from .inference.pub_inference import PubInferenceService
 from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 
@@ -71,6 +72,16 @@ def get_match_pagination_service(
     )
 
 
+def get_model_history_service(
+    db_session: Annotated[AsyncSession, Depends(get_database_session)],
+) -> ModelHistoryService:
+    """
+    Creates a new ModelHistoryService instance for a single request,
+    injecting it with a database session.
+    """
+    return ModelHistoryService(db_session=db_session)
+
+
 # === Dependency Aliases ===
 # These provide clean, reusable, and type-hinted shortcuts for use in route signatures.
 # This makes endpoint functions declarative and easy to read.
@@ -80,4 +91,5 @@ PubSub = Annotated[RedisPubSubService, Depends(get_pubsub_service)]
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 InferenceSvc = Annotated[PubInferenceService, Depends(get_public_inference_service)]
 MatchPaginationSvc = Annotated[MatchPaginationService, Depends(get_match_pagination_service)]
+ModelHistorySvc = Annotated[ModelHistoryService, Depends(get_model_history_service)]
 HeroMap = Annotated[Dict[int, str], Depends(get_hero_map)]
