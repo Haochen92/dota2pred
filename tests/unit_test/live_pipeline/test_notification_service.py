@@ -55,15 +55,15 @@ class TestNotificationService:
         mock_redis_service.get_live_match_ids.assert_awaited_once()
         MockRepo.assert_called_once()
         mock_match_repository.get_match_details.assert_awaited_once_with(
-            input_id_list=list(live_match_ids), relationship_fields=["predictions"]
+            input_id_list=list(live_match_ids), relationship_fields=["predictions", "league_data"]
         )
 
         # Verify the API was called with a correctly mapped payload
         mock_call_api.assert_awaited_once()
         sent_payload = mock_call_api.call_args[0][0]
-        assert len(sent_payload["live_matches"]) == 2
-        assert sent_payload["live_matches"][0]["match_id"] == 101
-        assert sent_payload["live_matches"][0]["predicted_outcome"] is True
+        assert len(sent_payload.live_matches) == 2
+        assert sent_payload.live_matches[0].match_id == 101
+        assert sent_payload.live_matches[0].predicted_outcome is True
 
         # REVISION: The final result is constructed by notify_state_change itself.
         assert result == {"successful": True, "status_code": 200}
@@ -90,7 +90,9 @@ class TestNotificationService:
 
         # --- ASSERT ---
         mock_redis_service.get_live_match_ids.assert_awaited_once()
-        mock_call_api.assert_awaited_once_with({"live_matches": []})
+        # Verify the payload structure - it should be a LiveStateUpdateRequest
+        called_payload = mock_call_api.call_args[0][0]
+        assert called_payload.live_matches == []
         assert result == {"successful": True, "status_code": 200}
 
     async def test_notify_state_change_handles_api_failure(
@@ -165,9 +167,14 @@ class TestNotificationService:
         mock_post.side_effect = network_error
 
         # --- ACT & ASSERT ---
+        # Import LiveStateUpdateRequest for proper payload
+        from dota_oracle_common.models.api import LiveStateUpdateRequest
+
+        payload = LiveStateUpdateRequest(live_matches=[])
+
         # REVISION: Assert that the function RAISES the exception after exhausting retries.
         with pytest.raises(httpx.ConnectError, match="Connection refused"):
-            await unit_test_notification_service.call_api_endpoint(payload={"live_matches": []})
+            await unit_test_notification_service.call_api_endpoint(payload=payload)
 
         # Verify tenacity retried the correct number of times (1 initial call + 2 retries)
         assert mock_post.await_count == 3
@@ -188,9 +195,14 @@ class TestNotificationService:
         mock_post.side_effect = http_error
 
         # --- ACT & ASSERT ---
+        # Import LiveStateUpdateRequest for proper payload
+        from dota_oracle_common.models.api import LiveStateUpdateRequest
+
+        payload = LiveStateUpdateRequest(live_matches=[])
+
         # REVISION: Assert that the function RAISES the exception immediately.
         with pytest.raises(httpx.HTTPStatusError, match="Bad Request"):
-            await unit_test_notification_service.call_api_endpoint(payload={"live_matches": []})
+            await unit_test_notification_service.call_api_endpoint(payload=payload)
 
         # Verify it was called only ONCE
         assert mock_post.await_count == 1

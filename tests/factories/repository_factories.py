@@ -11,6 +11,7 @@ from dota_oracle_common.models.inference import MatchPredictionTable
 from dota_oracle_common.models.heroes import HeroDataTable
 from dota_oracle_common.models.histories import PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable
 from dota_oracle_common.models.patches import PatchTable
+from dota_oracle_common.models.leagues import LeagueTable
 
 
 from dota_oracle_common.models.match import Match as MatchPydantic
@@ -149,4 +150,14 @@ Patch Tables
 @register_fixture
 class PatchTableFactory(ModelFactory[PatchTable]):
     start_time = Use(lambda: datetime.now(timezone.utc))
+    pass
+
+
+"""
+League Tables
+"""
+
+
+@register_fixture
+class LeagueTableFactory(ModelFactory[LeagueTable]):
     pass

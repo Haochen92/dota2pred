@@ -92,3 +92,16 @@ def mock_db_session_factory(mock_async_session: AsyncSession) -> async_sessionma
 def mock_database_manager() -> DatabaseManager:
     """Mock DatabaseManager for scheduler tests."""
     return MagicMock(spec=DatabaseManager)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_session_factory(test_postgres_engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    """
+    Creates a real session factory for integration tests that connects to the test database.
+    This mimics what DatabaseManager.get_session_factory() would return in production.
+    """
+    return async_sessionmaker(
+        bind=test_postgres_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
