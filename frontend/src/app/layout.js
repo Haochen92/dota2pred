@@ -33,7 +33,7 @@ const Apercu = localFont({
 });
 
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children, modal }) {
   return (
     <html lang="en" {...mantineHtmlProps}>
       <head>
@@ -52,6 +52,7 @@ export default function RootLayout({ children }) {
             >
               <Container size={1280} pt={60} pb={60} pl={0} pr={0}>
                 {children}
+                { modal }
               </Container>
             </AppShell.Main>
           </AppShell>
