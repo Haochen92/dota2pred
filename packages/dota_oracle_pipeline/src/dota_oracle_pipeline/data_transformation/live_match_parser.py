@@ -15,6 +15,7 @@ async def parse_live_league_games(raw_live_games: List[OngoingLeagueGame]) -> Li
             # Populate common fields
             match_data = {
                 "match_id": row.match_id,
+                "leagueid": row.league_id if row.league_id is not None else None,
                 "radiant_team_id": row.radiant_team.team_id,
                 "radiant_name": row.radiant_team.team_name,
                 "dire_team_id": row.dire_team.team_id,
