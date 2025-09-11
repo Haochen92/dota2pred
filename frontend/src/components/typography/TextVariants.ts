@@ -14,3 +14,5 @@ export const TextMdRegular = Text.withProps({ variant: 'md-regular' });
 export const TextSmBold = Text.withProps({ variant: 'sm-bold' });
 export const TextSmMedium = Text.withProps({ variant: 'sm-medium' });
 export const TextSmRegular = Text.withProps({ variant: 'sm-regular' });
+
+export const TextSpecial = Text.withProps({ variant: 'special' });

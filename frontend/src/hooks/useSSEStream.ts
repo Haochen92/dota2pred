@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { LiveMatchData, LiveStateUpdateRequest } from '@/types/contracts/index';
+import type { LiveMatchData, LiveStateUpdateRequest } from '@/types/contracts/index';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
 
 export default function useSSEStream() : LiveMatchData[] {
     const [data, setData] = useState<LiveMatchData[]>([]);
 
     useEffect(() => {
-
-        const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_BASE_URL}/streaming/sse/live_matches`);
+        const eventSource = new EventSource(`${API_BASE_URL}/streaming/sse/live_matches`);
 
         // Log when SSE connection opens
         eventSource.onopen = () => {

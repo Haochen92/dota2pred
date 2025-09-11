@@ -7,7 +7,7 @@ import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
 
 import localFont from 'next/font/local';
-import { ColorSchemeScript, MantineProvider, AppShell, mantineHtmlProps } from '@mantine/core';
+import { ColorSchemeScript, MantineProvider, AppShell, Container, mantineHtmlProps, Flex } from '@mantine/core';
 import customTheme from '@/theme/index';
 import Navbar from '@/components/nav/Navbar';
 
@@ -42,13 +42,17 @@ export default function RootLayout({ children }) {
       <body className={`${Apercu.className} ${Apercu.variable}`}>
         <MantineProvider theme={customTheme} defaultColorScheme="auto">
           <AppShell header={{ height: 80, offset: true }}>
-            <AppShell.Header>
-              <Navbar />
+            <AppShell.Header bg="gray.9">
+              <Flex align="center" justify="center" h="100%">
+                <Navbar />
+              </Flex>
             </AppShell.Header>
             <AppShell.Main
               bg="blue.9"
             >
-              {children}
+              <Container size={1280} pt={60} pb={60} pl={0} pr={0}>
+                {children}
+              </Container>
             </AppShell.Main>
           </AppShell>
         </MantineProvider>

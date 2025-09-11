@@ -21,6 +21,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inference/model_history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * get model performance history
+         * @description Get model performance history.
+         *
+         *     Returns:
+         *         ModelHistoryResponse: The model performance history.
+         */
+        get: operations["get_model_history_inference_model_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/matches/": {
         parameters: {
             query?: never;
@@ -99,6 +122,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patches/ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get list of available patch identifiers */
+        get: operations["get_patch_ids_patches_ids_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/leagues/get_league_info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get league information */
+        get: operations["get_league_info_leagues_get_league_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -120,6 +177,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AggregateBy
+         * @enum {integer}
+         */
+        AggregateBy: 1 | 7 | 30;
         /**
          * CompletedMatchAPIPayload
          * @description Completed Match with predictions and actual outcome
@@ -188,7 +250,8 @@ export interface components {
             /** Radiant Win */
             radiant_win: boolean;
             /** Predicted Outcome */
-            predicted_outcome: boolean;
+            predicted_outcome?: boolean | null;
+            league_data?: components["schemas"]["dota_oracle_common__models__match__schema__LeagueData"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -212,6 +275,33 @@ export interface components {
         HeroImageResponse: {
             /** Heroes */
             heroes: components["schemas"]["HeroImageData"][];
+        };
+        /**
+         * HistoryRange
+         * @enum {integer}
+         */
+        HistoryRange: 7 | 30 | 90 | 365 | 0;
+        /**
+         * LeagueData
+         * @description League information for matches.
+         *
+         *     Attributes:
+         *         leagueid: League identifier (Optional[int])
+         *         tier: League tier level (Optional[str])
+         *         name: League display name (Optional[str])
+         */
+        "LeagueData-Input": {
+            /** Leagueid */
+            leagueid?: number | null;
+            /** Tier */
+            tier?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** LeagueDataResponse */
+        LeagueDataResponse: {
+            /** Leagues */
+            leagues: components["schemas"]["dota_oracle_common__models__api__schema__LeagueData"][];
         };
         /** LiveStateUpdateRequest */
         LiveStateUpdateRequest: {
@@ -289,6 +379,28 @@ export interface components {
             slot_132_account_id: number;
             /** Predicted Outcome */
             predicted_outcome?: boolean | null;
+            league_data?: components["schemas"]["LeagueData-Input"] | null;
+        };
+        /** ModelHistoryResponse */
+        ModelHistoryResponse: {
+            /** History */
+            history: components["schemas"]["ModelPerformanceEntry"][];
+        };
+        /** ModelPerformanceEntry */
+        ModelPerformanceEntry: {
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+            /** Accuracy */
+            accuracy: number;
+            /** Log Loss */
+            log_loss?: number | null;
+            /** Precision */
+            precision?: number | null;
+            /** Recall */
+            recall?: number | null;
         };
         /**
          * PaginatedMatchResponse
@@ -299,16 +411,27 @@ export interface components {
             matches: components["schemas"]["CompletedMatchAPIPayload"][];
             /** Total Count */
             total_count: number;
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
             /** Total Pages */
             total_pages: number;
+            /** Page */
+            page?: number | null;
+            /** Page Size */
+            page_size?: number | null;
             /** Has Next */
-            has_next: boolean;
+            has_next?: boolean | null;
             /** Has Previous */
-            has_previous: boolean;
+            has_previous?: boolean | null;
+        };
+        /**
+         * PatchDataAPIResponse
+         * @description API response model for available patch identifiers.
+         */
+        PatchDataAPIResponse: {
+            /**
+             * Patches
+             * @default []
+             */
+            patches: string[];
         };
         /** PublicMatchPredictionRequest */
         PublicMatchPredictionRequest: {
@@ -348,6 +471,32 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** LeagueData */
+        dota_oracle_common__models__api__schema__LeagueData: {
+            /** Leagueid */
+            leagueid: number;
+            /** Tier */
+            tier?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * LeagueData
+         * @description League information for matches.
+         *
+         *     Attributes:
+         *         leagueid: League identifier (Optional[int])
+         *         tier: League tier level (Optional[str])
+         *         name: League display name (Optional[str])
+         */
+        dota_oracle_common__models__match__schema__LeagueData: {
+            /** Leagueid */
+            leagueid?: number | null;
+            /** Tier */
+            tier?: string | null;
+            /** Name */
+            name?: string | null;
         };
     };
     responses: never;
@@ -391,24 +540,61 @@ export interface operations {
             };
         };
     };
+    get_model_history_inference_model_history_get: {
+        parameters: {
+            query: {
+                history_range: components["schemas"]["HistoryRange"];
+                aggregate_by: components["schemas"]["AggregateBy"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_matches_matches__get: {
         parameters: {
             query?: {
-                /** @description Page number (1-indexed) */
-                page?: number;
-                /** @description Items per page (1-100) */
-                page_size?: number;
+                /** @description Page number (1-indexed) - Legacy, use offset/limit instead */
+                page?: number | null;
+                /** @description Items per page (10-50) - Legacy, use offset/limit instead */
+                page_size?: number | null;
+                /** @description Offset for pagination (alternative to page), 0-indexed */
+                offset?: number | null;
+                /** @description Limit for pagination (alternative to page_size), 0-50 */
+                limit?: number | null;
                 /** @description Filter by specific match ID */
                 match_id?: number | null;
                 /** @description Filter by patch number (e.g., '7.35') */
                 patch_number?: string | null;
                 /** @description Filter by team name (partial match) */
                 team_name?: string | null;
+                /** @description Filter by league ID (exact match) */
+                league_id?: number | null;
                 /** @description Filter by a list of team IDs */
                 "team_ids[]"?: number[] | null;
-                /** @description Filter by a list of hero names */
-                "hero_names[]"?: string[] | null;
-                hero_ids?: number[] | null;
+                /** @description Filter by a list of hero IDs */
+                "hero_ids[]"?: number[] | null;
                 patch_start_time?: string | null;
                 patch_end_time?: string | null;
             };
@@ -521,6 +707,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeroImageResponse"];
+                };
+            };
+        };
+    };
+    get_patch_ids_patches_ids_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatchDataAPIResponse"];
+                };
+            };
+        };
+    };
+    get_league_info_leagues_get_league_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeagueDataResponse"];
                 };
             };
         };
