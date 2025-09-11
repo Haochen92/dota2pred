@@ -63,7 +63,7 @@ class NotificationService:
         async with self.local_session() as session:
             match_repo = MatchRepository(session=session)
             full_match_details = await match_repo.get_match_details(
-                input_id_list=list(matches_to_fetch), relationship_fields=["predictions"]
+                input_id_list=list(matches_to_fetch), relationship_fields=["predictions", "league_data"]
             )
 
             if not full_match_details:

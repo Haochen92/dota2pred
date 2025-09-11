@@ -92,9 +92,7 @@ class AppContainer(containers.DeclarativeContainer):
     team_feature_creator = providers.Factory(TeamFeatureCreator)
     player_hero_features_creator = providers.Factory(PlayerHeroFeaturesCreator)
 
-    # --- NEW: Add the stateful FeatureEncoder as a Singleton ---
-    # It depends on the `hero_map` provider. It will be created only once
-    # when first requested, using the `hero_map` that we override at startup.
+    # Stateful FeatureEncoder as a Singleton
     feature_encoder = providers.Singleton(
         FeatureEncoder,
         hero_map=hero_map,
@@ -208,7 +206,7 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
 
-@flow(name="start live orchestrator")
+@flow(name="start live orchestrator", timeout_seconds=400)
 async def start_application() -> None:
     """
     Main entry point. Initializes the container, fetches dynamic configuration,
@@ -240,7 +238,13 @@ async def start_application() -> None:
         application = await container.app()
 
         logger.info("Running pipeline cycle...")
-        await application.run_cycle()
+        # Ensure a single cycle cannot hang forever
+        try:
+            await asyncio.wait_for(application.run_cycle(), timeout=300)
+        except asyncio.TimeoutError:
+            logger.error("Pipeline cycle timed out after 120 seconds")
+            # Re-raise so Prefect marks the flow as failed and frees concurrency
+            raise
 
     except Exception as e:
         logger.error(f"Critical application failure: {e}", exc_info=True)
