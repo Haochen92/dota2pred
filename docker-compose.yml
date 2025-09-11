@@ -66,6 +66,31 @@ services:
       - dota-pred
       - shared-caddy-network
 
+  # Frontend
+  dota-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # Default to production image (runner). Dev override targets the 'dev' stage.
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    container_name: dota-frontend
+    ports:
+      - "3050:3000"
+    env_file: ./.env.production
+    depends_on:
+      api-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - dota-pred
+      - shared-caddy-network
+
   # Microservices
   api-service:
     build:
@@ -92,6 +117,8 @@ services:
       start_period: 15s
     networks:
       - dota-pred
+      - shared-caddy-network
+
 
   live-orchestrator-app:
     build:
