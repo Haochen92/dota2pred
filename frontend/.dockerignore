@@ -1,0 +1,13 @@
+# Ignore development-specific environment files
+.env.local
+.env.development.local
+
+# Ignore version control
+.git
+.gitignore
+
+# Ignore dependencies
+node_modules
+
+# Ignore build artifacts
+.next
