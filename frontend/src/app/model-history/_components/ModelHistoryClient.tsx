@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect} from "react";
 import useSWR from "swr";
 import fetchModelHistory from "@/api/fetch-model-history";
-import { Group, Stack, SegmentedControl, Title, Paper, Chip } from "@mantine/core";
+import { Group, Stack, SegmentedControl, Title, Paper, Chip, SimpleGrid } from "@mantine/core";
 import { LineChart } from "@mantine/charts";
 
 import { TextLgBold, TextMdRegular } from "@/components/typography/TextVariants";
@@ -11,20 +11,21 @@ import type { ModelHistoryRequest, AggregateBy, HistoryRange } from "@/types/con
 
 import CustomToolTip from "@/components/charts/CustomToolTip";
 import { dateFormatter } from '@/utils/date-formatter';
+import { StatCard } from "./StatCard";
 
 
 const historyRangeOptions = [
-        { label: 'past week', value: '7' },
-        { label: 'past month', value: '30' },
-        { label: 'past quarter', value: '90' },
-        { label: 'past year', value: '365' },
-        { label: 'all time', value: '0' },
+        { label: '7D', value: '7' },
+        { label: '30D', value: '30' },
+        { label: '90D', value: '90' },
+        { label: '365D', value: '365' },
+        { label: 'All', value: '0' },
 ]
 
 const chartMetricsData = [
-        { name: 'accuracy', type: 'line', color: 'blue' },
-        { name: 'precision', type: 'line', color: 'green' },
-        { name: 'recall', type: 'line', color: 'red' }
+        { name: 'accuracy', type: 'line', color: 'blue.3' },
+        { name: 'precision', type: 'line', color: 'green.3' },
+        { name: 'recall', type: 'line', color: 'red.3' }
 ]
 
 const chartMetricsNames = chartMetricsData.map(ds => ds.name);
@@ -38,20 +39,22 @@ export default function ModelHistoryClient() {
     const activeChartSeries = chartMetricsData.filter(ds => selectedMetrics.includes(ds.name));
 
     useEffect(() => {
-        let newAggregateBy: AggregateBy = 7;
-        if ( 7 <= historyRange && historyRange < 30) newAggregateBy = 1; // daily
-        else if ( 30 <= historyRange && historyRange <= 90 ) newAggregateBy = 7; // weekly
-        else newAggregateBy = 30; // monthly for all time and yearly
-        setAggregateBy(newAggregateBy);
+        switch (historyRange) {
+            case 7:
+            case 30:
+                setAggregateBy(1); // Daily
+                break;
+            case 90:
+            case 365:
+                setAggregateBy(7); // Weekly
+                break;
+            case 0:
+                setAggregateBy(30); // Monthly for 'all time'
+                break;
+            default:
+                setAggregateBy(1); // Safe default
+        }
     }, [historyRange]);
-
-    const historyFetcher = () => {
-        const params: ModelHistoryRequest = {
-            history_range: historyRange,
-            aggregate_by: aggregateBy
-        };
-        return fetchModelHistory(params);
-    }
 
 
 
@@ -63,7 +66,15 @@ export default function ModelHistoryClient() {
         return ['model_history', { historyRange, aggregateBy }];
     }, [historyRange, aggregateBy]);
 
-    const { data , error } = useSWR(
+    const historyFetcher = () => {
+        const params: ModelHistoryRequest = {
+            history_range: historyRange,
+            aggregate_by: aggregateBy
+        };
+        return fetchModelHistory(params);
+    }
+
+    const { data } = useSWR(
         historyRequestKey,
         historyFetcher,
         {
@@ -78,40 +89,72 @@ export default function ModelHistoryClient() {
     );
 
 
-    const historyData = data?.history ?? [];
+    const historyData = data.history
+    const summaryStats = useMemo(() => {
+        const dataExists = historyData && historyData.length > 0;
+        if (!dataExists) {
+            return {
+                averageAccuracy: 0, averagePrecision: 0, averageRecall: 0,
+                maxAccuracy: 0, maxPrecision: 0, maxRecall: 0,
+            };
+        }
+
+        const count = historyData.length;
+        const averageAccuracy = historyData.reduce((sum, entry) => sum + (entry.accuracy ?? 0), 0) / count;
+        const averagePrecision = historyData.reduce((sum, entry) => sum + (entry.precision ?? 0), 0) / count;
+        const averageRecall = historyData.reduce((sum, entry) => sum + (entry.recall ?? 0), 0) / count;
+
+        const maxAccuracy = Math.max(...historyData.map(e => e.accuracy ?? 0));
+        const maxPrecision = Math.max(...historyData.map(e => e.precision ?? 0));
+        const maxRecall = Math.max(...historyData.map(e => e.recall ?? 0));
+
+        return { averageAccuracy, averagePrecision, averageRecall, maxAccuracy, maxPrecision, maxRecall };
+    }, [historyData]);
 
     return (
         <Paper
-            p='md'
+            p='xl'
             shadow='sm'
             radius='md'
-            gap='md'
+            gap='xl'
             component={Stack}
             w='100%'
             h='auto'
             bg='gray.7'
         >
-            <Group>
-                <Title order={3}>Model Performance History</Title>
+            <Group
+                justify='flex-start' px={8}
+
+            >
+                <Title order={3} c='white'>Model Performance History</Title>
             </Group>
-            <Group justify='space-between' align='center'>
+            <Group justify='space-between' align='center' px={8}>
                 <SegmentedControl
+                    bg='transparent'
                     id='history-range-control'
                     value={historyRange.toString()}
                     data={historyRangeOptions}
                     onChange={handleHistoryRangeChange}
+                    radius={10}
+                    styles={(theme) => ({
+                        indicator:{
+                            backgroundColor: theme.colors.gray[9],
+                        },
+                        root:{
+                            gap: theme.spacing.xs,
+                        },
+                        label: {color: theme.colors.gray[0]},
+
+                    })}
+                    withItemsBorders={false}
+                    transitionDuration={150}
+                    transitionTimingFunction='linear'
                 />
-                <Group>
-                    <Chip.Group multiple value={selectedMetrics} onChange={setSelectedMetrics}>
-                        {chartMetricsData.map(
-                            metric => <Chip key={metric.name} value={metric.name} color={metric.color}>{metric.name}</Chip>
-                        )}
-                    </Chip.Group>
-                </Group>
             </Group>
 
-            <Group>
+            <Group align="flex-start">
                 <Suspense fallback={<TextMdRegular>Loading chart...</TextMdRegular>}>
+                <Group flex={3}>
                     <LineChart
                         data={historyData}
                         dataKey="date"
@@ -136,8 +179,43 @@ export default function ModelHistoryClient() {
                         ]}
                         connectNulls={false}
                     />
+                </Group>
+                <Chip.Group multiple value={selectedMetrics} onChange={setSelectedMetrics}>
+                    <Stack justify='flex-start' gap={8}>
+                    {chartMetricsData.map((metric) => (
+                        <Chip
+                            key={metric.name} value={metric.name} color={metric.color} size='sm'
+                            styles={{
+                                label : {width: '100px'},
+                            }}
+                        >
+                            {metric.name}
+                        </Chip>
+                    ))}
+                    </Stack>
+                </Chip.Group>
                 </Suspense>
             </Group>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+                    <StatCard
+                        metric="accuracy"
+                        color="blue.3"
+                        average={summaryStats.averageAccuracy}
+                        max={summaryStats.maxAccuracy}
+                    />
+                    <StatCard
+                        metric="precision"
+                        color="green.3"
+                        average={summaryStats.averagePrecision}
+                        max={summaryStats.maxPrecision}
+                    />
+                    <StatCard
+                        metric="recall"
+                        color="red.3"
+                        average={summaryStats.averageRecall}
+                        max={summaryStats.maxRecall}
+                    />
+            </SimpleGrid>
         </Paper>
     )
 }

@@ -1,8 +1,9 @@
-import { Group, Stack, BackgroundImage, Center, Title, Container } from '@mantine/core'
+import { Group, Stack, BackgroundImage } from '@mantine/core'
 import Image from 'next/image'
 import Link from 'next/link'
 import { IconChevronRight } from '@tabler/icons-react'
 import NavLink from './NavLink'
+import ModelAccuracyDisplay from './ModelAccuracyDisplay'
 import { TextMdBold, TextSmRegular } from '@/components/typography/TextVariants'
 
 export default function Navbar() {
@@ -37,9 +38,7 @@ export default function Navbar() {
           </Group>
 
           <BackgroundImage src="/bgdots.svg" h="100%" w={130}>
-            <Center h="100%" w="100%">
-              <Title order={4} fw={500} c='black'>62%</Title>
-            </Center>
+            <ModelAccuracyDisplay />
           </BackgroundImage>
         </Group>
 

@@ -15,8 +15,8 @@ export default function TeamDisplay({ teamName, heroPicks }: TeamDisplayProps) {
                 wrap="nowrap" style={{borderRadius:8, overflow:'clip'}}
                 align="start" justify="start"
             >
-                {heroPicks.map((heroId) => (
-                    <HeroIcon key={heroId} hero_id={heroId}/>
+                {heroPicks.map((heroId, idx) => (
+                    <HeroIcon key={`${heroId}-${idx}`} hero_id={heroId} />
                 ))}
             </Group>
             <Group>

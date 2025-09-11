@@ -52,13 +52,13 @@ export function MatchStatusControl({ filters, onFilterChange }: MatchStatusContr
         bg='gray.7'
         radius={10}
         styles={(theme) => ({
-        indicator: {
-            backgroundColor: theme.colors.gray[9],
-        },
-        root: {
-            gap: theme.spacing.xs,
-        },
-    })}
+            indicator: {
+                backgroundColor: theme.colors.gray[9],
+            },
+            root: {
+                gap: theme.spacing.xs,
+            },
+        })}
         withItemsBorders={false}
         transitionDuration={150}
         transitionTimingFunction='linear'
