@@ -8,6 +8,7 @@ export default function TableHeader() {
             align="center" justify="flex-start"
             p={0} gap={0} wrap='nowrap'
             style={{ borderBottom: '3px solid var(--mantine-color-default-border)'}}
+            visibleFrom="sm"
         >
             {/* Column 1: Time & Date */}
             <Group w={120} gap={16} pl={12} pr={12} pt={24} pb={24}>

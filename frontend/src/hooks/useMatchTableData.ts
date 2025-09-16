@@ -84,38 +84,30 @@ export default function useMatchTableData() {
     // fetch completed matches
 
     const emptyResponse: PaginatedMatchesResponse = { matches: [], total_count: 0, total_pages: 1 };
-    const liveMatchesOnly = filters.matchStatus === 'Live' || completedMatchesLimit === 0;
 
-    // Create a stable SWR key
-    const swrKey = liveMatchesOnly
-        ? null // Do not fetch completed matches if only live matches are requested
-        : ['matches', completedMatchesOffset, completedMatchesLimit, filters];
+    // Simpler stable key: always include filters object (memoized upstream) + pagination args
+    const swrKey: [string, number, number, typeof filters] = ['matches', completedMatchesOffset, completedMatchesLimit, filters];
 
-    const { data , error: completedError, isLoading, mutate } = useSWR(
+    // Abstracted fetcher respecting live mode & pagination
+    const fetchCompletedFetcher = async ([, offset, limit, filt]: typeof swrKey): Promise<PaginatedMatchesResponse> => {
+        if (filt.matchStatus === 'Live' || limit === 0) return emptyResponse; // live-only: no completed data
+        const params: any = {};
+        if (filt.teamName) params['team_name'] = filt.teamName;
+        if (filt.patchNumber) params['patch_number'] = filt.patchNumber;
+        if (filt.leagueId) params['league_id'] = filt.leagueId;
+        if (filt.heroIds && filt.heroIds.length > 0) params['hero_ids[]'] = filt.heroIds;
+        params['offset'] = offset;
+        params['limit'] = limit;
+        return fetchCompletedMatches(params);
+    };
+
+    const { data , error: completedError, isValidating } = useSWR(
         swrKey,
-        () => {
-            // Map UI filters (camelCase) to API params (snake_case)
-            const params: any = {}
-            if (filters.teamName) params['team_name'] = filters.teamName;
-            if (filters.patchNumber) params['patch_number'] = filters.patchNumber;
-            if (filters.leagueId) params['league_id'] = filters.leagueId;
-            if (filters.heroIds && filters.heroIds.length > 0) {
-                params['hero_ids[]'] = filters.heroIds
-            }
-            // Use dynamic offset and limit for pagination
-            params['offset'] = completedMatchesOffset;
-            params['limit'] = completedMatchesLimit;
-            return fetchCompletedMatches(params)
+        fetchCompletedFetcher,
+        { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 0, keepPreviousData: true, fallbackData: emptyResponse }
+    );
 
-    },  { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 0 })
-
-
-    const completedRes = data ?? emptyResponse;
-
-    // Event-driven revalidation: Reconcile polling and SSE updates
-    useEffect(() => {
-        if (!liveMatchesOnly) void mutate();
-    }, [liveMatchesOnly, liveMatchData, mutate]);
+    const completedRes = data || emptyResponse;
 
     // combine live matches and completed matches for current page
     const matchTableData: MatchData[] = useMemo(() => {
@@ -125,12 +117,13 @@ export default function useMatchTableData() {
             universalOffset + pageSize
         );
 
-        const completedMatches = completedRes?.matches ?? [];
+        if (filters.matchStatus === 'Live') return liveMatchesForPage; // ignore completed cache entirely in live mode
+        const completedMatches = completedRes.matches ?? [];
         return [...liveMatchesForPage, ...completedMatches].slice(0, pageSize);
-    }, [filteredLiveMatches, completedRes, universalOffset, pageSize]);
+    }, [filteredLiveMatches, completedRes, universalOffset, pageSize, filters.matchStatus]);
 
     const totalPages = Math.ceil((filteredLiveMatchCount + (completedRes?.total_count ?? 0)) / pageSize) || 1;
 
-    return { matchTableData, completedError, isLoading, totalPages };
+    return { matchTableData, completedError, isValidating, totalPages };
 
 }

@@ -7,9 +7,9 @@ import TableHeader from './TableHeader';
 export default function MatchTable({matchData}: {matchData: MatchData[]}) {
     return (
         <Stack w='100%' h='auto'>
-            <TableHeader />
+            <TableHeader/>
             {/* Table Body */}
-            <Stack >
+            <Stack justify='center' align='center'>
                 {matchData.map((match: MatchData) => (
                     <TableRow key={match.match_id} matchData={match} />
                 ))}

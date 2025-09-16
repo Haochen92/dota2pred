@@ -8,13 +8,17 @@ import FiltersBar from '@/components/match-filter/FiltersBar';
 import MatchTable from '@/components/match-table/MatchTable';
 import TablePagination from '@/components/match-table/TablePagination';
 
+// Loading and Error UI
+import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { MatchTableSkeleton } from './MatchTableSkeleton';
+
 // Hooks
 import { useFilterState } from '@/hooks/useFilterState';
 import useMatchTableData from '@/hooks/useMatchTableData';
 
 export default function MatchTrackerClient() {
   const { page, filters, handlePageChange, handleFiltersChange } = useFilterState();
-  const { matchTableData, totalPages, completedError, isLoading } = useMatchTableData();
+  const { matchTableData, totalPages, completedError, isValidating } = useMatchTableData();
 
   return (
     <Container size={1280} c="white" pl={0} pr={0}>
@@ -26,26 +30,22 @@ export default function MatchTrackerClient() {
           filterValues={filters}
           onChange={handleFiltersChange}
         />
+        <ErrorBoundary>
+          <Suspense fallback={<MatchTableSkeleton />}>
+            {/* Render error, loading state, or the match table */}
+            {isValidating
+              ? <MatchTableSkeleton />
+              : <MatchTable matchData={matchTableData} />
+            }
 
-        {/* The main content area, wrapped in Suspense for client-side data fetching. */}
-        <Suspense fallback={<div>Loading Matches...</div>}>
-
-          {/* Render error, loading state, or the match table */}
-          {completedError && <div>Error loading completed matches: {String(completedError)}</div>}
-
-          {isLoading
-            ? <div>Loading...</div>
-            : <MatchTable matchData={matchTableData} />
-          }
-
-          {/* The pagination component controls the shared page state. */}
-          <TablePagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
-        </Suspense>
-
+            {/* The pagination component controls the shared page state. */}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </Stack>
     </Container>
   );

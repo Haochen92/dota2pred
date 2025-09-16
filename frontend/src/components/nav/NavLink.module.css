@@ -7,8 +7,12 @@
   text-decoration: none;
   height: 100%;
   border-bottom: 2px solid transparent;
+
+  color: white;
+  transition: color 150ms ease, border-color 150ms ease;
 }
 
 .active {
+  color: var(--mantine-color-blue-4);
   border-bottom-color: currentColor;
 }

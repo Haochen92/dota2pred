@@ -61,7 +61,7 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
     setHeroFilters(filterValues.heroIds ?? []);
     setLeague(filterValues.leagueId ?? undefined);
     setLeagueInputText(filterValues.leagueId ? tournamentIdToNameMap.get(filterValues.leagueId) : '');
-  }, [filterValues]);
+  }, [filterValues, tournamentIdToNameMap]);
 
   // Local UI states
 

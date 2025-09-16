@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import classes from './NavLink.module.css'
 import { Anchor, AnchorProps } from '@mantine/core';
-import { TextMdMedium } from '@/components/typography/TextVariants';
+import { TextLgBold } from '@/components/typography/TextVariants';
 
 interface NavLinkProps extends Omit<AnchorProps, 'href'> {
   href: string;
@@ -18,11 +18,10 @@ export default function NavLink({ href, text, ...props }: NavLinkProps) {
     <Anchor
       component={Link}
       href={href}
-      c={isActive ? 'primary' : 'white'}
       className={`${classes.link} ${isActive ? classes.active : ''}`}
       {...props}
     >
-      <TextMdMedium component="span">{text}</TextMdMedium>
+      <TextLgBold component="span">{text}</TextLgBold>
     </Anchor>
   );
 }
