@@ -5,18 +5,25 @@ import fsp from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
+// --- Configuration ---
 const ROOT_DIR = getRootDir();
-const DEFAULT_IMAGE_DIR = path.join(ROOT_DIR, 'public', 'icons', 'heroes');
-const CDN_HOST = 'http://cdn.dota2.com'
+const PUBLIC_DIR = path.join(ROOT_DIR, 'public', 'images', 'heroes');
+const CDN_HOST = 'https://cdn.dota2.com'; // Use https for security
 
+/**
+ * Downloads an image from a URL and saves it to a specified filepath.
+ */
 async function downloadImage(url: string, filepath: string): Promise<void> {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch image from ${url}: ${res.statusText}`);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${url}`);
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     await fsp.writeFile(filepath, buffer);
 }
 
+/**
+ * Checks if a file exists at a given path.
+ */
 async function fileExists(filepath: string): Promise<boolean> {
     try {
         await fsp.access(filepath);
@@ -26,41 +33,95 @@ async function fileExists(filepath: string): Promise<boolean> {
     }
 }
 
-export async function updateHeroImages({ targetDir = DEFAULT_IMAGE_DIR } = {}) {
-    console.log("Fetching hero data from backend...");
-    const heroData: HeroImageData[] = await fetchHeroData();
-    console.log(`Found ${heroData.length} heroes. Processing images...`);
-
+/**
+ * The generic function to download and sync a specific type of hero image.
+ */
+async function syncImageType({
+    heroData,
+    targetDir,
+    imageUrlPath,
+    imageTypeLabel,
+}: {
+    heroData: { hero_id: number; img: string; [key: string]: any }[];
+    targetDir: string;
+    imageUrlPath: (hero: { img: string }) => string;
+    imageTypeLabel: string;
+}) {
+    console.log(`\nProcessing ${imageTypeLabel} images...`);
     await fsp.mkdir(targetDir, { recursive: true });
 
     let imagesToDownload = 0;
     let imagesExist = 0;
+    let failedDownloads = 0;
 
     const downloadTasks = heroData.map(async (hero) => {
-        const imagePath = path.join(targetDir, `${hero.hero_id}.png`);
-        const imageUrl = `${CDN_HOST}${hero.image_url}`;
+        const filename = `${hero.hero_id}.png`;
+        const localFilePath = path.join(targetDir, filename);
 
-        if (await fileExists(imagePath)) {
+        // Remove trailing '?' from URL path if it exists
+        const cleanImgPath = hero.img.endsWith('?') ? hero.img.slice(0, -1) : hero.img;
+        const cdnUrl = `${CDN_HOST}${imageUrlPath({ ...hero, img: cleanImgPath })}`;
+
+        if (await fileExists(localFilePath)) {
             imagesExist++;
-        } else if (imageUrl) {
+        } else {
             imagesToDownload++;
             try {
-                await downloadImage(imageUrl, imagePath);
+                await downloadImage(cdnUrl, localFilePath);
             } catch (error: any) {
-                console.warn(`Failed to download image for hero ID ${hero.hero_id}: ${error.message}`);
+                console.warn(`[WARN] Failed to download ${imageTypeLabel} for hero ID ${hero.hero_id}: ${error.message}`);
+                failedDownloads++;
             }
         }
     });
 
     await Promise.all(downloadTasks);
 
-    console.log("\n--- Sync Summary ---");
-    console.log(`Target Directory: ${targetDir}`);
-    console.log(`Total Heroes Processed: ${heroData.length}`);
-    console.log(`Images Already Existing: ${imagesExist}`);
-    console.log(`Images Downloaded: ${imagesToDownload}`);
+    console.log(`- ${imageTypeLabel} Summary -`);
+    console.log(`  Existing: ${imagesExist}`);
+    console.log(`  Downloaded: ${imagesToDownload - failedDownloads}`);
+    if (failedDownloads > 0) {
+        console.log(`  Failed: ${failedDownloads}`);
+    }
 }
 
+
+/**
+ * Main orchestrator function for updating all hero images.
+ */
+export async function updateHeroImages({ publicDir = PUBLIC_DIR } = {}) {
+    console.log("Fetching hero data from backend...");
+    const heroData = await fetchHeroData();
+    console.log(`Found ${heroData.length} heroes.`);
+
+    const portraitsDir = path.join(publicDir, 'portraits');
+    const iconsDir = path.join(publicDir, 'icons');
+
+    // --- Sync Portraits ---
+    await syncImageType({
+        heroData,
+        targetDir: portraitsDir,
+        // The path for the portrait is directly from the 'img' property.
+        imageUrlPath: (hero) => hero.img,
+        imageTypeLabel: 'Portraits',
+    });
+
+    // --- Sync Icons ---
+    await syncImageType({
+        heroData,
+        targetDir: iconsDir,
+        // The path for the icon is derived by injecting '/icons/' into the 'img' path.
+        imageUrlPath: (hero) => hero.img.replace('/heroes/', '/heroes/icons/'),
+        imageTypeLabel: 'Icons',
+    });
+
+    console.log("\n--- Sync Complete ---");
+    console.log(`Target Directory: ${publicDir}`);
+    console.log(`Total Heroes Processed: ${heroData.length}`);
+}
+
+
+// --- Script Execution ---
 (async () => {
     const isDryRun = process.argv.includes('--dry-run');
 
@@ -71,24 +132,24 @@ export async function updateHeroImages({ targetDir = DEFAULT_IMAGE_DIR } = {}) {
             tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'hero-images-sync-'));
             console.log(`Created temporary sandbox at: ${tempDir}`);
 
-            await updateHeroImages({ targetDir: tempDir });
+            await updateHeroImages({ publicDir: tempDir });
             console.log("\nDry run validation successful.");
 
         } finally {
             if (tempDir) {
-                console.log(`Cleaning up sandbox directory: ${tempDir}`);
+                console.log(`\nCleaning up sandbox directory: ${tempDir}`);
                 await fsp.rm(tempDir, { recursive: true, force: true });
                 console.log("Sandbox cleaned up.");
             }
         }
     } else {
         console.log('--- RUNNING IN NORMAL MODE ---');
-        await updateHeroImages({ targetDir: DEFAULT_IMAGE_DIR });
-        console.log("\nSync complete.");
+        await updateHeroImages({ publicDir: PUBLIC_DIR });
+        console.log("\nSync process finished.");
     }
 
 })().catch(error => {
-    console.error("\n--- An unexpected error occurred ---");
+    console.error("\n--- AN UNEXPECTED ERROR OCCURRED ---");
     console.error(error);
     process.exit(1);
 });
