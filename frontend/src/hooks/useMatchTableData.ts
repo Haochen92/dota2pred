@@ -28,51 +28,51 @@ export default function useMatchTableData() {
     const filteredLiveMatches = useMemo(() => {
         // If matchStatus filter is 'Completed', return empty array as no live matches should be shown
         if (filters.matchStatus === 'Completed') return [];
-    return liveMatchData.filter(match => {
-            // Apply filtering logic based on filters
-            if (filters.teamName) {
-                const teamName = filters.teamName.toLowerCase();
-                const radiantTeam = match.radiant_name?.toLowerCase() || '';
-                const direTeam = match.dire_name?.toLowerCase() || '';
-                if (!radiantTeam.includes(teamName) && !direTeam.includes(teamName)) {
+        return liveMatchData.filter(match => {
+                // Apply filtering logic based on filters
+                if (filters.teamName) {
+                    const teamName = filters.teamName.toLowerCase();
+                    const radiantTeam = match.radiant_name?.toLowerCase() || '';
+                    const direTeam = match.dire_name?.toLowerCase() || '';
+                    if (!radiantTeam.includes(teamName) && !direTeam.includes(teamName)) {
+                        return false;
+                    }
+                }
+
+                const latestPatch = patches[0] || undefined;
+                // Live games are always on latest patch; only filter if a patch filter is explicitly set
+                if (filters.patchNumber && filters.patchNumber !== latestPatch) {
                     return false;
                 }
-            }
 
-            const latestPatch = patches[0] || undefined;
-            // Live games are always on latest patch; only filter if a patch filter is explicitly set
-            if (filters.patchNumber && filters.patchNumber !== latestPatch) {
-                return false;
-            }
-
-            if (filters.leagueId) {
-                const leagueId = match.leagueid || null;
-                if (leagueId !== filters.leagueId) {
-                    return false;
+                if (filters.leagueId) {
+                    const leagueId = match.leagueid || null;
+                    if (leagueId !== filters.leagueId) {
+                        return false;
+                    }
                 }
-            }
-            if (filters.heroIds && filters.heroIds.length > 0){
-                const heroFilterIdsSet = new Set(filters.heroIds);
+                if (filters.heroIds && filters.heroIds.length > 0){
+                    const heroFilterIdsSet = new Set(filters.heroIds);
 
-                // use keyof to notify TypeScript about the keys of LiveMatchData
-                const heroIdKeysToCheck: (keyof LiveMatchData)[] = [
-                    'slot_0_hero_id', 'slot_1_hero_id', 'slot_2_hero_id',
-                    'slot_3_hero_id', 'slot_4_hero_id', 'slot_128_hero_id',
-                    'slot_129_hero_id', 'slot_130_hero_id', 'slot_131_hero_id',
-                    'slot_132_hero_id'
-                ];
-                const hasMatchingHero = heroIdKeysToCheck.some(key =>
-                    heroFilterIdsSet.has(match[key] as number)
-                );
+                    // use keyof to notify TypeScript about the keys of LiveMatchData
+                    const heroIdKeysToCheck: (keyof LiveMatchData)[] = [
+                        'slot_0_hero_id', 'slot_1_hero_id', 'slot_2_hero_id',
+                        'slot_3_hero_id', 'slot_4_hero_id', 'slot_128_hero_id',
+                        'slot_129_hero_id', 'slot_130_hero_id', 'slot_131_hero_id',
+                        'slot_132_hero_id'
+                    ];
+                    const hasMatchingHero = heroIdKeysToCheck.some(key =>
+                        heroFilterIdsSet.has(match[key] as number)
+                    );
 
-                if (!hasMatchingHero) {
-                    return false;
+                    if (!hasMatchingHero) {
+                        return false;
+                    }
                 }
-            }
 
-            // Return match if all filters pass
-            return true;
-        })}, [liveMatchData, filters, patches]);
+                // Return match if all filters pass
+                return true;
+            })}, [liveMatchData, filters, patches]);
 
     // Dynamically calculate offset and limit based on pageSize and number of filtered live matches
     const filteredLiveMatchCount = filteredLiveMatches.length;
@@ -85,7 +85,7 @@ export default function useMatchTableData() {
 
     const emptyResponse: PaginatedMatchesResponse = { matches: [], total_count: 0, total_pages: 1 };
 
-    // Simpler stable key: always include filters object (memoized upstream) + pagination args
+    // Stable key
     const swrKey: [string, number, number, typeof filters] = ['matches', completedMatchesOffset, completedMatchesLimit, filters];
 
     // Abstracted fetcher respecting live mode & pagination
