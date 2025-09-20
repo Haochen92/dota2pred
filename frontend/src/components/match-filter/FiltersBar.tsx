@@ -142,7 +142,8 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
         {/* Left */}
         <Group gap="xs" align="center">
           <IconFilter size={16} />
-          <TextMdMedium>Filters</TextMdMedium>
+          {/* Desktop only Text, visible from breakpoint sm */}
+          <TextMdMedium visibleFrom="sm">Filters</TextMdMedium>
         </Group>
 
         {/* Center - Immediate action control */}
