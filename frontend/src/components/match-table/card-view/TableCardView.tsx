@@ -5,6 +5,7 @@ import TeamDisplayCard from './TeamDisplayCard';
 import { TextMdRegular, TextSmRegular, TextMdBold, TextLgRegular, TextLgBold } from '@/components/typography/TextVariants';
 import type { TableRowDataProps } from '@/types/domain';
 import { LiveIndicator } from '@/components/motion/LiveIndicator';
+import { IconSwords } from '@tabler/icons-react';
 
 
 
@@ -47,10 +48,10 @@ export default function TableCardView({
                         {
                             actualWinner === null ?
                                 <LiveIndicator />
-                             : <Badge variant='light' p='sm' c={actualWinner === 'Dire' ? 'red.2' : 'green.2'}>
-                                    <TextMdRegular>
-                                        {actualWinner} Wins
-                                    </TextMdRegular>
+                             : <Badge variant='filled' p='sm' bg='white' c='black'>
+                                    <TextSmRegular>
+                                        Completed
+                                    </TextSmRegular>
                                 </Badge>
 
                         }
@@ -65,7 +66,8 @@ export default function TableCardView({
                         <TeamDisplayCard teamName={radiantTeamName} heroPicks={radiantHeroes} faction='Radiant' />
                     </Stack>
 
-                    <TextLgBold c="gray.2">VS</TextLgBold>
+                    <IconSwords size={32} fill='var(--mantine-color-red-2)' />
+
                     <Stack align='flex-start'>
                         <TeamDisplayCard teamName={direTeamName} heroPicks={direHeroes} faction='Dire' />
                     </Stack>
@@ -73,9 +75,9 @@ export default function TableCardView({
 
                 <Divider w='95%' />
 
-                {/* Card Footer: Prediction & Outcome (Redesigned) */}
-                <Stack gap={16} px={12} pb={16}>
-                    <Group justify="center" gap={32} wrap="nowrap">
+                {/*  */}
+                <Stack gap={16} p={12}>
+                    <Group justify="center" gap={16} wrap="nowrap" w='100%'>
                         {/* Prediction Box */}
                         <Box
                             style={(theme)=>({
@@ -84,7 +86,7 @@ export default function TableCardView({
                                 background: alpha(theme.colors.gray[6] ?? theme.black, 0.25),
                                 borderRadius: 12,
                                 padding: '16px 24px',
-                                minWidth: 180
+                                Width: '40%'
                             })}
                         >
                             <Stack gap={8}>
@@ -124,7 +126,7 @@ export default function TableCardView({
                                 background: alpha(theme.colors.gray[6] ?? theme.black, 0.25),
                                 borderRadius: 12,
                                 padding: '16px 24px',
-                                minWidth: 180
+                                width: '40%'
                             })}
                         >
                             <Stack gap={8}>
@@ -142,7 +144,7 @@ export default function TableCardView({
                                         {actualWinner ? <IconCircleCheckFilled size={18} /> : <LiveIndicator />}
                                     </Center>
                                     {actualWinner === null ? (
-                                        <TextMdBold c="gray.2">In Progress</TextMdBold>
+                                        <TextMdBold c="gray.2">Ongoing</TextMdBold>
                                     ) : (
                                         <TextMdBold>{actualWinner}</TextMdBold>
                                     )}
@@ -167,9 +169,16 @@ export default function TableCardView({
                                 alignItems: 'center'
                             })}
                         >
-                            <TextMdBold style={{display:'flex',alignItems:'center',gap:8}}>
-                                {isCorrectPrediction ? '🎉 Prediction Correct!' : '❌ Prediction Incorrect'}
-                            </TextMdBold>
+                            <Group>
+                                {isCorrectPrediction
+                                    ? <IconCircleCheckFilled color='var(--mantine-color-white)' size={24} />
+                                    : <IconCircleXFilled color='var(--mantine-color-red-2)' size={24} />
+                                }
+                                <TextMdBold style={{display:'flex',alignItems:'center',gap:8}}>
+                                    {isCorrectPrediction ? ' Prediction Correct' : ' Prediction Incorrect'}
+                                </TextMdBold>
+                            </Group>
+
                         </Box>
                     )}
                 </Stack>
