@@ -1,27 +1,27 @@
 "use client";
 
-import { Paper, Stack, Group, SegmentedControl, Chip, Table, ScrollArea, Badge } from '@mantine/core';
+import { Paper, Stack, Group, SegmentedControl, Chip, Table, ScrollArea, Badge, Divider } from '@mantine/core';
 import type { HistoryRange } from '@/types/contracts';
 import { dateFormatter } from '@/utils/date-formatter';
+import { TextMdBold } from '@/components/typography/TextVariants';
 
 interface ChartSeriesConfig { name: string; type: string; color: string; }
 
 export interface ModelHistoryMobileViewProps {
-  visibilityBreakpoint?: string; // Show only below this breakpoint
+  visibilityBreakpoint?: string;
   historyRange: HistoryRange;
   onHistoryRangeChange: (value: string) => void;
   historyRangeOptions: { label: string; value: string }[];
   chartMetricsData: ChartSeriesConfig[];
   selectedMetrics: string[];
   onSelectedMetricsChange: (metrics: string[]) => void;
-  historyData: any[]; // consider tightening type
+  historyData: any[];
   summaryStats?: {
     averageAccuracy: number; averagePrecision: number; averageRecall: number;
     maxAccuracy: number; maxPrecision: number; maxRecall: number;
   };
 }
 
-// Simple percent formatter (same logic as StatCard helper but local to avoid coupling)
 const formatPercent = (value: number | null | undefined) =>
   value === null || value === undefined ? '-' : `${(value * 100).toFixed(1)}%`;
 
@@ -123,9 +123,12 @@ export function ModelHistoryMobileView({
         </Table>
       </ScrollArea>
 
+      <TextMdBold c='gray.1'>Summary Stats</TextMdBold>
+      <Divider />
+
       {/* Minimal Stats Row */}
       {summaryStats && (
-        <Group gap={8} wrap='wrap' justify='space-around'>
+        <Group gap={8} wrap='wrap' justify='center'>
           <Badge variant='light' color='blue.3' radius='sm'>Accu Avg: {formatPercent(summaryStats.averageAccuracy)}</Badge>
           <Badge variant='light' color='blue.3' radius='sm'>Accu Max: {formatPercent(summaryStats.maxAccuracy)}</Badge>
           <Badge variant='light' color='green.3' radius='sm'>Precis Avg: {formatPercent(summaryStats.averagePrecision)}</Badge>
