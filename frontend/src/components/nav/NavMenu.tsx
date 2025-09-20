@@ -1,6 +1,7 @@
 'use client';
 
-import {  Drawer, Stack, Divider, NavLink, Burger, MantineTheme, Title } from '@mantine/core';
+import {  Drawer, Stack, Divider, NavLink, Burger } from '@mantine/core';
+import { IconTimeline } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { usePathname } from 'next/navigation';
 import { TextMdRegular, TextLgBold } from '../typography/TextVariants';
@@ -27,27 +28,36 @@ export default function NavMenu({ links }: NavMenuProps) {
         size={200}
         overlayProps={{ opacity: 0.45, blur: 2 }}
         title={<TextLgBold c='gray.1'>Navigation</TextLgBold>}
-        styles={(theme: MantineTheme) => ({
-            header: {
-                        borderBottom: `1px solid ${theme.colors.gray[7]}`,
-                        backgroundColor: theme.colors.gray[9],
-                        justifyContent: 'center',
-                        padding: theme.spacing.md
-            },
-            content: { backgroundColor: theme.colors.gray[9] }
-        })}
+        styles={{
+          header: {
+            borderBottom: '1px solid var(--mantine-color-gray-7)',
+            backgroundColor: 'var(--mantine-color-gray-9)',
+            justifyContent: 'center',
+            padding: 'var(--mantine-spacing-md)'
+          },
+          content: { backgroundColor: 'var(--mantine-color-gray-9)' }
+        }}
         >
         <Stack gap="sm" mt="sm" justify='flex-start' p={4}>
           {links.map((l) => (
             <NavLink
-                key={l.href}
-                href={l.href}
-                label={<TextMdRegular>{l.label}</TextMdRegular>}
-                variant='light'
-                active={pathname === l.href}
+              key={l.href}
+              href={l.href}
+              label={<TextMdRegular>{l.label}</TextMdRegular>}
+              variant='light'
+              active={pathname === l.href}
             />
           ))}
-          <Divider/>
+          <Divider />
+          <NavLink
+            href='/model-history'
+            label={<TextMdRegular>Model History</TextMdRegular>}
+            leftSection={<IconTimeline size={16} />}
+            variant='filled'
+            color='grape'
+            active={pathname === '/model-history'}
+            style={{ borderRadius: 8 }}
+          />
         </Stack>
       </Drawer>
     </>
