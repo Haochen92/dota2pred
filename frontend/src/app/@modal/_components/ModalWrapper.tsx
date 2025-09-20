@@ -2,16 +2,7 @@
 
 import { Modal, Group, Title } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-
-const ModalHeader = () => {
-    return (
-        <Group justify='flex-start' px={8} >
-            <Title order={3} c='white'>Model Performance History</Title>
-        </Group>
-    );
-}
-
-
+import { TextLgBold } from '@/components/typography/TextVariants';
 
 export default function ModalWrapper({children}: {children: React.ReactNode}) {
     const router = useRouter();
@@ -22,7 +13,10 @@ export default function ModalWrapper({children}: {children: React.ReactNode}) {
                 <Modal.Content radius={12} style={{ overflowY: 'auto', overflowX:'hidden'}}>
                     <Modal.Header p='0' w='100%'>
                         <Group justify='space-between' align='center' p='xl' w='100%' bg='gray.8'>
-                            <Title order={4} c='white'>Model Performance History</Title>
+                            {/* Desktop Title */}
+                            <Title order={4} c='white' visibleFrom='sm'>Model Performance History</Title>
+                            {/* Mobile Title */}
+                            <TextLgBold c='white' hiddenFrom='sm'>Model Performance History</TextLgBold>
                             <Modal.CloseButton />
                         </Group>
                     </Modal.Header>
