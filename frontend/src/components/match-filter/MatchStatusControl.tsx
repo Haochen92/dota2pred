@@ -2,7 +2,7 @@
 
 import { SegmentedControl, Flex } from '@mantine/core';
 import type { MatchFilterOptions, MatchStatus } from '@/types/domain';
-import { TextMdBold } from '../typography/TextVariants';
+import { TextMdBold, TextSmMedium } from '../typography/TextVariants';
 
 type MatchStatusControlProps = {
   filters: MatchFilterOptions;
@@ -11,11 +11,20 @@ type MatchStatusControlProps = {
 
 const ControlTab = (label: string) => {
     return (
+      <>
         <Flex justify='center' align='center'
             style={{borderRadius: 6, padding: '8px 24px', gap:'6px'}}
+            visibleFrom="sm"
         >
+          {/* Desktop view ControlTab, visible from breakpoint sm */}
             <TextMdBold c='gray.2'>{label}</TextMdBold>
         </Flex>
+        <Flex hiddenFrom="sm">
+          {/* Mobile view ControlTab, visible below breakpoint sm */}
+            <TextSmMedium c='gray.2'>{label}</TextSmMedium>
+        </Flex>
+      </>
+
     )
 }
 
