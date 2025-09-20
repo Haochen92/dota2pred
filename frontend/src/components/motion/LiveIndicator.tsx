@@ -1,11 +1,16 @@
-import { Badge } from '@mantine/core';
+import { Badge, BadgeProps } from '@mantine/core';
 import { motion } from 'framer-motion';
+import React from 'react';
 import { useMantineTheme } from '@mantine/core';
 import { TextSmBold } from '../typography/TextVariants';
 
-// 1. Create a "motion-aware" version of the Mantine Badge component.
-// This new component accepts all Badge props AND all Framer Motion props.
-const MotionBadge = motion(Badge);
+// Create a motion-capable wrapper to avoid polymorphic component type conflicts.
+const BadgeBase = React.forwardRef<HTMLDivElement, BadgeProps>((props, ref) => (
+  <Badge ref={ref} {...props} />
+));
+BadgeBase.displayName = 'BadgeBase';
+
+const MotionBadge = motion(BadgeBase);
 
 export function LiveIndicator() {
   // 2. Get access to the Mantine theme to use theme colors.
@@ -18,13 +23,13 @@ export function LiveIndicator() {
       // We are now animating the backgroundColor property.
       animate={{
         backgroundColor: [
-            theme.colors.red[5],
-            theme.colors.green[5],
-            theme.colors.red[5],
+            theme.colors.red[3],
+            theme.colors.red[4],
+            theme.colors.red[3],
         ],
         boxShadow: [
             `0 0 8px 0px ${theme.colors.red[3]}`,
-            `0 0 16px 4px ${theme.colors.green[3]}`,
+            `0 0 16px 4px ${theme.colors.red[4]}`,
             `0 0 8px 0px ${theme.colors.red[3]}`,
         ],
       }}
