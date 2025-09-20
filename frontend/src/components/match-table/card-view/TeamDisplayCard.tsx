@@ -2,6 +2,7 @@ import { Group, Stack, alpha, getGradient } from '@mantine/core';
 import HeroIcon from '@/components/icons/HeroIcon';
 import { TextLgRegular, TextLgBold } from '@/components/typography/TextVariants';
 
+
 type TeamDisplayProps = {
     teamName: string;
     heroPicks: number[];
@@ -12,16 +13,12 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
     const isRadiant = faction === 'Radiant';
 
     return (
-        <Stack
+        <Group
             align="flex-start"
             justify="center"
             gap={4}
             flex={2.5}
             h='100%'
-            pt={8}
-            pb={8}
-            pl={12}
-            pr={12}
             style={(theme) => ({
                 // Team-specific gradient backgrounds
                 background: isRadiant
@@ -77,6 +74,6 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
                     {teamName}
                 </TextLgRegular>
             </Group>
-        </Stack>
+        </Group>
     );
 }
