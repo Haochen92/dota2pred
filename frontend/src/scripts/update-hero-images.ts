@@ -42,9 +42,9 @@ async function syncImageType({
     imageUrlPath,
     imageTypeLabel,
 }: {
-    heroData: { hero_id: number; img: string; [key: string]: any }[];
+    heroData: { hero_id: number; img?: string | null; image_url?: string | null; [key: string]: any }[];
     targetDir: string;
-    imageUrlPath: (hero: { img: string }) => string;
+    imageUrlPath: (hero: { img?: string | null; image_url?: string | null }) => string | undefined;
     imageTypeLabel: string;
 }) {
     console.log(`\nProcessing ${imageTypeLabel} images...`);
@@ -57,10 +57,14 @@ async function syncImageType({
     const downloadTasks = heroData.map(async (hero) => {
         const filename = `${hero.hero_id}.png`;
         const localFilePath = path.join(targetDir, filename);
-
-        // Remove trailing '?' from URL path if it exists
-        const cleanImgPath = hero.img.endsWith('?') ? hero.img.slice(0, -1) : hero.img;
-        const cdnUrl = `${CDN_HOST}${imageUrlPath({ ...hero, img: cleanImgPath })}`;
+        const rawPath = imageUrlPath(hero);
+        if (!rawPath) {
+            console.warn(`[WARN] Missing image path for hero ID ${hero.hero_id} (${imageTypeLabel})`);
+            failedDownloads++;
+            return;
+        }
+        const cleanPath = rawPath.endsWith('?') ? rawPath.slice(0, -1) : rawPath;
+        const cdnUrl = `${CDN_HOST}${cleanPath}`;
 
         if (await fileExists(localFilePath)) {
             imagesExist++;
@@ -101,8 +105,7 @@ export async function updateHeroImages({ publicDir = PUBLIC_DIR } = {}) {
     await syncImageType({
         heroData,
         targetDir: portraitsDir,
-        // The path for the portrait is directly from the 'img' property.
-        imageUrlPath: (hero) => hero.img,
+        imageUrlPath: (hero) => hero.img ?? hero.image_url ?? undefined,
         imageTypeLabel: 'Portraits',
     });
 
@@ -110,8 +113,10 @@ export async function updateHeroImages({ publicDir = PUBLIC_DIR } = {}) {
     await syncImageType({
         heroData,
         targetDir: iconsDir,
-        // The path for the icon is derived by injecting '/icons/' into the 'img' path.
-        imageUrlPath: (hero) => hero.img.replace('/heroes/', '/heroes/icons/'),
+        imageUrlPath: (hero) => {
+            const base = hero.img ?? hero.image_url;
+            return base ? base.replace('/heroes/', '/heroes/icons/') : undefined;
+        },
         imageTypeLabel: 'Icons',
     });
 
