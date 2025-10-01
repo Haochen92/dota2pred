@@ -1,5 +1,5 @@
 from sqlmodel import Field, SQLModel
-from sqlalchemy import Column, TIMESTAMP, Integer, String
+from sqlalchemy import Column, TIMESTAMP, Integer, String, BigInteger
 from datetime import datetime
 from typing import Optional
 
@@ -20,3 +20,11 @@ class PatchTable(SQLModel, table=True):
     patch_number: str = Field(sa_column=Column("patch_number", String(50), nullable=False, unique=True, index=True))
     start_time: datetime = Field(sa_column=Column("start_time", TIMESTAMP(timezone=True), nullable=False))
     end_time: Optional[datetime] = Field(sa_column=Column("end_time", TIMESTAMP(timezone=True), nullable=True))
+
+    # New optional match_id boundaries for this patch window
+    start_match_id: Optional[int] = Field(
+        default=None, sa_column=Column("start_match_id", BigInteger, nullable=True)
+    )
+    end_match_id: Optional[int] = Field(
+        default=None, sa_column=Column("end_match_id", BigInteger, nullable=True)
+    )
