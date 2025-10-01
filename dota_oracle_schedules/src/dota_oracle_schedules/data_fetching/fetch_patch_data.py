@@ -5,6 +5,7 @@ from dota_oracle_common.repositories.patch_repository import PatchRepository
 from dota_oracle_common.models.patches import DotaPatch
 from dota_oracle_pipeline.data_extraction.fetch_patch_data import fetch_patch_data
 from dota_oracle_pipeline.data_transformation.patch_parser import calculate_patch_end_times
+from dota_oracle_pipeline.data_transformation import hydrate_patch_boundaries_task
 from pydantic import ValidationError
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,15 @@ async def patch_data_orchestrator():
             except Exception as e:
                 raise e
 
-    logger.info("Successfully updated patch data")
+    # Hydrate match_id boundaries (start_match_id for all, end_match_id only for closed patches)
+    try:
+        updated = await hydrate_patch_boundaries_task()
+        logger.info(f"Hydrated match_id boundaries for {updated} patches")
+    except Exception as e:
+        logger.error(f"Failed to hydrate patch boundaries: {e}", exc_info=True)
+        raise
+
+    logger.info("Successfully updated patch data and hydrated boundaries")
 
 
 async def store_patch_data(session: AsyncSession, patch_data: List[DotaPatch]) -> None:
