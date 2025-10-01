@@ -10,7 +10,7 @@ from .schema import (
     PublicMatch,
     PublicMatchAPIResponse,
 )
-from .table import MatchTable, MatchOutcomeTable
+from .table import MatchTable, MatchOutcomeTable, PublicMatchTable
 
 __all__ = [
     "Match",
@@ -25,6 +25,7 @@ __all__ = [
     "CompletedMatchAPIPayload",
     "MatchTable",
     "MatchOutcomeTable",
+    "PublicMatchTable",
     "PublicMatch",
     "PublicMatchAPIResponse",
 ]
