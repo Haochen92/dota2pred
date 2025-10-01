@@ -78,7 +78,7 @@ class ProMatchOutcome(BaseModel):
     """
 
     match_id: int
-    radiant_win: bool
+    radiant_win: Optional[bool] = None
 
 
 class ProMatchAPIResponse(RootModel[List[ProMatchOutcome]]):
