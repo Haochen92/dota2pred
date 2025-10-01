@@ -1,164 +1,138 @@
-from prefect import flow, task
-from typing import List
-from dota_oracle_common.models.match import PublicMatch, PublicMatchAPIResponse
-from dota_oracle_pipeline.data_extraction.api_clients import fetch_opendota_api
-from dota_oracle_common.utils import get_logger, load_workspace_env
-from dota_oracle_common.s3 import S3Wrapper
-import pandas as pd
-import datetime as dt
-import asyncio
+from typing import List, Optional
 import os
-from pathlib import Path
+from datetime import datetime, timezone, timedelta
+
+from prefect import flow
+from sqlalchemy import select
+
+from dota_oracle_common.utils import get_logger, load_workspace_env
+from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.models.patches import PatchTable
+from dota_oracle_pipeline.data_extraction.public_match_collector import PublicMatchCollector
+
 
 load_workspace_env()
-
 logger = get_logger(__name__)
 
-loki_url = os.getenv("LOKI_URL")
-enable_loki_logging = os.getenv("ENABLE_LOKI_LOGGING")
-print("loki_url: ", loki_url)
-print("enable logging?: ", enable_loki_logging)
+
+# Default params (env-overridable)
+DEFAULT_MIN_RANK = int(os.getenv("PUBLIC_MATCH_MIN_RANK", "80"))
+DEFAULT_MAX_RANK = int(os.getenv("PUBLIC_MATCH_MAX_RANK", "85"))
+MAX_MATCH_ID_CURSOR = int(os.getenv("PUBLIC_MATCH_MAX_MATCH_ID", "9999999999999"))
+ERROR_HOP_MATCH_IDS = int(os.getenv("PUBLIC_MATCH_ERROR_HOP", "5000"))
+HOP_MAX = int(os.getenv("PUBLIC_MATCH_HOP_MAX", "40000"))
+INSERT_BATCH_SIZE = int(os.getenv("PUBLIC_MATCH_DB_BATCH", "1000"))
+MAX_PASSES = int(os.getenv("PUBLIC_MATCH_MAX_PASSES", "3"))
+HOP_ON_NO_PROGRESS = int(os.getenv("PUBLIC_MATCH_HOP_ON_NO_PROGRESS", "0"))
+PASS_BACKOFF_SECONDS = int(os.getenv("PUBLIC_MATCH_PASS_BACKOFF", "0"))
 
 
-# FILEPATH
-SCRIPT_PATH = Path(__file__).resolve()
-DATA_DIR = SCRIPT_PATH.parent.parent / "data"
-F_PATH = DATA_DIR / "publicMatches.parquet"
-
-# S3 Object Prefix
-S3_OBJECT_PREFIX = "dota2pred/archives/public_matches/"
-
-# Params Constants
-MAX_MATCH_ID = 999999999999999
-MATCH_COUNT_LIMIT = 100000
-MIN_RANK = 30  # Crusader
-MAX_RANK = 65  # Legend
-END_POINT = "publicMatches"
-BATCH_HOP_ON_FAILURE = 100
-
-
-@flow()
-async def public_match_orchestrator():
-    """Orchestrates fetching matches, archiving old data, and saving new data."""
-    try:
-        await archive_local_file_to_s3()
-        all_matches = await fetch_all_matches()
-        await save_matches_locally(all_matches)
-        logger.info("public_match_orchestration_cycle complete")
-    except Exception as e:
-        logger.error(f"Process failed with Error {str(e)}", exc_info=True)
-        raise
-
-
-@task
-async def fetch_all_matches():
-    """Fethes a target number of unique matches using the /publicMatches endpoint."""
-    current_max_match_id = MAX_MATCH_ID
-    all_public_matches = []
-    collected_match_ids = set()
-
-    while len(collected_match_ids) < MATCH_COUNT_LIMIT:
-        try:
-            logger.info(
-                f"Collected {len(collected_match_ids)}/{MATCH_COUNT_LIMIT}. Fetching batch < {current_max_match_id}..."
-            )
-
-            matches_batch = await fetch_one_batch(current_max_match_id)
-
-            if not matches_batch:
-                logger.warning("Received an empty batch, assuming end of data. Stopping.")
-                break
-
-            for match in matches_batch:
-                if match.match_id not in collected_match_ids:
-                    collected_match_ids.add(match.match_id)
-                    all_public_matches.append(match)
-
-            logger.info(f"Collected {len(collected_match_ids)} unique matches")
-
-            current_max_match_id = get_min_match_id(matches_batch)
-
-        except Exception as e:
-            logger.error(f"An error occurred in the main loop: {e}", exc_info=True)
-            logger.warning(f"Skipping range by hopping down by {BATCH_HOP_ON_FAILURE}.")
-            current_max_match_id -= BATCH_HOP_ON_FAILURE
-            continue
-
-    logger.info(f"Successfully fetched {len(all_public_matches)} unique matches.")
-    return all_public_matches[:MATCH_COUNT_LIMIT]
-
-
-async def fetch_one_batch(less_than_match_id: int) -> List[PublicMatch]:
-    """
-    Fetch 1 batch of matches from Opendota publicMatch endpoint
-    """
-
-    res = await fetch_opendota_api(
-        endpoint=END_POINT,
-        params={"less_than_match_id": less_than_match_id, "min_rank": MIN_RANK, "max_rank": MAX_RANK},
+def _build_collector(session_factory, *, min_rank: int, max_rank: int):
+    return PublicMatchCollector(
+        session_factory=session_factory,
+        min_rank=min_rank,
+        max_rank=max_rank,
+        insert_batch_size=INSERT_BATCH_SIZE,
+        error_hop_match_ids=ERROR_HOP_MATCH_IDS,
+        hop_max=HOP_MAX,
+        max_passes=MAX_PASSES,
+        hop_on_no_progress=HOP_ON_NO_PROGRESS,
+        backoff_seconds_between_passes=PASS_BACKOFF_SECONDS,
     )
 
-    validated_response = PublicMatchAPIResponse.model_validate(res)
-    list_public_matches = validated_response.root
 
-    return list_public_matches
-
-
-def get_min_match_id(match_list: List[PublicMatch]) -> int:
-    if not match_list:
-        return 0
-    match_id_list = [match.match_id for match in match_list]
-
-    return min(match_id_list)
-
-
-@task
-async def save_matches_locally(matches: List[PublicMatch]):
+@flow(name="Collect Public Matches For Latest Patch")
+async def collect_public_matches_for_latest_patch_flow(
+    matches_to_collect: int = 50000,
+    min_rank: int = DEFAULT_MIN_RANK,
+    max_rank: int = DEFAULT_MAX_RANK,
+) -> None:
     """
-    upload previous parquet file to s3
-    delete old file from fpath
-    serialise current matches into pq
-    store latest pq into fpath
+    Entry flow to collect public matches for the latest patch after a 2-week delay.
+
+    - Finds the latest patch (where end_time is NULL).
+    - Skips run if patch age < 14 days.
+    - Requires hydrated `start_match_id` on the patch row.
     """
-    try:
-        data_list = [match.model_dump() for match in matches]
-        df = pd.DataFrame(data_list)
-        logger.info(f"Saving new Parquet file to {F_PATH}...")
-        await asyncio.to_thread(df.to_parquet, path=F_PATH, index=False)
-        logger.info(f"Successfully saved new data to {F_PATH}.")
-    except Exception as e:
-        logger.error(f"Failed to serialize or save new Parquet file: {e}", exc_info=True)
-        raise
+    session_factory = DatabaseManager.get_session_factory()
+    async with session_factory() as session:
+        stmt = (
+            select(PatchTable)
+            .where(PatchTable.end_time.is_(None))
+            .order_by(PatchTable.start_time.desc())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        latest_patch: Optional[PatchTable] = result.scalar_one_or_none()
+
+        if latest_patch is None:
+            logger.critical("No latest patch found (end_time IS NULL). Aborting collection.")
+            return
+
+        # Enforce 2-week delay from patch start_time
+        now = datetime.now(timezone.utc)
+        threshold = (latest_patch.start_time or now) + timedelta(days=14)
+        if now < threshold:
+            logger.info(
+                f"Latest patch {latest_patch.patch_number} is younger than 14 days. Skipping until {threshold.isoformat()}"
+            )
+            return
+
+        if latest_patch.start_match_id is None:
+            logger.critical(
+                "Latest patch is missing start_match_id. Run hydrate_patch_boundaries_task() first."
+            )
+            return
+
+        # For the latest patch (open-ended), start from the most recent matches and stop at start_match_id
+        start_id = MAX_MATCH_ID_CURSOR
+        end_id = latest_patch.start_match_id
+
+    collector = _build_collector(
+        DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank
+    )
+    await collector.collect_range(
+        start_match_id=start_id,
+        end_match_id=end_id,
+        target_match_count=matches_to_collect,
+    )
 
 
-@task(retries=3, retry_delay_seconds=5)
-async def archive_local_file_to_s3():
+@flow(name="Backfill Public Matches By Patches")
+async def backfill_public_matches_by_patches_flow(
+    patch_numbers: List[str],
+    matches_per_patch: int = 30000,
+    min_rank: int = DEFAULT_MIN_RANK,
+    max_rank: int = DEFAULT_MAX_RANK,
+) -> None:
     """
-    upload parquet file to s3 storage using a client wrapper
+    Manually trigger backfill for specific patch versions.
+    Skips any patch not found or missing boundaries.
     """
-    file_exists = await asyncio.to_thread(os.path.exists, F_PATH)
-    if not file_exists:
-        logger.warning(f"Missing file at {F_PATH}. Skipping upload")
-        return
+    session_factory = DatabaseManager.get_session_factory()
+    async with session_factory() as session:
+        for pnum in patch_numbers:
+            stmt = select(PatchTable).where(PatchTable.patch_number == pnum)
+            res = await session.execute(stmt)
+            patch: Optional[PatchTable] = res.scalar_one_or_none()
+            if patch is None:
+                logger.warning(f"Patch {pnum} not found. Skipping.")
+                continue
+            if patch.start_match_id is None or patch.end_match_id is None:
+                logger.warning(f"Patch {pnum} is missing boundaries. Skipping.")
+                continue
 
-    curr_datetime = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    s3_filename = f"publicMatches_{curr_datetime}.parquet"
-    s3_object_key = f"{S3_OBJECT_PREFIX}{s3_filename}"
+            start_id = patch.end_match_id
+            end_id = patch.start_match_id
 
-    try:
-        s3_client = S3Wrapper()
-        # s3 client is not async, use asyncio.to_thread
-
-        await asyncio.to_thread(s3_client.upload_file, file_path=str(F_PATH), object_key=s3_object_key)
-
-        logger.info(f"{F_PATH} successfully uploaded to S3 at {s3_object_key}")
-        logger.info(f"Deleting archived local file: {F_PATH}")
-        await asyncio.to_thread(os.remove, F_PATH)
-
-    except Exception as e:
-        logger.error(f"Unable to upload {s3_filename} to {s3_object_key}, {str(e)}", exc_info=True)
-        raise
-
-
-if __name__ == "__main__":
-    asyncio.run(public_match_orchestrator())
+            logger.info(
+                f"Backfilling patch {pnum} between match_id [{end_id}, {start_id}] up to {matches_per_patch} unique matches."
+            )
+            collector = _build_collector(
+                DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank
+            )
+            await collector.collect_range(
+                start_match_id=start_id,
+                end_match_id=end_id,
+                target_match_count=matches_per_patch,
+            )
