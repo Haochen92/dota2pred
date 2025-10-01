@@ -1,8 +1,9 @@
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, Relationship
-from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey, Integer
+from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey, Integer, Boolean, Index
 from datetime import datetime
 from .base import Match, MatchOutcome
+from sqlmodel import SQLModel
 
 if TYPE_CHECKING:
     from ..inference.table import MatchPredictionTable
@@ -97,3 +98,39 @@ class MatchOutcomeTable(MatchOutcome, table=True):
 
     # Relationship
     match: "MatchTable" = Relationship(back_populates="outcome")
+
+
+class PublicMatchTable(SQLModel, table=True):
+    """Database table for high-MMR public matches (minimal fields).
+
+    Columns mirror the simplified `PublicMatch` schema and align hero slots
+    with the pro `MatchTable` convention (0-4 radiant, 128-132 dire).
+    """
+
+    __tablename__ = "public_matches"
+
+    # Primary Key
+    match_id: int = Field(sa_column=Column("match_id", BigInteger, primary_key=True))
+
+    # Metadata
+    start_time: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
+    duration: int = Field(sa_column=Column(Integer, nullable=False))
+    avg_rank_tier: int = Field(sa_column=Column(Integer, nullable=False))
+    num_rank_tier: int = Field(sa_column=Column(Integer, nullable=False))
+    radiant_win: bool = Field(sa_column=Column(Boolean, nullable=False))
+
+    # Hero IDs (Radiant 0..4, Dire 128..132)
+    slot_0_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_1_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_2_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_3_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_4_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_128_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_129_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_130_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_131_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_132_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+
+    __table_args__ = (
+        Index("ix_public_matches_start_time", "start_time"),
+    )
