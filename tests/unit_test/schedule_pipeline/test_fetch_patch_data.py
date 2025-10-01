@@ -95,6 +95,10 @@ async def test_patch_data_orchestrator_success(mock_db_session_factory, dota_pat
     mock_database_manager.get_session_factory.return_value = mock_db_session_factory
 
     mock_store_patch_data = mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.store_patch_data")
+    mock_hydrate = mocker.patch(
+        "dota_oracle_schedules.data_fetching.fetch_patch_data.hydrate_patch_boundaries_task",
+        return_value=1,
+    )
 
     # ACT
     await patch_data_orchestrator()
@@ -103,6 +107,7 @@ async def test_patch_data_orchestrator_success(mock_db_session_factory, dota_pat
     mock_fetch_patch_data.assert_awaited_once()
     mock_database_manager.get_session_factory.assert_called_once()
     mock_store_patch_data.assert_awaited_once()
+    mock_hydrate.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -119,7 +124,12 @@ async def test_patch_data_orchestrator_store_exception(mock_db_session_factory, 
     mocker.patch(
         "dota_oracle_schedules.data_fetching.fetch_patch_data.store_patch_data", side_effect=Exception("Storage failed")
     )
+    mock_hydrate = mocker.patch(
+        "dota_oracle_schedules.data_fetching.fetch_patch_data.hydrate_patch_boundaries_task",
+        return_value=0,
+    )
 
     # ACT & ASSERT
     with pytest.raises(Exception):
         await patch_data_orchestrator()
+    mock_hydrate.assert_not_awaited()
