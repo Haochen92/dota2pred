@@ -63,6 +63,10 @@ frontend/node_modules/
 # Python virtual environment
 .venv/
 
+# pre-commit and tool caches
+.pre-commit-cache/
+.cache/
+
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
