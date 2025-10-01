@@ -36,6 +36,7 @@ WORKDIR /app
 # Install minimal runtime dependencies
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python packages from builder stage for optimal layer size
