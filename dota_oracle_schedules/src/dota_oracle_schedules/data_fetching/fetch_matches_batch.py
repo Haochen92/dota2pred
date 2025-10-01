@@ -61,7 +61,7 @@ async def fetch_pro_matches() -> List[int]:
     List[int]: a list of match_ids last 200 professional matches
     """
     try:
-        res = await fetch_opendota(endpoint="/proMatches")
+        res = await fetch_opendota(endpoint="proMatches")
         logger.info("Fetching list of pro_matches...")
 
         api_response = ProMatchAPIResponse.model_validate(res)
