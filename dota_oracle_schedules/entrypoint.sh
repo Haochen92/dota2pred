@@ -19,7 +19,7 @@ fi
 # Step 2: Run all deployment scripts for the batch jobs.
 # You will create a separate .py file for each scheduled job.
 echo "[2/3] Registering all batch deployments..."
-python -m dota_oracle_schedules.deploy_daily
+python -m dota_oracle_schedules.deployments
 # Add any new deployment scripts here in the future.
 
 # Step 3: Production/Development runtime selection
