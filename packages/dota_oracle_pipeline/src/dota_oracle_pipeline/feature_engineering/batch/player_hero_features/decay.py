@@ -7,7 +7,6 @@ from .utils import (
     PLAYER_SLOTS,
     RADIANT_SLOTS,
     PlayerHeroDecayState,
-    default_winrate,
     get_player_hero_key,
     get_radiant_won,
     read_wr_decay,
@@ -22,21 +21,16 @@ class PlayerHeroDecayFeatureGenerator:
 
     Generates features using exponential time decay for each player-hero history.
 
-    Args:
-        alpha (int): Prior wins for Bayesian smoothing.
-        beta (int): Prior games for Bayesian smoothing.
-        half_life_days (float): Half-life in days for exponential decay.
-
-    Notes:
-        alpha/beta default to 1/2 to set a static uninformative prior win rate of 0.5.
+    Smoothing uses prior_mean and prior_count:
+        (wins + prior_count * prior_mean) / (games + prior_count)
     """
 
     def generate(
         self,
         all_matches: List[MatchTable],
         *,
-        alpha: int = 1,
-        beta: int = 2,
+        prior_mean: float = 0.5,
+        prior_count: float = 2.0,
         half_life_days: float = 45.0,
     ) -> List[PlayerHeroFeatureTable]:
         """Generates features using exponential decay per player-hero pair."""
@@ -45,7 +39,7 @@ class PlayerHeroDecayFeatureGenerator:
             return []
 
         matches = sorted_by_start_time(all_matches)
-        default_wr = default_winrate(alpha, beta)
+        default_wr = float(prior_mean)
 
         ph_states: Dict[Tuple[int, int], PlayerHeroDecayState] = {}
         features: List[PlayerHeroFeatureTable] = []
@@ -59,7 +53,7 @@ class PlayerHeroDecayFeatureGenerator:
                 key = get_player_hero_key(match, slot)
                 state = ph_states.get(key)
                 win_rate = read_wr_decay(
-                    state, now_timestamp, alpha, beta, half_life_days, default_wr
+                    state, now_timestamp, prior_mean, prior_count, half_life_days, default_wr
                 )
                 fields[f"player_hero_{slot}_win_rate"] = win_rate
             features.append(PlayerHeroFeatureTable(match_id=match.match_id, **fields))  # type: ignore[arg-type]

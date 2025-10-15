@@ -23,16 +23,16 @@ class HeroWinrateDecayFeatureGenerator:
     state is updated with the outcome, maintaining causal correctness.
 
     Smoothing:
-      - Bayesian smoothing (alpha/beta) is applied at read time:
-        (wins + alpha) / (games + beta)
+      - Bayesian smoothing with prior_mean and prior_count:
+        (wins + prior_count * prior_mean) / (games + prior_count)
     """
 
     def generate(
         self,
         all_matches: List[MatchTable],
         *,
-        alpha: int = 1,
-        beta: int = 2,
+        prior_mean: float = 0.5,
+        prior_count: float = 2.0,
         half_life_days: float = 45.0,
     ) -> List[HeroWinrateTable]:
         """
@@ -47,7 +47,7 @@ class HeroWinrateDecayFeatureGenerator:
             return []
 
         matches = sorted_by_start_time(all_matches)
-        default_wr = default_winrate(alpha, beta)
+        default_wr = float(prior_mean)
 
         # hero_id -> (weighted_wins, weighted_games, last_timestamp)
         hero_state: Dict[int, Tuple[float, float, int]] = {}
@@ -57,8 +57,18 @@ class HeroWinrateDecayFeatureGenerator:
             cur_ts = ts(match.start_time)
             radiant_picks, dire_picks = extract_hero_picks(match)
 
-            r_wrs = [self._read_wr_decay(hero_state.get(h), cur_ts, alpha, beta, half_life_days, default_wr) for h in radiant_picks]
-            d_wrs = [self._read_wr_decay(hero_state.get(h), cur_ts, alpha, beta, half_life_days, default_wr) for h in dire_picks]
+            r_wrs = [
+                self._read_wr_decay(
+                    hero_state.get(h), cur_ts, prior_mean, prior_count, half_life_days, default_wr
+                )
+                for h in radiant_picks
+            ]
+            d_wrs = [
+                self._read_wr_decay(
+                    hero_state.get(h), cur_ts, prior_mean, prior_count, half_life_days, default_wr
+                )
+                for h in dire_picks
+            ]
 
             row = HeroWinrateTable(**{
                 "match_id": match.match_id,
@@ -82,8 +92,8 @@ class HeroWinrateDecayFeatureGenerator:
         self,
         state: Optional[Tuple[float, float, int]],
         now_ts: int,
-        alpha: int,
-        beta: int,
+        prior_mean: float,
+        prior_count: float,
         half_life_days: float,
         default_wr: float,
     ) -> float:
@@ -94,7 +104,7 @@ class HeroWinrateDecayFeatureGenerator:
             return default_wr
         w_wins, w_games, last_ts = state
         w_wins, w_games = apply_decay_to_pair(w_wins, w_games, last_ts, now_ts, half_life_days)
-        return (w_wins + alpha) / (w_games + beta)
+        return (w_wins + prior_count * prior_mean) / (w_games + prior_count)
 
     def _update_state_decay(
         self,

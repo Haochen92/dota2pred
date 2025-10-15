@@ -28,7 +28,7 @@ class PlayerHeroDecayState:
 
 
 def default_winrate(alpha: int, beta: int) -> float:
-    """Returns the static prior win rate alpha/beta."""
+    """Deprecated: kept for window generators; do not use in new code."""
     return alpha / beta
 
 
@@ -76,17 +76,17 @@ def apply_decay_to_pair(
 def read_wr_decay(
     state: Optional[PlayerHeroDecayState],
     now_ts: int,
-    alpha: int,
-    beta: int,
+    prior_mean: float,
+    prior_count: float,
     half_life_days: float,
     default_wr: float,
 ) -> float:
-    """Reads decayed winrate from a `PlayerHeroDecayState` with Bayesian prior."""
+    """Reads decayed winrate using prior_mean/prior_count: (wins + prior_count*prior_mean) / (games + prior_count)."""
     if state is None:
         return default_wr
     w_wins, w_games, last_ts = state.weighted_wins, state.weighted_games, state.last_timestamp
     w_wins, w_games = apply_decay_to_pair(w_wins, w_games, last_ts, now_ts, half_life_days)
-    return (w_wins + alpha) / (w_games + beta) if (w_games + beta) > 0 else default_wr
+    return (w_wins + prior_count * prior_mean) / (w_games + prior_count) if (w_games + prior_count) > 0 else default_wr
 
 
 def update_state_decay(
@@ -114,11 +114,11 @@ def update_state_decay(
 def read_wr_decay_dynamic(
     state: Optional[PlayerHeroDecayState],
     now_ts: int,
-    credibility_C: int,
+    credibility_C: float,
     half_life_days: float,
     prior_rate: float,
 ) -> float:
-    """Reads decayed winrate blended with a credibility-weighted prior rate."""
+    """Reads decayed winrate blended with a prior of mean prior_rate and pseudo-count credibility_C."""
     if state is None:
         return prior_rate
     w_wins, w_games, last_ts = state.weighted_wins, state.weighted_games, state.last_timestamp

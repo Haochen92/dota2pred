@@ -25,10 +25,10 @@ class PlayerHeroDynamicPriorFeatureGenerator:
     Generates features using dynamic priors for each player-hero history.
 
     Args:
-        player_credibility_C (int): Strength of the prior at the player level.
+        player_prior_count (float): Pseudo-count strength for the player-level prior.
         player_half_life_days (float): Half-life for player-hero decay.
-        hero_alpha (int): Prior wins for hero-level Bayesian smoothing.
-        hero_beta (int): Prior games for hero-level Bayesian smoothing.
+        hero_prior_mean (float): Prior mean for hero-level smoothing.
+        hero_prior_count (float): Prior count for hero-level smoothing.
         hero_half_life_days (float): Half-life for hero-level decay.
     """
 
@@ -36,27 +36,33 @@ class PlayerHeroDynamicPriorFeatureGenerator:
         self,
         all_matches: List[MatchTable],
         *,
-        player_credibility_C: int = 20,
+        player_prior_count: float = 20.0,
         player_half_life_days: float = 45.0,
-        hero_alpha: int = 5,
-        hero_beta: int = 10,
+        hero_prior_mean: float = 0.50,
+        hero_prior_count: float = 15.0,
         hero_half_life_days: float = 90.0,
+        verbose: bool = True,
     ) -> List[PlayerHeroFeatureTable]:
         if not all_matches:
             return []
 
         matches = sorted_by_start_time(all_matches)
 
-        print("Step 1/2: Generating dynamic hero priors...")
+        if verbose:
+            print("Step 1/2: Generating dynamic hero priors...")
         hero_priors = self._generate_hero_priors(
             matches,
-            alpha=hero_alpha,
-            beta=hero_beta,
+            prior_mean=hero_prior_mean,
+            prior_count=hero_prior_count,
             half_life_days=hero_half_life_days,
         )
-        print("Hero priors generated.")
+        
+        if verbose:
+            print("Hero priors generated.")
 
-        print("Step 2/2: Generating player-hero features with dynamic priors...")
+        if verbose:
+            print("Step 2/2: Generating player-hero features with dynamic priors...")
+            
         ph_states: Dict[Tuple[int, int], PlayerHeroDecayState] = {}
         features: List[PlayerHeroFeatureTable] = []
 
@@ -76,7 +82,7 @@ class PlayerHeroDynamicPriorFeatureGenerator:
                 prior_rate = match_priors.get(hero_id, 0.5)
 
                 win_rate = read_wr_decay_dynamic(
-                    state, now_ts, player_credibility_C, player_half_life_days, prior_rate
+                    state, now_ts, player_prior_count, player_half_life_days, prior_rate
                 )
                 fields[f"player_hero_{slot}_win_rate"] = win_rate
 
@@ -93,7 +99,8 @@ class PlayerHeroDynamicPriorFeatureGenerator:
                         ph_states.get(key), now_ts, player_won, player_half_life_days
                     )
 
-        print("Player-hero features generated.")
+        if verbose:
+            print("Player-hero features generated.")
         return features
 
     # ---- hero priors -------------------------------------------------------
@@ -102,12 +109,12 @@ class PlayerHeroDynamicPriorFeatureGenerator:
         self,
         sorted_matches: List[MatchTable],
         *,
-        alpha: int,
-        beta: int,
+        prior_mean: float,
+        prior_count: float,
         half_life_days: float,
     ) -> Dict[int, Dict[int, float]]:
         """Generates per-match hero priors from decayed global hero performance."""
-        default_wr = default_winrate(alpha, beta)
+        default_wr = float(prior_mean)
         hero_state: Dict[int, PlayerHeroDecayState] = {}
         priors_lookup: Dict[int, Dict[int, float]] = {}
 
@@ -125,7 +132,7 @@ class PlayerHeroDynamicPriorFeatureGenerator:
             # Read priors before updating state (causal)
             for hero_id in all_hero_ids_in_match:
                 win_rate = read_wr_decay(
-                    hero_state.get(hero_id), cur_ts, alpha, beta, half_life_days, default_wr
+                    hero_state.get(hero_id), cur_ts, prior_mean, prior_count, half_life_days, default_wr
                 )
                 priors_lookup[match.match_id][hero_id] = win_rate
 
