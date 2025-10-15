@@ -50,3 +50,12 @@ def aggregate_player_win_rates(player_hero_df: pd.DataFrame) -> pd.DataFrame:
     df['radiant_dire_player_hero_wr_diff'] = df['radiant_avg_player_wr'] - df['dire_avg_player_wr']
 
     return df
+
+
+def create_aggregate_team_features(team_df: pd.DataFrame) -> pd.DataFrame:
+    team_df['radiant_dire_team_wr_diff'] = team_df['radiant_win_rate'] - team_df['dire_win_rate']
+    return team_df
+
+def create_aggregate_hero_features(hero_df: pd.DataFrame) -> pd.DataFrame:
+    hero_df['radiant_dire_hero_wr_diff'] = hero_df['radiant_avg_hero_winrate'] - hero_df['dire_avg_hero_winrate']
+    return hero_df

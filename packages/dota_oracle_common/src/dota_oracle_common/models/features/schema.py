@@ -1,4 +1,6 @@
 from typing import List
+
+from pydantic import BaseModel, Field
 from sqlmodel import SQLModel
 
 
@@ -96,3 +98,29 @@ class AllFeaturesDTO(TeamFeatures, HeroFeatures, PlayerHeroFeature):
 
     # 3. Hero Features (Categorical/Non-numeric features often go last)
     hero_picks: List[int]
+
+
+class TeamFeaturesHyperparams(BaseModel):
+    prior_mean: float = Field(..., gt=0.0, lt=1.0, description="Prior mean for team decay Bayesian smoothing")
+    prior_count: float = Field(..., gt=0.0, description="Total pseudo-count associated with the team decay prior")
+    half_life_days: int = Field(..., gt=0, description="Half-life window for team decay feature smoothing")
+
+
+class HeroFeaturesHyperparams(BaseModel):
+    prior_mean: float = Field(..., gt=0.0, lt=1.0, description="Prior mean for hero win rate decay smoothing")
+    prior_count: float = Field(..., gt=0.0, description="Total pseudo-count associated with the hero decay prior")
+    half_life_days: int = Field(..., gt=0, description="Half-life window for hero win rate decay feature")
+
+
+class PlayerHeroFeaturesHyperparams(BaseModel):
+    player_prior_count: float = Field(..., gt=0.0, description="Credibility (pseudo-count) used for player-hero dynamic prior blending")
+    player_half_life_days: int = Field(..., gt=0, description="Half-life window for player performance decay")
+    hero_prior_mean: float = Field(..., gt=0.0, lt=1.0, description="Prior mean for hero decay within player-hero dynamic prior")
+    hero_prior_count: float = Field(..., gt=0.0, description="Total pseudo-count for hero decay within the player-hero dynamic prior")
+    hero_half_life_days: int = Field(..., gt=0, description="Half-life window for hero decay within player-hero dynamic prior")
+
+
+class FeatureHyperparams(BaseModel):
+    team_features: TeamFeaturesHyperparams = Field(..., description="Hyperparameters for team decay feature generation")
+    hero_features: HeroFeaturesHyperparams = Field(..., description="Hyperparameters for hero win rate feature generation")
+    player_hero_features: PlayerHeroFeaturesHyperparams = Field(..., description="Hyperparameters for player-hero dynamic prior feature generation")
