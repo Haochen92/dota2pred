@@ -1,9 +1,14 @@
 import lightgbm as lgb
 import shap
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple, Any
+import numpy as np
+import pandas as pd
+from typing import Any, Tuple
+
+from sklearn.base import BaseEstimator, clone
+from sklearn.inspection import permutation_importance
+
+from .utils import merge_features_on_match_id
 
 def run_shap_binary_classifier_test(
     X_train: pd.DataFrame,
@@ -106,3 +111,79 @@ def run_shap_binary_classifier_test(
         return model, None, None
         
     return model, explainer, shap_values
+
+
+def run_permutation_importance(
+    model: BaseEstimator,
+    feature_set_train: pd.DataFrame,
+    feature_set_test: pd.DataFrame,
+    y_train_df: pd.DataFrame,
+    y_test_df: pd.DataFrame,
+    n_repeats: int = 10,
+    target_col: str = "radiant_win",
+    merge_key: str = "match_id",
+) -> pd.DataFrame:
+    """
+    Trains a final model and evaluates feature importance using permutation
+    importance on the held-out test set.
+
+    Args:
+        model: A scikit-learn compatible classifier instance to evaluate.
+        feature_set_train: The complete training feature set.
+        feature_set_test: The complete test feature set.
+        y_train_df: DataFrame with training labels and merge_key.
+        y_test_df: DataFrame with test labels and merge_key.
+        n_repeats: Number of times to permute each feature for stability.
+        target_col: The column name of the target variable.
+        merge_key: The column name to join on (e.g., 'match_id').
+
+    Returns:
+        A pandas DataFrame with features sorted by their importance.
+    """
+    print("--- Running Permutation Importance Analysis ---")
+    
+    # --- 1. Prepare Data (consistent with your run_experiment) ---
+    final_df_train = merge_features_on_match_id([feature_set_train, y_train_df], on_key=merge_key)
+    final_df_test = merge_features_on_match_id([feature_set_test, y_test_df], on_key=merge_key)
+
+    X_train = final_df_train.drop(columns=[merge_key, target_col])
+    y_train = final_df_train[target_col]
+    X_test = final_df_test.drop(columns=[merge_key, target_col])
+    y_test = final_df_test[target_col]
+    
+    # Ensure column order is identical
+    X_test = X_test[X_train.columns]
+
+    # --- 2. Train the Final Model ---
+    print(f"Training final {type(model).__name__} model...")
+    final_model = clone(model).fit(X_train, y_train)
+
+    # --- 3. Calculate Permutation Importance on the Test Set ---
+    print(f"Calculating permutation importance with n_repeats={n_repeats}...")
+    result = permutation_importance(
+        final_model, X_test, y_test, n_repeats=n_repeats, random_state=42, n_jobs=-1
+    )
+
+    # --- 4. Process and Visualize Results ---
+    perm_importance_df = pd.DataFrame({
+        'feature': X_test.columns,
+        'importance_mean': result.importances_mean,
+        'importance_std': result.importances_std,
+    }).sort_values('importance_mean', ascending=True)
+    
+    print("Top 10 Most Important Features:")
+    print(perm_importance_df.tail(20).sort_values('importance_mean', ascending=False))
+    
+    # Plotting
+    plt.figure(figsize=(10, max(6, len(X_train.columns) * 0.25))) # Dynamic height
+    plt.barh(
+        perm_importance_df['feature'],
+        perm_importance_df['importance_mean'],
+        xerr=perm_importance_df['importance_std']
+    )
+    plt.xlabel("Permutation Importance (Decrease in Accuracy)")
+    plt.title("Feature Importance on Hold-Out Test Set")
+    plt.tight_layout()
+    plt.show()
+    
+    return perm_importance_df
