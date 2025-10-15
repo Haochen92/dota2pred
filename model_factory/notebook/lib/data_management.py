@@ -116,16 +116,6 @@ def load_pro_matches_parquet(path: str) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-__all__ = [
-    "PATCHES_LIST",
-    "fetch_pro_matches",
-    "save_pro_matches_parquet",
-    "load_pro_matches_parquet",
-    "save_match_tables_jsonl",
-    "load_match_tables_jsonl",
-]
-
-
 def load_data(*, data_dir: str = "../data/", file_name: str = "pro_match_dataset_.parquet") -> pd.DataFrame:
     """Convenience loader that assembles a path and loads the Parquet file."""
     path = f"{data_dir.rstrip('/')}/{file_name}"
@@ -194,3 +184,13 @@ def load_match_tables_jsonl(path: str) -> List[MatchTable]:
             out.append(_dict_to_match(obj))
     out.sort(key=lambda m: m.start_time)
     return out
+
+
+__all__ = [
+    "PATCHES_LIST",
+    "fetch_pro_matches",
+    "save_pro_matches_parquet",
+    "load_pro_matches_parquet",
+    "save_match_tables_jsonl",
+    "load_match_tables_jsonl",
+]
