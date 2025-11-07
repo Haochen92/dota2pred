@@ -2,13 +2,12 @@ from typing import Dict, List, Tuple, Optional
 
 from dota_oracle_common.models.features.table import PlayerHeroFeatureTable
 from dota_oracle_common.models.match.table import MatchTable
+from dota_oracle_common.models.histories import PlayerHeroDecayedStateTable
 
 from .utils import (
     PLAYER_SLOTS,
     RADIANT_SLOTS,
     PlayerHeroDecayState,
-    apply_decay_to_pair,
-    default_winrate,
     get_player_hero_key,
     get_radiant_won,
     read_wr_decay,
@@ -19,17 +18,15 @@ from .utils import (
 )
 
 
-class PlayerHeroDynamicPriorFeatureGenerator:
-    """Builds features using dynamic hero priors and player history.
+class BatchPlayerHeroDynamicPriorFeatureGenerator:
+    """
+    Stateless generator that blends player-hero history with dynamic hero priors.
 
-    Generates features using dynamic priors for each player-hero history.
-
-    Args:
-        player_prior_count (float): Pseudo-count strength for the player-level prior.
-        player_half_life_days (float): Half-life for player-hero decay.
-        hero_prior_mean (float): Prior mean for hero-level smoothing.
-        hero_prior_count (float): Prior count for hero-level smoothing.
-        hero_half_life_days (float): Half-life for hero-level decay.
+    Two-phase orchestrator:
+    1) Generate dynamic hero priors per match from decayed global hero performance.
+    2) Process matches chronologically; for each, read pre-match player-hero decayed state
+       with the match-specific hero prior to compute a smoothed win rate; then prepare
+       next state updates and historical logs.
     """
 
     def generate(
@@ -42,9 +39,14 @@ class PlayerHeroDynamicPriorFeatureGenerator:
         hero_prior_count: float = 15.0,
         hero_half_life_days: float = 90.0,
         verbose: bool = True,
-    ) -> List[PlayerHeroFeatureTable]:
+    ) -> Tuple[List[PlayerHeroFeatureTable], List[PlayerHeroDecayedStateTable]]:
+        """
+        Returns:
+            - player_hero_features: list of feature rows per match
+            - history: per-(player,hero) decayed state rows after each applicable match
+        """
         if not all_matches:
-            return []
+            return [], []
 
         matches = sorted_by_start_time(all_matches)
 
@@ -56,52 +58,34 @@ class PlayerHeroDynamicPriorFeatureGenerator:
             prior_count=hero_prior_count,
             half_life_days=hero_half_life_days,
         )
-        
         if verbose:
             print("Hero priors generated.")
 
         if verbose:
             print("Step 2/2: Generating player-hero features with dynamic priors...")
-            
+
         ph_states: Dict[Tuple[int, int], PlayerHeroDecayState] = {}
         features: List[PlayerHeroFeatureTable] = []
+        history: List[PlayerHeroDecayedStateTable] = []
 
         for match in matches:
-            now_ts = ts(match.start_time)
-            match_priors = hero_priors.get(match.match_id, {})
-
-            fields: Dict[str, float] = {}
-            for slot in PLAYER_SLOTS:
-                key = get_player_hero_key(match, slot)
-                if key[0] is None or key[1] is None:
-                    fields[f"player_hero_{slot}_win_rate"] = 0.5
-                    continue
-
-                _, hero_id = key
-                state = ph_states.get(key)
-                prior_rate = match_priors.get(hero_id, 0.5)
-
-                win_rate = read_wr_decay_dynamic(
-                    state, now_ts, player_prior_count, player_half_life_days, prior_rate
-                )
-                fields[f"player_hero_{slot}_win_rate"] = win_rate
-
-            features.append(PlayerHeroFeatureTable(match_id=match.match_id, **fields))
-
-            radiant_won = get_radiant_won(match)
-            if radiant_won is not None:
-                for slot in PLAYER_SLOTS:
-                    key = get_player_hero_key(match, slot)
-                    if key[0] is None or key[1] is None:
-                        continue
-                    player_won = radiant_won if slot in RADIANT_SLOTS else not radiant_won
-                    ph_states[key] = update_state_decay(
-                        ph_states.get(key), now_ts, player_won, player_half_life_days
-                    )
+            row, updates, logs = self._process_one_match(
+                match,
+                ph_states,
+                hero_priors.get(match.match_id, {}),
+                player_prior_count,
+                player_half_life_days,
+            )
+            # 1) append artifacts
+            features.append(row)
+            history.extend(logs)
+            # 2) apply updates
+            ph_states.update(updates)
 
         if verbose:
             print("Player-hero features generated.")
-        return features
+
+        return features, history
 
     # ---- hero priors -------------------------------------------------------
 
@@ -144,8 +128,95 @@ class PlayerHeroDynamicPriorFeatureGenerator:
                     if hero_id is not None:
                         player_won = radiant_won if slot in RADIANT_SLOTS else not radiant_won
                         prev_state: Optional[PlayerHeroDecayState] = hero_state.get(hero_id)
-                        hero_state[hero_id] = update_state_decay(
-                            prev_state, cur_ts, player_won, half_life_days
-                        )
+                        hero_state[hero_id] = update_state_decay(prev_state, cur_ts, player_won, half_life_days)
 
         return priors_lookup
+
+    # ---- per-match processing ---------------------------------------------
+
+    def _process_one_match(
+        self,
+        match: MatchTable,
+        current_states: Dict[Tuple[int, int], PlayerHeroDecayState],
+        match_priors: Dict[int, float],
+        player_prior_count: float,
+        player_half_life_days: float,
+    ) -> Tuple[PlayerHeroFeatureTable, Dict[Tuple[int, int], PlayerHeroDecayState], List[PlayerHeroDecayedStateTable]]:
+        """
+        1) Create the feature row using match-specific hero priors
+        2) Prepare state updates and logs based on outcome
+        """
+        row = self._create_feature_row(
+            match,
+            current_states,
+            match_priors,
+            player_prior_count,
+            player_half_life_days,
+        )
+        updates, logs = self._prepare_updates_and_logs(match, current_states, player_half_life_days)
+        return row, updates, logs
+
+    def _create_feature_row(
+        self,
+        match: MatchTable,
+        current_states: Dict[Tuple[int, int], PlayerHeroDecayState],
+        match_priors: Dict[int, float],
+        player_prior_count: float,
+        player_half_life_days: float,
+    ) -> PlayerHeroFeatureTable:
+        now_ts = ts(match.start_time)
+        fields: Dict[str, float] = {}
+        for slot in PLAYER_SLOTS:
+            key = get_player_hero_key(match, slot)
+            account_id, hero_id = key
+            if account_id is None or hero_id is None:
+                fields[f"player_hero_{slot}_win_rate"] = 0.5
+                continue
+            state = current_states.get(key)
+            prior_rate = match_priors.get(hero_id, 0.5)
+            fields[f"player_hero_{slot}_win_rate"] = read_wr_decay_dynamic(
+                state, now_ts, player_prior_count, player_half_life_days, prior_rate
+            )
+        return PlayerHeroFeatureTable(match_id=match.match_id, **fields)
+
+    def _prepare_updates_and_logs(
+        self,
+        match: MatchTable,
+        current_states: Dict[Tuple[int, int], PlayerHeroDecayState],
+        player_half_life_days: float,
+    ) -> Tuple[Dict[Tuple[int, int], PlayerHeroDecayState], List[PlayerHeroDecayedStateTable]]:
+        now_ts = ts(match.start_time)
+        updates: Dict[Tuple[int, int], PlayerHeroDecayState] = {}
+        logs: List[PlayerHeroDecayedStateTable] = []
+        radiant_won = get_radiant_won(match)
+        if radiant_won is not None:
+            for slot in PLAYER_SLOTS:
+                key = get_player_hero_key(match, slot)
+                account_id, hero_id = key
+                if account_id is None or hero_id is None:
+                    continue
+                player_won = radiant_won if slot in RADIANT_SLOTS else not radiant_won
+                new_state = self._calculate_next_state(
+                    current_states.get(key), now_ts, player_won, player_half_life_days
+                )
+                updates[key] = new_state
+                logs.append(
+                    PlayerHeroDecayedStateTable(
+                        account_id=account_id,
+                        hero_id=hero_id,
+                        match_id=match.match_id,
+                        decayed_wins=new_state.weighted_wins,
+                        decayed_games=new_state.weighted_games,
+                        last_update_time=match.start_time,
+                    )
+                )
+        return updates, logs
+
+    def _calculate_next_state(
+        self,
+        state: Optional[PlayerHeroDecayState],
+        now_ts: int,
+        player_won: bool,
+        player_half_life_days: float,
+    ) -> PlayerHeroDecayState:
+        return update_state_decay(state, now_ts, player_won, player_half_life_days)
