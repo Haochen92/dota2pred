@@ -3,10 +3,18 @@ Unit tests for the Inference Router.
 """
 
 
-def test_predict_success(api_layer_client):
+def test_predict_success(api_layer_client, mock_public_inference_service):
     """Test successful prediction request."""
     # ARRANGE
-    request_data = {"feature1": 1.0, "feature2": 2.0}
+    request_data = {
+        "radiant_heroes": [1, 2, 3, 4, 5],
+        "dire_heroes": [6, 7, 8, 9, 10],
+    }
+    from dota_oracle_common.models.api import PublicMatchPredictionResponse
+
+    mock_public_inference_service.run_inference_cycle.return_value = PublicMatchPredictionResponse(
+        prediction=True, probability=0.72
+    )
 
     # ACT - The mock_prediction_service_api fixture should automatically handle the external call
     response = api_layer_client.post("/inference/predict", json=request_data)
@@ -14,21 +22,20 @@ def test_predict_success(api_layer_client):
     # ASSERT
     assert response.status_code == 200
     data = response.json()
-    assert data == {"prediction": "mocked_success"}  # This matches your api_mocks.py
+    assert data["prediction"] is True
+    assert data["probability"] == 0.72
 
 
-def test_predict_external_service_error(api_layer_client, respx_mock):
+def test_predict_external_service_error(api_layer_client, mock_public_inference_service):
     """Test handling of external service errors."""
     # ARRANGE
-    request_data = {"feature1": 1.0, "feature2": 2.0}
+    request_data = {
+        "radiant_heroes": [1, 2, 3, 4, 5],
+        "dire_heroes": [6, 7, 8, 9, 10],
+    }
 
-    # Override the default mock to simulate an error
-    from dota_oracle_common.constants.endpoint_configs import service_url
-    import httpx
-
-    respx_mock.post(service_url.PUBLIC_MATCHES_INFERENCE_URL).mock(
-        return_value=httpx.Response(500, json={"error": "Service unavailable"})
-    )
+    # Make the service raise to simulate downstream failure
+    mock_public_inference_service.run_inference_cycle.side_effect = Exception("Service unavailable")
 
     # ACT
     response = api_layer_client.post("/inference/predict", json=request_data)
