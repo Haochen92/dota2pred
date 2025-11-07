@@ -40,6 +40,7 @@ from api_service.dependencies import (
 from api_service.matches.match_pagination_service import MatchPaginationService
 from api_service.streaming.redis_pubsub_service import RedisPubSubService
 from api_service.inference.pub_inference import PubInferenceService
+from api_service.inference.model_history_service import ModelHistoryService
 import httpx
 
 # Import dependent services
@@ -76,6 +77,12 @@ def mock_public_inference_service() -> PubInferenceService:
     return create_autospec(PubInferenceService, instance=True)
 
 
+@pytest.fixture
+def mock_model_history_service() -> ModelHistoryService:
+    """Provides a high-fidelity mock of the entire ModelHistoryService."""
+    return create_autospec(ModelHistoryService, instance=True)
+
+
 # --- Unit Test SUTs (The "Subjects Under Test" for service logic tests) ---
 
 
@@ -103,15 +110,14 @@ def unit_test_redis_pubsub_service(mock_redis_client) -> RedisPubSubService:
 @pytest.fixture
 def unit_test_public_inference_service(
     mock_model_inference_service,
-    mock_feature_encoder,
+    mock_db_session_factory,
 ) -> PubInferenceService:
     """
-    A PubInferenceService SUT with its underlying HTTP client mocked.
-    Use this to unit test the logic WITHIN the PubInferenceService itself.
+    A PubInferenceService SUT with mocked model inference service and DB factory.
     """
     return PubInferenceService(
         model_inference_service=mock_model_inference_service,
-        feature_encoder=mock_feature_encoder,
+        db_session_factory=mock_db_session_factory,
     )
 
 
@@ -127,6 +133,7 @@ def api_layer_app_factory(
     mock_redis_pubsub_service: RedisPubSubService,
     mock_http_client: httpx.AsyncClient,
     mock_public_inference_service: PubInferenceService,
+    mock_model_history_service: ModelHistoryService,
 ) -> Callable[[], FastAPI]:
     """
     Provides a factory for a FastAPI app where ALL underlying services
@@ -149,10 +156,13 @@ def api_layer_app_factory(
         def override_public_inference_service():
             return mock_public_inference_service
 
+        from api_service.dependencies import get_model_history_service
+
         app.dependency_overrides[get_match_pagination_service] = override_pagination_service
         app.dependency_overrides[get_pubsub_service] = override_pubsub_service
         app.dependency_overrides[get_http_client] = override_http_client
         app.dependency_overrides[get_public_inference_service] = override_public_inference_service
+        app.dependency_overrides[get_model_history_service] = lambda: mock_model_history_service
         return app
 
     return _create_app
