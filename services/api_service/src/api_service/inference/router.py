@@ -5,9 +5,11 @@ from dota_oracle_common.models.api.schema import (
     PublicMatchPredictionResponse,
     ModelHistoryRequest,
     ModelHistoryResponse,
+    PredictionDetailsRequest,
+    PredictionDetailsResponse,
 )
 
-from ..dependencies import InferenceSvc, ModelHistorySvc
+from ..dependencies import InferenceSvc, ModelHistorySvc, PredictionDetailsSvc
 from typing import Annotated
 
 
@@ -58,4 +60,20 @@ async def get_model_history(
         return response
     except Exception as e:
         logger.error(f"Error fetching model history: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error, {e}")
+
+
+@router.get(
+    "/prediction_details",
+    response_model=PredictionDetailsResponse,
+    summary="get detailed prediction information, such as features details and confidence metrics",
+)
+async def get_prediction_details(
+    request: Annotated[PredictionDetailsRequest, Query()], prediction_details_service: PredictionDetailsSvc
+) -> PredictionDetailsResponse:
+    try:
+        response = await prediction_details_service.get_prediction_details_for_match(request)
+        return response
+    except Exception as e:
+        logger.error(f"Error fetching prediction details: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error, {e}")
