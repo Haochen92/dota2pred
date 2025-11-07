@@ -23,7 +23,6 @@ from .leagues.router import router as leagues_router
 
 # Import services needed for initialization
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
-from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 from .inference.pub_inference import PubInferenceService
 from .streaming.redis_pubsub_service import RedisPubSubService
 from .streaming.pubsub_hub import PubSubHub
@@ -81,11 +80,10 @@ async def setup_dependencies(app: FastAPI):
 
     logger.info(f"Hero map initialized with {len(app.state.hero_map)} heroes.")
 
-    app.state.feature_encoder = FeatureEncoder(app.state.hero_map)
     # Create and store the final, top-level service that endpoints will use
     app.state.public_inference_service = PubInferenceService(
         model_inference_service=inference_service,
-        feature_encoder=app.state.feature_encoder,
+        db_session_factory=app.state.db_session_factory,
     )
     logger.info("Public inference service initialized and ready.")
 
