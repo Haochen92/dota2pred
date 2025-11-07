@@ -38,7 +38,10 @@ class DotaPredictionService:
         """Private helper to run prediction and format the output, reducing duplication."""
         try:
             prediction = model.predict(features)
-            return ModelPredictionAPIResponse(prediction=prediction.tolist())
+            probability = model.predict_proba(features)[
+                :, 1
+            ]  # Use numpy col, row selector to extract radiant_win proba only
+            return ModelPredictionAPIResponse(prediction=prediction.tolist(), probability=probability.tolist())
         except Exception as e:
             logger.error(f"Prediction failed for model {model}: {e}", exc_info=True)
             raise bentoml.exceptions.InternalServerError(f"Prediction failed: {e}")
@@ -48,14 +51,11 @@ class DotaPredictionService:
     @bentoml.api(route="/predict/pro")
     def predict_pro_match(self, data: PredictionInputPayload) -> ModelPredictionAPIResponse:
         """Predicts the outcome for a professional match."""
-        # The Pydantic model handles all validation automatically.
-        # The logic is now a simple, clean call to our helper.
         return self._predict(self.pro_model, data.input_features)
 
     @bentoml.api(route="/predict/public")
     def predict_pub_match(self, data: PredictionInputPayload) -> ModelPredictionAPIResponse:
         """Predicts the outcome for a public match."""
-        # --- CRITICAL BUG FIX: Use self.pub_model here ---
         return self._predict(self.pub_model, data.input_features)
 
     @bentoml.api(route="/metadata/pro")
