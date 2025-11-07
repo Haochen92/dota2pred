@@ -1,7 +1,7 @@
 from sqlmodel import Field, Relationship
-from sqlalchemy import BigInteger, Column, JSON
+from sqlalchemy import BigInteger
 from .schema import TeamFeatures, PlayerHeroFeature, HeroFeatures
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..match.table import MatchTable
@@ -50,8 +50,6 @@ class HeroFeaturesTable(HeroFeatures, table=True):
 
     # Primary key
     match_id: int = Field(sa_type=BigInteger, primary_key=True, foreign_key="matches.match_id")
-
-    hero_picks: List[int] = Field(sa_column=Column(JSON))
 
     # Relationship
     match: "MatchTable" = Relationship(back_populates="hero_features")
