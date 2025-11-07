@@ -5,6 +5,7 @@ from typing import Dict
 from dota_oracle_common.models.api.schema import PublicMatchPredictionRequest
 
 
+# Deprecated MVP function retained for reference
 class FeatureEncoder:
     """
     A stateful service for encoding hero features for model inference.
