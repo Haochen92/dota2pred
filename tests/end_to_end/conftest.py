@@ -15,7 +15,6 @@ from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.heroes.table import HeroDataTable
 from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
-from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
 
 # Live Orchestrator App imports (for live pipeline tests)
 from live_orchestrator_app.app_container import AppContainer
@@ -246,10 +245,9 @@ async def full_stack_client(
         model_metadata=model_metadata, http_client=http_client, prediction_url=public_prediction_url
     )
 
-    test_app.state.feature_encoder = FeatureEncoder(test_app.state.hero_map)
     test_app.state.public_inference_service = PubInferenceService(
         model_inference_service=model_inference_service,
-        feature_encoder=test_app.state.feature_encoder,
+        db_session_factory=test_session_factory,
     )
 
     logger.info("E2E API service test application state configured successfully.")
