@@ -13,9 +13,11 @@ class FeatureEngineeringService:
 
     def __init__(
         self,
+        hero_feature_creator: HeroesFeatureCreator,
         team_feature_creator: TeamFeatureCreator,
         player_hero_feature_creator: PlayerHeroFeaturesCreator,
     ):
+        self.hero_feature_creator = hero_feature_creator
         self.team_feature_creator = team_feature_creator
         self.player_hero_feature_creator = player_hero_feature_creator
 
@@ -28,7 +30,8 @@ class FeatureEngineeringService:
             return None
 
         try:
-            hero_features = HeroesFeatureCreator.create_hero_features([match_instance])
+            # Create hero features using decayed prior logic (requires DB session)
+            hero_features = await self.hero_feature_creator.create_hero_features(session, [match_instance])
             team_features = await self.team_feature_creator.create_team_features(session, [match_instance])
             player_hero_features = await self.player_hero_feature_creator.create_player_hero_features(
                 session, [match_instance]
