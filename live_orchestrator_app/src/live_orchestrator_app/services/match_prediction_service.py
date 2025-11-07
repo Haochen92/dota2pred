@@ -30,7 +30,10 @@ class MatchPredictionService:
                 input_array_for_inference
             )
             prediction_list = prediction_instance.prediction
+            prediction_probability_list = prediction_instance.probability
             prediction = prediction_list[0]
+            prediction_proba = prediction_probability_list[0] if prediction_probability_list else None
+
             logger.info(f"Successfully fetched prediction for match: {match_id}, value: {prediction}")
         except Exception as e:
             logger.error(f"Error when making prediction for {match_id}: {e}", exc_info=True)
@@ -42,6 +45,7 @@ class MatchPredictionService:
             prediction_table = MatchPredictionTable(
                 match_id=match_id,
                 prediction=bool(prediction),
+                prediction_probability=prediction_proba,
                 predictor_name=metadata.name,
                 predictor_version=metadata.version,
                 prediction_date=get_current_utc_iso_timestamp(),
