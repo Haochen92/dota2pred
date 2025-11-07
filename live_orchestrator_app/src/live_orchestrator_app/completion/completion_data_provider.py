@@ -40,8 +40,8 @@ class CompletionDataProvider:
         for event in events:
             match_id = event.match_id
             event_id = event.event_id
-            if outcome_map.get(match_id):
-                match_outcome = outcome_map[match_id]
+            match_outcome = outcome_map.get(match_id)
+            if match_outcome is not None:
                 payload = CompletedMatchPayload(match_outcome=match_outcome)
                 completed_match_list.append(
                     ConsumedEvent[CompletedMatchPayload](event_id=event_id, payload=payload, match_id=match_id)
