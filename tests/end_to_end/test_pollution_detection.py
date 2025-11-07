@@ -29,16 +29,8 @@ class TestDataPollutionDetection:
         """
         # 1. Test API service functionality and create some data
         valid_request = PublicMatchPredictionRequest(
-            radiant_hero_id_1=1,
-            radiant_hero_id_2=2,
-            radiant_hero_id_3=3,
-            radiant_hero_id_4=4,
-            radiant_hero_id_5=5,
-            dire_hero_id_1=6,
-            dire_hero_id_2=7,
-            dire_hero_id_3=8,
-            dire_hero_id_4=9,
-            dire_hero_id_5=10,
+            radiant_heroes=[1, 2, 3, 4, 5],
+            dire_heroes=[6, 7, 8, 9, 10],
         )
 
         response = await full_stack_client.post(url="/inference/predict", json=valid_request.model_dump())
