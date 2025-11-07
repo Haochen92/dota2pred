@@ -1,3 +1,13 @@
-from .table import TeamHistoryTable, PlayerHeroHistoryTable, TeamMatchupHistoryTable
+from .table import (
+    TeamDecayedStateTable,
+    TeamMatchupDecayedStateTable,
+    HeroDecayedStateTable,
+    PlayerHeroDecayedStateTable,
+)
 
-__all__ = ["TeamHistoryTable", "PlayerHeroHistoryTable", "TeamMatchupHistoryTable"]
+__all__ = [
+    "TeamDecayedStateTable",
+    "PlayerHeroDecayedStateTable",
+    "TeamMatchupDecayedStateTable",
+    "HeroDecayedStateTable",
+]
