@@ -1,7 +1,6 @@
 import pydantic
 from dota_oracle_common.utils.set_logging import get_logger
 from live_orchestrator_app.redis_services.redis_service import RedisService
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
 from dota_oracle_common.utils.async_utils import TaskRunner
@@ -15,12 +14,10 @@ class CompletionOrchestrator:
     def __init__(
         self,
         redis_service: RedisService,
-        history_update_service: HistoryUpdateService,
         completion_data_provider: CompletionDataProvider,
         completion_event_processor: CompletionEventProcessor,
     ):
         self.redis = redis_service
-        self.history_updater = history_update_service
         self.data_provider = completion_data_provider
         self.processor = completion_event_processor
 
@@ -73,7 +70,7 @@ class CompletionOrchestrator:
                 count_failure += 1
                 continue
             except Exception as e:
-                logger.error("Unexcepted Error during cycle, {e}", exc_info=e)
+                logger.error(f"Unexpected error during completion cycle: {e}", exc_info=True)
                 raise
 
         logger.info(f"Completion Orchestrator: Successfully processed {count_success} and failed {count_failure}")
