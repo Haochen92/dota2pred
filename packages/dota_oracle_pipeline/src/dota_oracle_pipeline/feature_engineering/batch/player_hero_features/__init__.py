@@ -1,12 +1,11 @@
 from .window import PlayerHeroWindowFeatureGenerator
-from .decay import PlayerHeroDecayFeatureGenerator
-from .dynamic_prior import PlayerHeroDynamicPriorFeatureGenerator
+from .decay import BatchPlayerHeroDecayFeatureGenerator
+from .dynamic_prior import BatchPlayerHeroDynamicPriorFeatureGenerator
 from .utils import analyze_pair_counts
 
 __all__ = [
     "PlayerHeroWindowFeatureGenerator",
-    "PlayerHeroDecayFeatureGenerator",
-    "PlayerHeroDynamicPriorFeatureGenerator",
+    "BatchPlayerHeroDecayFeatureGenerator",
+    "BatchPlayerHeroDynamicPriorFeatureGenerator",
     "analyze_pair_counts",
 ]
-
