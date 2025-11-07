@@ -11,6 +11,12 @@ fetch_completed_matches = flow.from_source(
     entrypoint="dota_oracle_schedules/data_fetching/fetch_matches_batch.py:batch_matches_orchestrator",
 )
 
+
+scheduled_feature_engineering_and_inference_backfill = flow.from_source(
+    source="./",
+    entrypoint="dota_oracle_schedules/ml_pipelines/scheduled_backfill.py:scheduled_backfill_flow",
+)
+
 fetch_heros_data = flow.from_source(
     source="./",
     entrypoint="dota_oracle_schedules/data_fetching/fetch_hero_data.py:hero_data_orchestrator",
@@ -62,6 +68,14 @@ async def create_deployment():
     )
     logger.info("Deployment 'fetch_completed_matches' applied successfully.")
 
+    await scheduled_feature_engineering_and_inference_backfill.deploy(
+        name="scheduled_feature_engineering_and_inference_backfill",
+        work_pool_name="dota_oracle_scheduler",
+        cron="30 0,12 * * *",  # Every day at 12:30 AM and 12:30 PM. After fetch_completed_matches
+        concurrency_limit=1,
+    )
+    logger.info("Deployment 'scheduled_feature_engineering_and_inference_backfill' applied successfully.")
+
     await fetch_heros_data.deploy(
         name="fetch_heros_data", work_pool_name="dota_oracle_scheduler", cron="0 1,13 * * *", concurrency_limit=1
     )
@@ -71,10 +85,8 @@ async def create_deployment():
         name="fetch_patch_data", work_pool_name="dota_oracle_scheduler", cron="0 2,14 * * *", concurrency_limit=1
     )
     logger.info("Deployment 'fetch_patch_data' applied successfully.")
-    
-    await sync_pro_matches.deploy(
-        name="sync_pro_matches", work_pool_name="dota_oracle_scheduler",  concurrency_limit=1
-    )
+
+    await sync_pro_matches.deploy(name="sync_pro_matches", work_pool_name="dota_oracle_scheduler", concurrency_limit=1)
 
     await backfill_public_matches_by_patches.deploy(
         name="backfill_public_matches_by_patches",
