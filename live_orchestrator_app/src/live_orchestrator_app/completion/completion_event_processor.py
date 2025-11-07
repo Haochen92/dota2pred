@@ -25,7 +25,7 @@ class CompletionEventProcessor:
             await self._update_match_outcome(match_id=match_id, match_outcome=match_outcome)
 
             # update related match histories
-            await self.history_updater.update_histories(self.db_session_factory, match_id)
+            await self.history_updater.update_all_histories_for_match(self.db_session_factory, match_id)
 
             logger.debug(f"Successfully stored match outcome and match histories for match_id: {match_id}")
 
