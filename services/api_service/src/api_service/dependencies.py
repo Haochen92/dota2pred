@@ -11,7 +11,7 @@ from .streaming.redis_pubsub_service import RedisPubSubService
 from .matches.match_pagination_service import MatchPaginationService
 from .inference.model_history_service import ModelHistoryService
 from .inference.pub_inference import PubInferenceService
-from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
+from .inference.prediction_details_service import PredictionDetailsService
 
 
 # === Dependency Provider Functions ===
@@ -37,11 +37,6 @@ def get_public_inference_service(request: Request) -> PubInferenceService:
 def get_hero_map(request: Request) -> Dict[int, str]:
     """Provides the shared hero map."""
     return request.app.state.hero_map
-
-
-def get_feature_encoder(request: Request) -> FeatureEncoder:
-    """Provides the shared FeatureEncoder instance."""
-    return request.app.state.feature_encoder
 
 
 async def get_database_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
@@ -82,6 +77,16 @@ def get_model_history_service(
     return ModelHistoryService(db_session=db_session)
 
 
+def get_prediction_details_service(
+    db_session: Annotated[AsyncSession, Depends(get_database_session)],
+) -> PredictionDetailsService:
+    """
+    Creates a new PredictionDetailsService instance for a single request,
+    injecting it with a database session.
+    """
+    return PredictionDetailsService(db_session=db_session)
+
+
 # === Dependency Aliases ===
 # These provide clean, reusable, and type-hinted shortcuts for use in route signatures.
 # This makes endpoint functions declarative and easy to read.
@@ -92,4 +97,5 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 InferenceSvc = Annotated[PubInferenceService, Depends(get_public_inference_service)]
 MatchPaginationSvc = Annotated[MatchPaginationService, Depends(get_match_pagination_service)]
 ModelHistorySvc = Annotated[ModelHistoryService, Depends(get_model_history_service)]
+PredictionDetailsSvc = Annotated[PredictionDetailsService, Depends(get_prediction_details_service)]
 HeroMap = Annotated[Dict[int, str], Depends(get_hero_map)]
