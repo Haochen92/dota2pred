@@ -23,7 +23,6 @@ from live_orchestrator_app.prediction.prediction_event_processor import Predicti
 
 # Service imports
 from live_orchestrator_app.redis_services.redis_service import RedisService
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
 
 
 # ================================
@@ -98,13 +97,11 @@ def prediction_orchestrator(
 @pytest.fixture
 def completion_orchestrator(
     mock_redis_service: RedisService,
-    mock_history_update_service: HistoryUpdateService,
     mock_completion_data_provider: CompletionDataProvider,
     mock_completion_event_processor: CompletionEventProcessor,
 ) -> CompletionOrchestrator:
     return CompletionOrchestrator(
         redis_service=mock_redis_service,
-        history_update_service=mock_history_update_service,
         completion_data_provider=mock_completion_data_provider,
         completion_event_processor=mock_completion_event_processor,
     )
