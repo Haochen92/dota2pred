@@ -1,11 +1,11 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, NamedTuple
 
 from dota_oracle_common.models.match.table import MatchTable
+from dota_oracle_common.models.features import HeroFeaturesTable
+from dota_oracle_common.models.histories import HeroDecayedStateTable
 
-from .models import HeroWinrateTable
 from .utils import (
     apply_decay_to_pair,
-    default_winrate,
     extract_hero_picks,
     get_radiant_won,
     sorted_by_start_time,
@@ -13,18 +13,19 @@ from .utils import (
 )
 
 
-class HeroWinrateDecayFeatureGenerator:
+class DecayState(NamedTuple):
+    wins: float
+    games: float
+    last_update_ts: int
+
+
+class BatchHeroWinrateDecayFeatureGenerator:
     """
-    Build hero-level winrate features causally (chronological, no leakage).
+    Builds hero-level win rate features causally.
 
-    Strategy: exponential time-decay histories per hero. Maintains O(1) state
-    per hero as (weighted_wins, weighted_games, last_timestamp). For a match,
-    features are computed using only the prior state (decayed to now), then the
-    state is updated with the outcome, maintaining causal correctness.
-
-    Smoothing:
-      - Bayesian smoothing with prior_mean and prior_count:
-        (wins + prior_count * prior_mean) / (games + prior_count)
+    Stateless orchestrator: processes matches chronologically, reads pre-match decayed state
+    to compute Bayesian-smoothed win rates (prior_mean/prior_count), emits features, then
+    prepares the next state for subsequent matches.
     """
 
     def generate(
@@ -34,94 +35,134 @@ class HeroWinrateDecayFeatureGenerator:
         prior_mean: float = 0.5,
         prior_count: float = 2.0,
         half_life_days: float = 45.0,
-    ) -> List[HeroWinrateTable]:
+    ) -> Tuple[List[HeroFeaturesTable], List[HeroDecayedStateTable]]:
         """
-        Exponential time decay. Keeps O(1) state per hero: (wins_w, games_w, last_ts).
+        Orchestrates feature generation for a batch of matches.
 
-        - Reads feature values before updating state for the current match.
-        - Applies decay from last_ts to now_ts before computing smoothed rate.
-        - Applies Bayesian smoothing: (wins + alpha) / (games + beta).
+        Returns:
+            - hero_features: list of feature rows (wide format, per slot)
+            - history: per-hero decayed state rows after each match they appear in
         """
-        assert half_life_days > 0, "half_life_days must be positive."
         if not all_matches:
-            return []
+            return [], []
 
-        matches = sorted_by_start_time(all_matches)
-        default_wr = float(prior_mean)
+        hero_states: Dict[int, DecayState] = {}
+        rows: List[HeroFeaturesTable] = []
+        history: List[HeroDecayedStateTable] = []
 
-        # hero_id -> (weighted_wins, weighted_games, last_timestamp)
-        hero_state: Dict[int, Tuple[float, float, int]] = {}
-
-        rows: List[HeroWinrateTable] = []
-        for match in matches:
-            cur_ts = ts(match.start_time)
-            radiant_picks, dire_picks = extract_hero_picks(match)
-
-            r_wrs = [
-                self._read_wr_decay(
-                    hero_state.get(h), cur_ts, prior_mean, prior_count, half_life_days, default_wr
-                )
-                for h in radiant_picks
-            ]
-            d_wrs = [
-                self._read_wr_decay(
-                    hero_state.get(h), cur_ts, prior_mean, prior_count, half_life_days, default_wr
-                )
-                for h in dire_picks
-            ]
-
-            row = HeroWinrateTable(**{
-                "match_id": match.match_id,
-                "radiant_avg_hero_winrate": float(sum(r_wrs) / len(r_wrs)) if r_wrs else default_wr,
-                "dire_avg_hero_winrate": float(sum(d_wrs) / len(d_wrs)) if d_wrs else default_wr,
-                "radiant_max_hero_winrate": max(r_wrs) if r_wrs else default_wr,
-                "dire_max_hero_winrate": max(d_wrs) if d_wrs else default_wr,
-            })
+        for match in sorted_by_start_time(all_matches):
+            row, updates, logs = self._process_one_match(match, hero_states, prior_mean, prior_count, half_life_days)
+            # 1) append artifacts
             rows.append(row)
+            history.extend(logs)
+            # 2) apply state updates
+            hero_states.update(updates)
 
-            radiant_won = get_radiant_won(match)
-            if radiant_won is not None:
-                for i, h in enumerate(radiant_picks + dire_picks):
-                    player_won = radiant_won if i < len(radiant_picks) else (not radiant_won)
-                    hero_state[h] = self._update_state_decay(hero_state.get(h), cur_ts, player_won, half_life_days)
+        return rows, history
 
-        return rows
-
-    # helpers
-    def _read_wr_decay(
+    def _process_one_match(
         self,
-        state: Optional[Tuple[float, float, int]],
+        match: MatchTable,
+        current_states: Dict[int, DecayState],
+        prior_mean: float,
+        prior_count: float,
+        half_life_days: float,
+    ) -> Tuple[HeroFeaturesTable, Dict[int, DecayState], List[HeroDecayedStateTable]]:
+        """
+        Orchestrates the two-step process for a single match:
+        1) Create features from current state (read phase)
+        2) Prepare state updates and logs (write phase)
+        """
+        row = self._create_feature_row(match, current_states, prior_mean, prior_count, half_life_days)
+        updates, logs = self._prepare_updates_and_logs(match, current_states, half_life_days)
+        return row, updates, logs
+
+    def _create_feature_row(
+        self,
+        match: MatchTable,
+        current_states: Dict[int, DecayState],
+        prior_mean: float,
+        prior_count: float,
+        half_life_days: float,
+    ) -> HeroFeaturesTable:
+        now_ts = ts(match.start_time)
+        radiant_picks, dire_picks = extract_hero_picks(match)
+
+        def read_wr(hero_id: Optional[int]) -> float:
+            state = current_states.get(hero_id) if hero_id is not None else None
+            return self._calculate_hero_wr(state, now_ts, prior_mean, prior_count, half_life_days)
+
+        feature_dict = {"match_id": match.match_id}
+        for i, hero_id in enumerate(radiant_picks):
+            feature_dict[f"hero_{i}_win_rate"] = read_wr(hero_id)
+        for i, hero_id in enumerate(dire_picks):
+            feature_dict[f"hero_{128 + i}_win_rate"] = read_wr(hero_id)
+        return HeroFeaturesTable(**feature_dict)
+
+    def _prepare_updates_and_logs(
+        self,
+        match: MatchTable,
+        current_states: Dict[int, DecayState],
+        half_life_days: float,
+    ) -> Tuple[Dict[int, DecayState], List[HeroDecayedStateTable]]:
+        now_ts = ts(match.start_time)
+        updates: Dict[int, DecayState] = {}
+        logs: List[HeroDecayedStateTable] = []
+
+        radiant_picks, dire_picks = extract_hero_picks(match)
+        radiant_won = get_radiant_won(match)
+        if radiant_won is not None:
+            all_heroes = radiant_picks + dire_picks
+            for idx, hero_id in enumerate(all_heroes):
+                if hero_id is None:
+                    continue
+                hero_won = radiant_won if idx < len(radiant_picks) else (not radiant_won)
+                new_state = self._calculate_next_state(current_states.get(hero_id), now_ts, hero_won, half_life_days)
+                updates[hero_id] = new_state
+                logs.append(
+                    HeroDecayedStateTable(
+                        hero_id=hero_id,
+                        match_id=match.match_id,
+                        decayed_wins=new_state.wins,
+                        decayed_games=new_state.games,
+                        last_update_time=match.start_time,
+                    )
+                )
+        return updates, logs
+
+    # --- Helpers ---
+    def _calculate_hero_wr(
+        self,
+        state: Optional[DecayState],
         now_ts: int,
         prior_mean: float,
         prior_count: float,
         half_life_days: float,
-        default_wr: float,
     ) -> float:
-        """
-        Convert decayed (wins,games) state into smoothed winrate at time now_ts.
-        """
         if state is None:
-            return default_wr
+            return prior_mean
         w_wins, w_games, last_ts = state
         w_wins, w_games = apply_decay_to_pair(w_wins, w_games, last_ts, now_ts, half_life_days)
-        return (w_wins + prior_count * prior_mean) / (w_games + prior_count)
+        denom = w_games + prior_count
+        if denom <= 1e-6:
+            return prior_mean
+        return (w_wins + prior_count * prior_mean) / denom
 
-    def _update_state_decay(
+    def _calculate_next_state(
         self,
-        state: Optional[Tuple[float, float, int]],
+        state: Optional[DecayState],
         now_ts: int,
-        player_won: bool,
+        won: bool,
         half_life_days: float,
-    ) -> Tuple[float, float, int]:
-        """
-        Apply decay from last_ts to now_ts, then add this match result.
-        """
+    ) -> DecayState:
         if state is None:
-            w_wins, w_games, last_ts = 0.0, 0.0, now_ts
+            decayed_wins, decayed_games = 0.0, 0.0
         else:
-            w_wins, w_games, last_ts = state
-            w_wins, w_games = apply_decay_to_pair(w_wins, w_games, last_ts, now_ts, half_life_days)
-        w_games += 1.0
-        if player_won:
-            w_wins += 1.0
-        return w_wins, w_games, now_ts
+            decayed_wins, decayed_games = apply_decay_to_pair(
+                state.wins, state.games, state.last_update_ts, now_ts, half_life_days
+            )
+        return DecayState(
+            wins=decayed_wins + (1.0 if won else 0.0),
+            games=decayed_games + 1.0,
+            last_update_ts=now_ts,
+        )
