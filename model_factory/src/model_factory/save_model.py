@@ -25,9 +25,8 @@ def save_sklearn_model(model, model_name: str, metadata: ModelMetaData):
     logger.info(f"Model saved: {saved_model}")
 
 
-def load_and_save_model():
+def load_and_save_model(model_name: str = "model"):
     model = load_model_from_dir()
-    model_name = "rf_model"
 
     feature_columns = list(AllFeaturesDTO.model_fields.keys())
 
