@@ -44,9 +44,7 @@ class PredictionEventProcessor:
             async with self.db_session_factory() as session:
                 async with session.begin():
                     # Prepare features for inference
-                    input_array = await self.feature_preparation_service.prepare_features_for_inference(
-                        raw_features, session
-                    )
+                    input_array = await self.feature_preparation_service.prepare_features_for_inference(raw_features)
                     logger.info(f"Finished feature preparation for match {match_id}")
 
                     if input_array is None or input_array.size == 0:
