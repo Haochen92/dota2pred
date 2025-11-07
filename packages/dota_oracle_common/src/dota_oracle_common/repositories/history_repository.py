@@ -1,292 +1,187 @@
-from typing import List, Optional
-from ..models.histories import PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert
-from sqlmodel import select, desc
-from ..utils.set_logging import get_logger
-from sqlalchemy.exc import SQLAlchemyError
+from typing import List, Optional, Coroutine
 from datetime import datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import select, desc
+
+from ..models.histories.table import (
+    TeamDecayedStateTable,
+    TeamMatchupDecayedStateTable,
+    PlayerHeroDecayedStateTable,
+    HeroDecayedStateTable,
+)
+from ..utils.set_logging import get_logger
+from .base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
 
-class HistoryRepository:
+class HistoryRepository(BaseRepository):
     """
-    Repository for accessing and storing historical match outcome data
-    for players, heroes, teams, and matchups.
+    Repository for accessing and storing a full history of decayed states.
+    This enables causally-correct feature generation by time-traveling
+    to the state before any given match.
 
     Follows the Unit of Work pattern - accepts a session that manages transactions.
     """
 
-    def __init__(self, session: AsyncSession, default_history_limit: int = 20):
-        self.session = session
-        self.default_history_limit = default_history_limit
+    def __init__(self, session: AsyncSession):
+        super().__init__(session)
 
-    # --- PLAYER HERO HISTORY ---
-    async def get_player_hero_win_history(
-        self,
-        account_id: int,
-        hero_id: int,
-        before: Optional[datetime] = None,
-        after: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[bool]:
-        """
-        Fetches win history (list of booleans) for a specific player/hero combination.
-        """
-        effective_limit = limit if limit is not None else self.default_history_limit
+    # --- UPSERTERS ---
 
-        if not account_id or not hero_id:
-            logger.warning("get_player_hero_win_history called with invalid account_id or hero_id.")
-            return []
-
-        logger.debug(
-            f"Fetching player-hero history: acc={account_id}, hero={hero_id}, before={before}, after={after}, limit={effective_limit}"
-        )
-
-        try:
-            stmt = (
-                select(PlayerHeroHistoryTable.win)
-                .where(PlayerHeroHistoryTable.account_id == account_id)
-                .where(PlayerHeroHistoryTable.hero_id == hero_id)
-            )
-
-            if after:
-                stmt = stmt.where(PlayerHeroHistoryTable.start_time > after)
-            if before:
-                stmt = stmt.where(PlayerHeroHistoryTable.start_time < before)
-
-            stmt = stmt.order_by(desc(PlayerHeroHistoryTable.start_time)).limit(effective_limit)
-
-            result = await self.session.execute(stmt)
-            win_history: List[bool] = list(result.scalars().all())
-
-            logger.debug(f"Found {len(win_history)} player-hero history entries for acc={account_id}, hero={hero_id}.")
-            return win_history
-
-        except SQLAlchemyError as e:
-            logger.error(
-                f"DB error fetching player-hero history for acc={account_id}, hero={hero_id}: {e}", exc_info=True
-            )
-            raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error fetching player-hero history for acc={account_id}, hero={hero_id}: {e}",
-                exc_info=True,
-            )
-            raise
-
-    async def add_player_hero_match_outcome(
-        self, account_id: int, hero_id: int, match_id: int, win: bool, match_start_time: datetime
-    ) -> None:
-        """
-        Persists a single player-hero match outcome using INSERT ... ON CONFLICT DO NOTHING.
-        """
-        logger.debug(f"Adding player-hero history: acc={account_id}, hero={hero_id}, match={match_id}")
-
-        try:
-            stmt = (
-                insert(PlayerHeroHistoryTable)
-                .values(account_id=account_id, hero_id=hero_id, match_id=match_id, win=win, start_time=match_start_time)
-                .on_conflict_do_nothing(index_elements=["match_id", "hero_id", "account_id"])
-            )
-
-            await self.session.execute(stmt)
-
-        except SQLAlchemyError as e:
-            logger.error(
-                f"DB error adding player-hero history for match={match_id}, acc={account_id}: {e}", exc_info=True
-            )
-            raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error adding player-hero history for match={match_id}, acc={account_id}: {e}",
-                exc_info=True,
-            )
-            raise
-
-    # --- TEAM HISTORY ---
-    async def get_team_history(
-        self,
-        team_name: str,
-        before: Optional[datetime] = None,
-        after: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[bool]:
-        """
-        Fetches win history (list of booleans) for a specific team.
-        """
-        effective_limit = limit if limit is not None else self.default_history_limit
-
-        if not team_name:
-            logger.warning("get_team_history called with empty team_name.")
-            return []
-
-        logger.debug(
-            f"Fetching team history: team='{team_name}', before={before}, after={after}, limit={effective_limit}"
-        )
-
-        try:
-            stmt = select(TeamHistoryTable.win).where(TeamHistoryTable.team_name == team_name)
-
-            if after:
-                stmt = stmt.where(TeamHistoryTable.start_time > after)
-            if before:
-                stmt = stmt.where(TeamHistoryTable.start_time < before)
-
-            stmt = stmt.order_by(desc(TeamHistoryTable.start_time)).limit(effective_limit)
-
-            result = await self.session.execute(stmt)
-            team_history: List[bool] = list(result.scalars().all())
-
-            logger.debug(f"Found {len(team_history)} history entries for team='{team_name}'.")
-            return team_history
-
-        except SQLAlchemyError as e:
-            logger.error(f"DB error fetching team history for team='{team_name}': {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error fetching team history for team='{team_name}': {e}", exc_info=True)
-            raise
-
-    async def get_team_matchup_history(
-        self,
-        team_one: str,
-        team_two: str,
-        before: Optional[datetime] = None,
-        after: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[bool]:
-        """
-        Fetches win history (list of booleans) for a specific team vs team matchup.
-        Returns results from team_one's perspective.
-        """
-        effective_limit = limit if limit is not None else self.default_history_limit
-
-        if not team_one or not team_two:
-            logger.warning("get_team_matchup_history called with empty team names.")
-            return []
-
-        logger.debug(
-            f"Fetching matchup history: {team_one} vs {team_two}, before={before}, after={after}, limit={effective_limit}"
-        )
-
-        try:
-            # Canonical ordering for consistent lookups
-            sorted_teams = sorted([team_one, team_two])
-
-            # If team_one is not the first in sorted order, we need to invert wins
-            invert_wins = team_one != sorted_teams[0]
-
-            stmt = select(TeamMatchupHistoryTable.win).where(
-                TeamMatchupHistoryTable.team1_name == sorted_teams[0],
-                TeamMatchupHistoryTable.team2_name == sorted_teams[1],
-            )
-
-            if after:
-                stmt = stmt.where(TeamMatchupHistoryTable.start_time > after)
-            if before:
-                stmt = stmt.where(TeamMatchupHistoryTable.start_time < before)
-
-            stmt = stmt.order_by(desc(TeamMatchupHistoryTable.start_time)).limit(effective_limit)
-
-            result = await self.session.execute(stmt)
-            matchup_history: List[bool] = list(result.scalars().all())
-
-            # Invert wins if necessary to return from team_one's perspective
-            if invert_wins:
-                matchup_history = [not win for win in matchup_history]
-
-            logger.debug(f"Found {len(matchup_history)} matchup history entries for {team_one} vs {team_two}.")
-            return matchup_history
-
-        except SQLAlchemyError as e:
-            logger.error(f"DB error fetching matchup history for {team_one} vs {team_two}: {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error fetching matchup history for {team_one} vs {team_two}: {e}", exc_info=True)
-            raise
-
-    async def add_team_match_outcome(
-        self, team_name: Optional[str], match_id: int, win: bool, match_start_time: datetime
-    ) -> None:
-        """
-        Persists a single team match outcome.
-        """
-        if not team_name:
-            logger.warning(f"Missing team name for match {match_id}")
+    async def upsert_team_decayed_states(self, instances: List[TeamDecayedStateTable]) -> None:
+        if not instances:
+            logger.debug("No TeamDecayedStateTable instances provided for upsert.")
             return
+        coro = self._upsert_data(model_class=TeamDecayedStateTable, instances=instances)
+        await self._run_and_handle_errors(coro, "upserting TeamDecayedStateTable instances")
 
-        logger.debug(f"Adding team history: team='{team_name}', match={match_id}")
-
-        try:
-            stmt = (
-                insert(TeamHistoryTable)
-                .values(team_name=team_name, match_id=match_id, win=win, start_time=match_start_time)
-                .on_conflict_do_nothing(index_elements=["team_name", "match_id"])
-            )
-
-            await self.session.execute(stmt)
-
-        except SQLAlchemyError as e:
-            logger.error(f"DB error adding team history for match={match_id}, team='{team_name}': {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error adding team history for match={match_id}, team='{team_name}': {e}", exc_info=True
-            )
-            raise
-
-    async def add_team_matchup_outcome(
-        self,
-        team_one: Optional[str],
-        team_two: Optional[str],
-        match_id: int,
-        win: bool,  # From team_one's perspective
-        match_start_time: datetime,
-    ) -> None:
-        """
-        Persists a single team matchup outcome.
-        Win parameter is from team_one's perspective.
-        """
-        if not team_one or not team_two:
-            logger.warning(f"Missing team names for match {match_id}")
+    async def upsert_team_matchup_decayed_states(self, instances: List[TeamMatchupDecayedStateTable]) -> None:
+        if not instances:
+            logger.debug("No TeamMatchupDecayedStateTable instances provided for upsert.")
             return
+        coro = self._upsert_data(model_class=TeamMatchupDecayedStateTable, instances=instances)
+        await self._run_and_handle_errors(coro, "upserting TeamMatchupDecayedStateTable instances")
 
-        # Canonical ordering for consistent storage
-        sorted_teams = sorted([team_one, team_two])
-        team1_name = sorted_teams[0]
-        team2_name = sorted_teams[1]
+    async def upsert_player_hero_decayed_states(self, instances: List[PlayerHeroDecayedStateTable]) -> None:
+        if not instances:
+            logger.debug("No PlayerHeroDecayedStateTable instances provided for upsert.")
+            return
+        coro = self._upsert_data(model_class=PlayerHeroDecayedStateTable, instances=instances)
+        await self._run_and_handle_errors(coro, "upserting PlayerHeroDecayedStateTable instances")
 
-        # If team_one is not first in sorted order, invert the win
-        actual_win = win if team_one == team1_name else not win
+    async def upsert_hero_decayed_states(self, instances: List[HeroDecayedStateTable]) -> None:
+        if not instances:
+            logger.debug("No HeroDecayedStateTable instances provided for upsert.")
+            return
+        coro = self._upsert_data(model_class=HeroDecayedStateTable, instances=instances)
+        await self._run_and_handle_errors(coro, "upserting HeroDecayedStateTable instances")
 
-        logger.debug(f"Adding matchup history: {team1_name} vs {team2_name}, match={match_id}")
+    # --- GETTERS
 
+    async def get_team_state_before(self, team_name: str, before_time: datetime) -> Optional[TeamDecayedStateTable]:
+        """Gets the most recent decayed state for a team before a specific time."""
+        stmt = (
+            select(TeamDecayedStateTable)
+            .where(TeamDecayedStateTable.team_name == team_name)
+            .where(TeamDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(TeamDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching team decayed state for {team_name} before {before_time}"
+        )
+        return res.scalars().first()
+
+    async def get_team_state_before_by_id(self, team_id: int, before_time: datetime) -> Optional[TeamDecayedStateTable]:
+        """Gets the most recent decayed state for a team (by ID) before a specific time."""
+        stmt = (
+            select(TeamDecayedStateTable)
+            .where(TeamDecayedStateTable.team_id == team_id)
+            .where(TeamDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(TeamDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching team decayed state for id={team_id} before {before_time}"
+        )
+        return res.scalars().first()
+
+    async def get_team_matchup_state_before(
+        self, team_one: str, team_two: str, before_time: datetime
+    ) -> Optional[TeamMatchupDecayedStateTable]:
+        """Gets the most recent decayed state for a matchup before a specific time."""
+        t1, t2 = sorted([team_one, team_two])
+        stmt = (
+            select(TeamMatchupDecayedStateTable)
+            .where(
+                TeamMatchupDecayedStateTable.team1_name == t1,
+                TeamMatchupDecayedStateTable.team2_name == t2,
+            )
+            .where(TeamMatchupDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(TeamMatchupDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching matchup decayed state for {t1} vs {t2} before {before_time}"
+        )
+        return res.scalars().first()
+
+    async def get_team_matchup_state_before_by_id(
+        self, team1_id: int, team2_id: int, before_time: datetime
+    ) -> Optional[TeamMatchupDecayedStateTable]:
+        """Gets the most recent decayed state for a matchup (by team IDs) before a specific time."""
+        t1, t2 = sorted([team1_id, team2_id])
+        stmt = (
+            select(TeamMatchupDecayedStateTable)
+            .where(
+                TeamMatchupDecayedStateTable.team1_id == t1,
+                TeamMatchupDecayedStateTable.team2_id == t2,
+            )
+            .where(TeamMatchupDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(TeamMatchupDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching matchup decayed state for ids {t1} vs {t2} before {before_time}"
+        )
+        return res.scalars().first()
+
+    async def get_player_hero_state_before(
+        self, account_id: int, hero_id: int, before_time: datetime
+    ) -> Optional[PlayerHeroDecayedStateTable]:
+        """Gets the most recent decayed state for a player-hero combo before a specific time."""
+        stmt = (
+            select(PlayerHeroDecayedStateTable)
+            .where(
+                PlayerHeroDecayedStateTable.account_id == account_id,
+                PlayerHeroDecayedStateTable.hero_id == hero_id,
+            )
+            .where(PlayerHeroDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(PlayerHeroDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching player-hero decayed state for acc={account_id} hero={hero_id} before {before_time}"
+        )
+        return res.scalars().first()
+
+    async def get_hero_state_before(self, hero_id: int, before_time: datetime) -> Optional[HeroDecayedStateTable]:
+        """Gets the most recent decayed state for a hero before a specific time."""
+        stmt = (
+            select(HeroDecayedStateTable)
+            .where(HeroDecayedStateTable.hero_id == hero_id)
+            .where(HeroDecayedStateTable.last_update_time < before_time)
+            .order_by(desc(HeroDecayedStateTable.last_update_time))
+            .limit(1)
+        )
+        res = await self._execute_and_handle_errors(
+            stmt, f"fetching hero decayed state for hero={hero_id} before {before_time}"
+        )
+        return res.scalars().first()
+
+    # --- PRIVATE UTILITY HELPERS ---
+
+    async def _execute_and_handle_errors(self, stmt, operation_description: str):
+        """Executes a SQLAlchemy statement with standardized error handling."""
         try:
-            stmt = (
-                insert(TeamMatchupHistoryTable)
-                .values(
-                    team1_name=team1_name,
-                    team2_name=team2_name,
-                    match_id=match_id,
-                    win=actual_win,  # Store from team1's perspective
-                    start_time=match_start_time,
-                )
-                .on_conflict_do_nothing(index_elements=["team1_name", "team2_name", "match_id"])
-            )
-
-            await self.session.execute(stmt)
-
+            return await self.session.execute(stmt)
         except SQLAlchemyError as e:
-            logger.error(
-                f"DB error adding team matchup history for match={match_id}, teams=({team1_name}, {team2_name}): {e}",
-                exc_info=True,
-            )
+            logger.error(f"DB error during '{operation_description}': {e}", exc_info=True)
             raise
         except Exception as e:
-            logger.error(
-                f"Unexpected error adding team matchup history for match={match_id}, teams=({team1_name}, {team2_name}): {e}",
-                exc_info=True,
-            )
+            logger.error(f"Unexpected error during '{operation_description}': {e}", exc_info=True)
+            raise
+
+    async def _run_and_handle_errors(self, coro: Coroutine, operation_description: str):
+        """Runs a coroutine with standardized error handling."""
+        try:
+            return await coro
+        except SQLAlchemyError as e:
+            logger.error(f"DB error during '{operation_description}': {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during '{operation_description}': {e}", exc_info=True)
             raise
