@@ -21,11 +21,16 @@ from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
 
 # Endpoint configurations
 from dota_oracle_common.constants.endpoint_configs import service_url
+from dota_oracle_common.constants.hyperparam_config import (
+    HERO_FEATURES_HYPERPARAMS,
+    TEAM_FEATURES_HYPERPARAMS,
+    PLAYER_HERO_FEATURES_HYPERPARAMS,
+)
 
 # --- Feature Engineering Components ---
 from dota_oracle_pipeline.feature_engineering.team_features_creator import TeamFeatureCreator
 from dota_oracle_pipeline.feature_engineering.player_hero_features_creator import PlayerHeroFeaturesCreator
-from dota_oracle_pipeline.feature_transformation.feature_encoder import FeatureEncoder
+from dota_oracle_pipeline.feature_engineering.heroes_features_creator import HeroesFeatureCreator
 
 # --- Inference Components ---
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
@@ -89,13 +94,25 @@ class AppContainer(containers.DeclarativeContainer):
     hero_map = providers.Singleton(Dict[int, str])
 
     # --- Feature Engineering Components ---
-    team_feature_creator = providers.Factory(TeamFeatureCreator)
-    player_hero_features_creator = providers.Factory(PlayerHeroFeaturesCreator)
-
-    # Stateful FeatureEncoder as a Singleton
-    feature_encoder = providers.Singleton(
-        FeatureEncoder,
-        hero_map=hero_map,
+    hero_feature_creator = providers.Factory(
+        HeroesFeatureCreator,
+        prior_mean=HERO_FEATURES_HYPERPARAMS.prior_mean,
+        prior_count=HERO_FEATURES_HYPERPARAMS.prior_count,
+        half_life_days=HERO_FEATURES_HYPERPARAMS.half_life_days,
+    )
+    team_feature_creator = providers.Factory(
+        TeamFeatureCreator,
+        prior_mean=TEAM_FEATURES_HYPERPARAMS.prior_mean,
+        prior_count=TEAM_FEATURES_HYPERPARAMS.prior_count,
+        half_life_days=TEAM_FEATURES_HYPERPARAMS.half_life_days,
+    )
+    player_hero_features_creator = providers.Factory(
+        PlayerHeroFeaturesCreator,
+        player_prior_count=PLAYER_HERO_FEATURES_HYPERPARAMS.player_prior_count,
+        player_half_life_days=PLAYER_HERO_FEATURES_HYPERPARAMS.player_half_life_days,
+        hero_prior_mean=PLAYER_HERO_FEATURES_HYPERPARAMS.hero_prior_mean,
+        hero_prior_count=PLAYER_HERO_FEATURES_HYPERPARAMS.hero_prior_count,
+        hero_half_life_days=PLAYER_HERO_FEATURES_HYPERPARAMS.hero_half_life_days,
     )
 
     # --- Inference Components ---
@@ -110,13 +127,13 @@ class AppContainer(containers.DeclarativeContainer):
     feature_preparation_service = providers.Factory(
         FeaturePreparationService,
         model_metadata=model_metadata,
-        feature_encoder=feature_encoder,
     )
 
     redis_service = providers.Resource(RedisService.create, redis_client=redis_async_pool)
 
     feature_engineering_service = providers.Factory(
         FeatureEngineeringService,
+        hero_feature_creator=hero_feature_creator,
         team_feature_creator=team_feature_creator,
         player_hero_feature_creator=player_hero_features_creator,
     )
@@ -190,7 +207,6 @@ class AppContainer(containers.DeclarativeContainer):
     completion_orchestrator = providers.Factory(
         CompletionOrchestrator,
         redis_service=redis_service,
-        history_update_service=history_update_service,
         completion_data_provider=completion_data_provider,
         completion_event_processor=completion_event_processor,
     )
@@ -239,10 +255,11 @@ async def start_application() -> None:
 
         logger.info("Running pipeline cycle...")
         # Ensure a single cycle cannot hang forever
+        cycle_timeout_seconds = 300
         try:
-            await asyncio.wait_for(application.run_cycle(), timeout=300)
+            await asyncio.wait_for(application.run_cycle(), timeout=cycle_timeout_seconds)
         except asyncio.TimeoutError:
-            logger.error("Pipeline cycle timed out after 120 seconds")
+            logger.error(f"Pipeline cycle timed out after {cycle_timeout_seconds} seconds")
             # Re-raise so Prefect marks the flow as failed and frees concurrency
             raise
 
