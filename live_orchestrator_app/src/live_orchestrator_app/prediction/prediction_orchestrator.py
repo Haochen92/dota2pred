@@ -71,6 +71,7 @@ class PredictionOrchestrator:
             try:
                 result = task_result.outcome
                 if isinstance(result, BaseException):
+                    # Fail fast on task exceptions (systemic issue suspected)
                     raise result
 
                 count_success += 1
@@ -87,7 +88,7 @@ class PredictionOrchestrator:
                     event_stream=STREAM_PENDING_PREDICTION,
                 )
             except Exception as e:
-                logger.error("Unexcepted Error during cycle, {e}", exc_info=e)
+                logger.error(f"Unexpected error during prediction cycle: {e}", exc_info=True)
                 raise
         logger.info(
             f"PredictionOrchestrator: Finished cycle, with {count_success} successful events, and {count_failure} failures"
