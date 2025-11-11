@@ -13,16 +13,16 @@ export default function HeroesPanelMobile() {
             >
                 {/* Controls */}
                 <Group justify='space-around' gap={0}>
-                    <Chip value='strength' size='xs'>
+                    <Chip key='strength' value='strength' size='xs'>
                             <HeroCategoryTitleMobile attribute="strength" />
                     </Chip>
-                    <Chip value='agility' size='xs'>
+                    <Chip key='agility' value='agility' size='xs'>
                             <HeroCategoryTitleMobile attribute="agility" />
                     </Chip>
-                    <Chip value='intelligence' size='xs'>
+                    <Chip key='intelligence' value='intelligence' size='xs'>
                             <HeroCategoryTitleMobile attribute="intelligence" />
                     </Chip>
-                    <Chip value='universal' size='xs'>
+                    <Chip key='universal' value='universal' size='xs'>
                             <HeroCategoryTitleMobile attribute="universal" />
                     </Chip>
                 </Group>
