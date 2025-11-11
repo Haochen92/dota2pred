@@ -13,12 +13,19 @@ export type PredictionResponse = components['schemas']['PublicMatchPredictionRes
 
 
 /// for model history endpoint
+export type ModelHistoryRequest = operations['get_model_history_inference_model_history_get']['parameters']['query'];
 export type ModelHistoryResponse = components['schemas']['ModelHistoryResponse'];
 export type ModelPerformanceEntry = components['schemas']['ModelPerformanceEntry'];
-export type ModelHistoryRequest = operations['get_model_history_inference_model_history_get']['parameters']['query'];
+export type ConfidenceBin = components['schemas']['ConfidenceBin'];
+export type CalibrationPlotPoint = components['schemas']['CalibrationPlot'];
 export type HistoryRange = components['schemas']['HistoryRange'];
 export type AggregateBy = components['schemas']['AggregateBy'];
 
+// for prediction details endpoint
+export type AllFeaturesDTO = components['schemas']['AllFeaturesDTO'];
+export type MatchPrediction = components['schemas']['MatchPrediction'];
+export type PredictionDetailsResponse = components['schemas']['PredictionDetailsResponse'];
+export type PredictionDetailsRequest = operations['get_prediction_details_inference_prediction_details_get']['parameters']['query'];
 
 // For the live match SSE updates
 export type LiveStateUpdateRequest = components['schemas']['LiveStateUpdateRequest'];
