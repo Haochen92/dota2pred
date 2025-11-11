@@ -29,7 +29,7 @@ export default function ModelHistorySkeleton() {
         </Box>
         {/* Chip list placeholder */}
         <Stack gap={8} align="stretch" style={{ width: 120 }}>
-          {['accuracy', 'precision', 'recall'].map((m) => (
+          {['accuracy', 'auc', 'root_brier'].map((m) => (
             <Skeleton key={m} height={28} width={100} radius="sm" />
           ))}
         </Stack>
