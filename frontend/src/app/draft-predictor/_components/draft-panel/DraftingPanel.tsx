@@ -37,7 +37,7 @@ const TeamPanel = ({ team }: TeamPanelProps) => {
 
                 return (
                     <DraftSlot
-                        key={index}
+                        key={`${draftTeam}-slot-${index}`}
                         heroId={heroId}
                         isActive={isActive}
                         onClick={handleClick}
@@ -62,7 +62,7 @@ const TeamPanel = ({ team }: TeamPanelProps) => {
 
                 return (
                     <CompactDraftSlot
-                        key={index}
+                        key={`${draftTeam}-slot-${index}`}
                         heroId={heroId}
                         isActive={isActive}
                         onClick={handleClick}
