@@ -18,18 +18,10 @@ const fetchDraftPrediction = async (draftData: FormValues): Promise<PredictionRe
         throw new Error("All hero slots must be filled before fetching prediction.");
     }
 
-    // Construct the payload
-    const PredictionRequestPayload : PredictionRequest = {
-        radiant_hero_id_1: radiantTeam[0],
-        radiant_hero_id_2: radiantTeam[1],
-        radiant_hero_id_3: radiantTeam[2],
-        radiant_hero_id_4: radiantTeam[3],
-        radiant_hero_id_5: radiantTeam[4],
-        dire_hero_id_1: direTeam[0],
-        dire_hero_id_2: direTeam[1],
-        dire_hero_id_3: direTeam[2],
-        dire_hero_id_4: direTeam[3],
-        dire_hero_id_5: direTeam[4],
+    // Construct the payload (array-based per OpenAPI schema)
+    const PredictionRequestPayload: PredictionRequest = {
+        radiant_heroes: radiantTeam as number[],
+        dire_heroes: direTeam as number[],
     };
 
     const minDelayPromise = new Promise(resolve => setTimeout(resolve, 500)); // Minimum delay of 500ms for UX
@@ -37,6 +29,7 @@ const fetchDraftPrediction = async (draftData: FormValues): Promise<PredictionRe
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
         },
         body: JSON.stringify(PredictionRequestPayload),
     });
@@ -48,7 +41,7 @@ const fetchDraftPrediction = async (draftData: FormValues): Promise<PredictionRe
         throw new Error(`Failed to fetch prediction: ${response.status} ${response.statusText} ${text}`);
     }
 
-    const predictionData : PredictionResponse = await response.json()
+    const predictionData: PredictionResponse = await response.json()
     return predictionData;
 }
 
