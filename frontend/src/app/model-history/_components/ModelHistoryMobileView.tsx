@@ -17,8 +17,8 @@ export interface ModelHistoryMobileViewProps {
   onSelectedMetricsChange: (metrics: string[]) => void;
   historyData: any[];
   summaryStats?: {
-    averageAccuracy: number; averagePrecision: number; averageRecall: number;
-    maxAccuracy: number; maxPrecision: number; maxRecall: number;
+    averageAccuracy: number; averageAuc: number; averageRootBrier: number;
+    maxAccuracy: number; maxAuc: number; minRootBrier: number;
   };
 }
 
@@ -131,10 +131,10 @@ export function ModelHistoryMobileView({
         <Group gap={8} wrap='wrap' justify='center'>
           <Badge variant='light' color='blue.3' radius='sm'>Accu Avg: {formatPercent(summaryStats.averageAccuracy)}</Badge>
           <Badge variant='light' color='blue.3' radius='sm'>Accu Max: {formatPercent(summaryStats.maxAccuracy)}</Badge>
-          <Badge variant='light' color='green.3' radius='sm'>Precis Avg: {formatPercent(summaryStats.averagePrecision)}</Badge>
-          <Badge variant='light' color='green.3' radius='sm'>Precis Max: {formatPercent(summaryStats.maxPrecision)}</Badge>
-          <Badge variant='light' color='red.3' radius='sm'>Recall Avg: {formatPercent(summaryStats.averageRecall)}</Badge>
-          <Badge variant='light' color='red.3' radius='sm'>Recall Max: {formatPercent(summaryStats.maxRecall)}</Badge>
+          <Badge variant='light' color='green.3' radius='sm'>AUC Avg: {formatPercent(summaryStats.averageAuc)}</Badge>
+          <Badge variant='light' color='green.3' radius='sm'>AUC Max: {formatPercent(summaryStats.maxAuc)}</Badge>
+          <Badge variant='light' color='red.3' radius='sm'>RootBrier Avg: {formatPercent(summaryStats.averageRootBrier)}</Badge>
+          <Badge variant='light' color='red.3' radius='sm'>RootBrier Min: {formatPercent(summaryStats.minRootBrier)}</Badge>
         </Group>
       )}
     </Paper>
