@@ -44,6 +44,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inference/prediction_details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** get detailed prediction information, such as features details and confidence metrics */
+        get: operations["get_prediction_details_inference_prediction_details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/matches/": {
         parameters: {
             query?: never;
@@ -183,6 +200,28 @@ export interface components {
          */
         AggregateBy: 1 | 7 | 30;
         /**
+         * AllFeaturesDTO
+         * @description The finalised features from a match with a GUARANTEED field order
+         *     suitable for creating a feature vector for a machine learning model.
+         */
+        AllFeaturesDTO: {
+            /** Match Id */
+            match_id: number;
+            /** Radiant Dire Team Wr Diff */
+            radiant_dire_team_wr_diff: number;
+            /** Radiant Dire Matchup */
+            radiant_dire_matchup: number;
+            /** Radiant Dire Player Wr Diff */
+            radiant_dire_player_wr_diff: number;
+            /** Radiant Dire Hero Wr Diff */
+            radiant_dire_hero_wr_diff: number;
+        };
+        /** CalibrationPlot */
+        CalibrationPlot: {
+            /** Bins */
+            bins?: components["schemas"]["ConfidenceBin"][];
+        };
+        /**
          * CompletedMatchAPIPayload
          * @description Completed Match with predictions and actual outcome
          *     Inherits from Match with Outcome and add prediction results
@@ -252,6 +291,17 @@ export interface components {
             /** Predicted Outcome */
             predicted_outcome?: boolean | null;
             league_data?: components["schemas"]["dota_oracle_common__models__match__schema__LeagueData"] | null;
+        };
+        /** ConfidenceBin */
+        ConfidenceBin: {
+            /** Bin Name */
+            bin_name: string;
+            /** Match Count */
+            match_count: number;
+            /** Bin Accuracy */
+            bin_accuracy: number | null;
+            /** Average Confidence */
+            average_confidence: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -381,10 +431,43 @@ export interface components {
             predicted_outcome?: boolean | null;
             league_data?: components["schemas"]["LeagueData-Input"] | null;
         };
+        /**
+         * MatchPrediction
+         * @description DTO for match prediction data.
+         *
+         *     Attributes:
+         *         match_id: Match identifier (int)
+         *         predictor_name: Name of the predictor model (str)
+         *         prediction: Prediction result (Optional[bool])
+         *         prediction_probability: Confidence score 0-1 (Optional[float])
+         *         predictor_version: Model version used (str)
+         *         prediction_date: When prediction was made (datetime)
+         */
+        MatchPrediction: {
+            /** Match Id */
+            match_id: number;
+            /** Predictor Name */
+            predictor_name: string;
+            /** Prediction */
+            prediction: boolean | null;
+            /** Prediction Probability */
+            prediction_probability: number | null;
+            /**
+             * Predictor Version
+             * @default v1.0
+             */
+            predictor_version: string;
+            /**
+             * Prediction Date
+             * Format: date-time
+             */
+            prediction_date: string;
+        };
         /** ModelHistoryResponse */
         ModelHistoryResponse: {
             /** History */
             history: components["schemas"]["ModelPerformanceEntry"][];
+            calibration_plot: components["schemas"]["CalibrationPlot"];
         };
         /** ModelPerformanceEntry */
         ModelPerformanceEntry: {
@@ -395,12 +478,10 @@ export interface components {
             date: string;
             /** Accuracy */
             accuracy: number;
-            /** Log Loss */
-            log_loss?: number | null;
-            /** Precision */
-            precision?: number | null;
-            /** Recall */
-            recall?: number | null;
+            /** Auc */
+            auc: number;
+            /** Root Brier */
+            root_brier: number;
         };
         /**
          * PaginatedMatchResponse
@@ -433,28 +514,17 @@ export interface components {
              */
             patches: string[];
         };
+        /** PredictionDetailsResponse */
+        PredictionDetailsResponse: {
+            features: components["schemas"]["AllFeaturesDTO"] | null;
+            prediction_details: components["schemas"]["MatchPrediction"] | null;
+        };
         /** PublicMatchPredictionRequest */
         PublicMatchPredictionRequest: {
-            /** Radiant Hero Id 1 */
-            radiant_hero_id_1: number;
-            /** Radiant Hero Id 2 */
-            radiant_hero_id_2: number;
-            /** Radiant Hero Id 3 */
-            radiant_hero_id_3: number;
-            /** Radiant Hero Id 4 */
-            radiant_hero_id_4: number;
-            /** Radiant Hero Id 5 */
-            radiant_hero_id_5: number;
-            /** Dire Hero Id 1 */
-            dire_hero_id_1: number;
-            /** Dire Hero Id 2 */
-            dire_hero_id_2: number;
-            /** Dire Hero Id 3 */
-            dire_hero_id_3: number;
-            /** Dire Hero Id 4 */
-            dire_hero_id_4: number;
-            /** Dire Hero Id 5 */
-            dire_hero_id_5: number;
+            /** Radiant Heroes */
+            radiant_heroes: number[];
+            /** Dire Heroes */
+            dire_heroes: number[];
         };
         /** PublicMatchPredictionResponse */
         PublicMatchPredictionResponse: {
@@ -559,6 +629,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModelHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_prediction_details_inference_prediction_details_get: {
+        parameters: {
+            query: {
+                match_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionDetailsResponse"];
                 };
             };
             /** @description Validation Error */
