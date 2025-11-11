@@ -6,12 +6,13 @@ interface StatCardProps {
   color: string;
   average: number;
   max: number;
+  secondaryLabel?: string; // defaults to 'Peak'
 }
 
 // Helper to format numbers as percentages
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
-export function StatCard({ metric, color, average, max }: StatCardProps) {
+export function StatCard({ metric, color, average, max, secondaryLabel = 'Peak' }: StatCardProps) {
   return (
     <Paper radius="md" p="sm" bg="gray.8">
       <Stack gap="xs">
@@ -33,7 +34,7 @@ export function StatCard({ metric, color, average, max }: StatCardProps) {
                 <TextLgBold c="gray.1">
                     {formatPercent(max)}
                 </TextLgBold>
-                <TextMdRegular c="gray.2" >Peak</TextMdRegular>
+                <TextMdRegular c="gray.2" >{secondaryLabel}</TextMdRegular>
             </Stack>
         </Group>
       </Stack>
