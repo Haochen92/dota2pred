@@ -18,8 +18,8 @@ const historyRangeOptions = [
 
 const chartMetricsData = [
     { name: 'accuracy', type: 'line', color: 'blue.3' },
-    { name: 'precision', type: 'line', color: 'green.3' },
-    { name: 'recall', type: 'line', color: 'red.3' },
+    { name: 'auc', type: 'line', color: 'green.3' },
+    { name: 'root_brier', type: 'line', color: 'red.3' },
 ];
 
 const chartMetricsNames = chartMetricsData.map(ds => ds.name);
@@ -64,7 +64,6 @@ function ModelHistoryContent() {
         revalidateOnReconnect: true,
         refreshInterval: 0,
         suspense: true,
-        fallbackData: { history: [] }
     });
 
     const historyData = data.history;
@@ -73,18 +72,18 @@ function ModelHistoryContent() {
         const dataExists = historyData && historyData.length > 0;
         if (!dataExists) {
             return {
-                averageAccuracy: 0, averagePrecision: 0, averageRecall: 0,
-                maxAccuracy: 0, maxPrecision: 0, maxRecall: 0,
+                averageAccuracy: 0, averageAuc: 0, averageRootBrier: 0,
+                maxAccuracy: 0, maxAuc: 0, minRootBrier: 0,
             };
         }
         const count = historyData.length;
         const averageAccuracy = historyData.reduce((sum, entry) => sum + (entry.accuracy ?? 0), 0) / count;
-        const averagePrecision = historyData.reduce((sum, entry) => sum + (entry.precision ?? 0), 0) / count;
-        const averageRecall = historyData.reduce((sum, entry) => sum + (entry.recall ?? 0), 0) / count;
+        const averageAuc = historyData.reduce((sum, entry) => sum + (entry.auc ?? 0), 0) / count;
+        const averageRootBrier = historyData.reduce((sum, entry) => sum + (entry.root_brier ?? 0), 0) / count;
         const maxAccuracy = Math.max(...historyData.map(e => e.accuracy ?? 0));
-        const maxPrecision = Math.max(...historyData.map(e => e.precision ?? 0));
-        const maxRecall = Math.max(...historyData.map(e => e.recall ?? 0));
-        return { averageAccuracy, averagePrecision, averageRecall, maxAccuracy, maxPrecision, maxRecall };
+        const maxAuc = Math.max(...historyData.map(e => e.auc ?? 0));
+        const minRootBrier = Math.min(...historyData.map(e => e.root_brier ?? 1));
+        return { averageAccuracy, averageAuc, averageRootBrier, maxAccuracy, maxAuc, minRootBrier };
     }, [historyData]);
 
     const activeChartSeries = chartMetricsData.filter(ds => selectedMetrics.includes(ds.name));
