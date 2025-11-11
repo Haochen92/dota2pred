@@ -21,7 +21,6 @@ export default function DraftSlot({
                 backgroundColor: heroId ? 'transparent' : theme.colors.gray[9],
             })}
         >{ heroId && <HeroIcon
-            key={heroId}
             hero_id={heroId}
             hero_name='hero_name_placeholder'
             />
