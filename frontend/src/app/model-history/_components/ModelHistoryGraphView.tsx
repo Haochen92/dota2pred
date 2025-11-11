@@ -20,8 +20,8 @@ export interface ModelHistoryGraphViewProps {
   historyData: any[];
   activeChartSeries: ChartSeriesConfig[];
   summaryStats: {
-    averageAccuracy: number; averagePrecision: number; averageRecall: number;
-    maxAccuracy: number; maxPrecision: number; maxRecall: number;
+    averageAccuracy: number; averageAuc: number; averageRootBrier: number;
+    maxAccuracy: number; maxAuc: number; minRootBrier: number;
   };
 }
 
@@ -114,16 +114,17 @@ export function ModelHistoryGraphView({
           max={summaryStats.maxAccuracy}
         />
         <StatCard
-          metric="precision"
+          metric="auc"
           color="green.3"
-          average={summaryStats.averagePrecision}
-          max={summaryStats.maxPrecision}
+          average={summaryStats.averageAuc}
+          max={summaryStats.maxAuc}
         />
         <StatCard
-          metric="recall"
+          metric="root brier"
           color="red.3"
-          average={summaryStats.averageRecall}
-          max={summaryStats.maxRecall}
+          average={summaryStats.averageRootBrier}
+          max={summaryStats.minRootBrier}
+          secondaryLabel="Min"
         />
       </SimpleGrid>
     </Paper>
