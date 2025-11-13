@@ -7,8 +7,10 @@ import TeamDisplay from './TeamDisplay';
 import { TextMdRegular, TextSmRegular, TextMdBold } from '@/components/typography/TextVariants';
 import type { TableRowDataProps } from '@/types/domain';
 import { LiveIndicator } from '@/components/motion/LiveIndicator';
+import PredictionDetailsModal from './PredictionDetailsModal';
 
 export default function TableRowView({
+    matchId,
     tournamentName,
     formattedTime,
     formattedDate,
@@ -44,13 +46,20 @@ export default function TableRowView({
 
             {/* Column 5: Prediction */}
             <Group flex={1.5} gap={16} pl={12} pr={12}>
-                <Group wrap='nowrap' gap={4}>
-                    {predictedWinner === null ? <TextMdBold>No Prediction</TextMdBold> :
-                        <TextMdBold c={predictedWinner === 'Dire' ? 'red.2' : 'green.2'}>{predictedWinner}</TextMdBold>}
-                    <StarIcon size={16} />
-                </Group>
-            </Group>
+                {predictedWinner === null ? (
+                <TextMdBold>No Prediction</TextMdBold>
+                ) : (
 
+                    <PredictionDetailsModal match_id={matchId}>
+                        <Group wrap="nowrap" gap={4}>
+                            <TextMdBold c={predictedWinner === 'Dire' ? 'red.2' : 'green.2'}>
+                                {predictedWinner}
+                            </TextMdBold>
+                            <StarIcon size={16} />
+                        </Group>
+                    </PredictionDetailsModal>
+                )}
+            </Group>
             {/* Column 6: Actual Outcome */}
             <Group flex={1.5} gap={16} pl={12} pr={12}>
                 <Group gap={4} c={actualWinner === null ? 'white' : (actualWinner === 'Dire' ? 'red.2' : 'green.2')}>
