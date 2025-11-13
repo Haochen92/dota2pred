@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@ladle/react": "^5.1.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
     "openapi-typescript": "^7.9.1",
