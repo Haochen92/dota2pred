@@ -1,7 +1,7 @@
 // For input for MatchTable
 
-import { CompletedMatch, LiveMatchData, PredictionResponse } from "../contracts";
-import { UseFormReturnType } from "@mantine/form";
+import type { CompletedMatch, LiveMatchData, PredictionResponse } from "../contracts";
+import type { UseFormReturnType } from "@mantine/form";
 
 export type MatchData = CompletedMatch | LiveMatchData;
 
@@ -60,6 +60,7 @@ export interface DraftSlotProps {
 
 
 export type TableRowDataProps = {
+    matchId: number;
     tournamentName: string;
     formattedTime: string;
     formattedDate: string;
@@ -71,4 +72,20 @@ export type TableRowDataProps = {
     actualWinner: 'Radiant' | 'Dire' | null;
     isCorrectPrediction: boolean | null;
     visibilityBreakpoint?: string;
+};
+
+export type PredictionDetailsContentProps = {
+    matchId: number;
+    mode: 'modal' | 'mobile';
+};
+
+// View props for presentation components
+export type PredictionDetailsViewProps = {
+  mode: 'modal' | 'mobile';
+  predictedRadiantWin: boolean | null;
+  prob: number | null; // 0–1
+  teamPerformanceAdvantage: number | null;
+  teamHeadToHead: number | null;
+  playerHeroMasteryAdvantage: number | null;
+  heroDraftAdvantage: number | null;
 };
