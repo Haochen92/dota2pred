@@ -111,15 +111,29 @@ export default function useMatchTableData() {
 
     // combine live matches and completed matches for current page
     const matchTableData: MatchData[] = useMemo(() => {
-    // Slice the live matches
+        // Slice the live matches
         const liveMatchesForPage = filteredLiveMatches.slice(
             universalOffset,
             universalOffset + pageSize
         );
 
         if (filters.matchStatus === 'Live') return liveMatchesForPage; // ignore completed cache entirely in live mode
+
         const completedMatches = completedRes.matches ?? [];
-        return [...liveMatchesForPage, ...completedMatches].slice(0, pageSize);
+        const combined = [...liveMatchesForPage, ...completedMatches];
+
+        // Deduplicate by match_id while preserving order (live first)
+        const seen = new Set<number>();
+        const deduped: MatchData[] = [];
+        for (const m of combined) {
+            const id = (m as any).match_id as number;
+            if (!seen.has(id)) {
+                seen.add(id);
+                deduped.push(m);
+            }
+        }
+
+        return deduped.slice(0, pageSize);
     }, [filteredLiveMatches, completedRes, universalOffset, pageSize, filters.matchStatus]);
 
     const totalPages = Math.ceil((filteredLiveMatchCount + (completedRes?.total_count ?? 0)) / pageSize) || 1;
