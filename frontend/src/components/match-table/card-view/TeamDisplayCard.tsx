@@ -19,40 +19,7 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
             gap={4}
             flex={2.5}
             h='100%'
-            style={(theme) => ({
-                // Team-specific gradient backgrounds
-                background: isRadiant
-                    ? getGradient({
-                        deg: 135,
-                        from: alpha(theme.colors.green[2], 0.1),
-                        to: alpha(theme.colors.green[3], 0.05)
-                      }, theme)
-                    : getGradient({
-                        deg: 135,
-                        from: alpha(theme.colors.red[2], 0.1),
-                        to: alpha(theme.colors.red[3], 0.05)
-                      }, theme),
-
-
-                // Subtle borders for definition
-                border: `1px solid ${isRadiant
-                    ? alpha(theme.colors.green[2], 0.2)
-                    : alpha(theme.colors.red[2], 0.2)
-                }`,
-
-                // Team-specific glow effect
-                boxShadow: `
-                    inset 0 1px 0 ${alpha('white', 0.1)},
-                    0 0 12px ${alpha(isRadiant ? theme.colors.green[2] : theme.colors.red[2], 0.3)}
-                `,
-
-                borderRadius: theme.radius.md,
-
-            })}
         >
-            <TextLgBold c={isRadiant ? 'green.2' : 'red.2'}>
-                {faction}
-            </TextLgBold>
 
             <Group
                 w='80vw'
@@ -69,10 +36,17 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
                 ))}
             </Group>
 
-            <Group>
-                <TextLgRegular ta="left" h='auto' w='100%' lineClamp={1}>
-                    {teamName}
-                </TextLgRegular>
+            <Group wrap='nowrap' justify='space-between' w='100%'>
+                <Group >
+                    <TextLgBold c={isRadiant ? 'green.2' : 'red.2'}>
+                        {faction}
+                    </TextLgBold>
+                </Group>
+                <Group  justify='flex-end'>
+                    <TextLgRegular ta="left" h='auto' lineClamp={1} tt='uppercase' >
+                        {teamName}
+                    </TextLgRegular>
+                </Group>
             </Group>
         </Group>
     );
