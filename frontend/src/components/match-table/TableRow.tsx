@@ -31,6 +31,7 @@ export default function TableRow({ matchData }: TableRowProps) {
     const isCorrectPrediction = isCompleted && isPredicted ? predictedWinner === actualWinner : null;
 
     const viewProps: TableRowDataProps = {
+        matchId: matchData.match_id,
         tournamentName,
         formattedTime,
         formattedDate,
