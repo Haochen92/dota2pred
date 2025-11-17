@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import useSWR from "swr";
 import fetchModelHistory from "@/api/fetch-model-history";
-import type { ModelHistoryRequest, AggregateBy, HistoryRange } from "@/types/contracts/index";
+import type { ModelHistoryRequest, AggregateBy, HistoryRange, ModelHistoryResponse } from "@/types/contracts/index";
 import ModelHistorySkeleton from './ModelHistorySkeleton';
 import ModelHistoryGraphView from './ModelHistoryGraphView';
 import ModelHistoryMobileView from './ModelHistoryMobileView';
@@ -63,11 +63,14 @@ function ModelHistoryContent() {
         return fetchModelHistory(params);
     };
 
+    const fallbackData: ModelHistoryResponse = useMemo(() => ({ history: [], calibration_plot: { bins: [] } }), []);
+
     const { data } = useSWR(historyRequestKey, historyFetcher, {
         revalidateOnFocus: true,
         revalidateOnReconnect: true,
         refreshInterval: 0,
         suspense: true,
+        fallbackData,
     });
 
     const historyData = data.history;
