@@ -22,12 +22,16 @@ const chartMetricsData = [
     { name: 'root_brier', type: 'line', color: 'red.3' },
 ];
 
+
 const chartMetricsNames = chartMetricsData.map(ds => ds.name);
+
+export type DataDisplayOptions = 'history' | 'calibration';
 
 function ModelHistoryContent() {
     const [historyRange, setHistoryRange] = useState<HistoryRange>(7); // Defaults to 1 week
     const [aggregateBy, setAggregateBy] = useState<AggregateBy>(1); // Defaults to daily aggregation
     const [selectedMetrics, setSelectedMetrics] = useState<string[]>(chartMetricsNames);
+    const [dataDisplayOption, setDataDisplayOption] = useState<DataDisplayOptions>('history');
 
     // Adjust aggregation granularity when history range changes
     useEffect(() => {
@@ -67,6 +71,7 @@ function ModelHistoryContent() {
     });
 
     const historyData = data.history;
+    const calibrationData = data.calibration_plot;
 
     const summaryStats = useMemo(() => {
         const dataExists = historyData && historyData.length > 0;
@@ -88,6 +93,10 @@ function ModelHistoryContent() {
 
     const activeChartSeries = chartMetricsData.filter(ds => selectedMetrics.includes(ds.name));
 
+    const handleDataDisplayOptionChange = (option: DataDisplayOptions) => {
+        setDataDisplayOption(option);
+    };
+
     const sharedProps = {
         historyRange,
         onHistoryRangeChange: handleHistoryRangeChange,
@@ -96,6 +105,9 @@ function ModelHistoryContent() {
         selectedMetrics,
         onSelectedMetricsChange: setSelectedMetrics,
         historyData,
+        dataDisplayOption,
+        onDataDisplayOptionChange: handleDataDisplayOptionChange,
+        calibrationData,
     };
 
     return (

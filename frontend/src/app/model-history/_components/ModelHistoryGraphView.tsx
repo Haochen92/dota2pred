@@ -5,7 +5,9 @@ import { LineChart } from '@mantine/charts';
 import CustomToolTip from '@/components/charts/CustomToolTip';
 import { dateFormatter } from '@/utils/date-formatter';
 import { StatCard } from './StatCard';
-import type { AggregateBy, HistoryRange } from '@/types/contracts';
+import type { AggregateBy, HistoryRange, CalibrationPlotPoint } from '@/types/contracts';
+import { TextSmRegular } from '@/components/typography/TextVariants';
+import CalibrationPlot from './CalibrationPlot';
 
 interface ChartSeriesConfig { name: string; type: string; color: string; }
 
@@ -23,6 +25,9 @@ export interface ModelHistoryGraphViewProps {
     averageAccuracy: number; averageAuc: number; averageRootBrier: number;
     maxAccuracy: number; maxAuc: number; minRootBrier: number;
   };
+  dataDisplayOption: 'history' | 'calibration';
+  onDataDisplayOptionChange: (option: 'history' | 'calibration') => void;
+  calibrationData: CalibrationPlotPoint;
 }
 
 export function ModelHistoryGraphView({
@@ -35,41 +40,75 @@ export function ModelHistoryGraphView({
   onSelectedMetricsChange,
   historyData,
   activeChartSeries,
-  summaryStats
+  summaryStats,
+  dataDisplayOption,
+  onDataDisplayOptionChange,
+  calibrationData,
 }: ModelHistoryGraphViewProps) {
-  return (
-    <Paper
-      visibleFrom={visibilityBreakpoint}
-      p='xl'
-      shadow='sm'
-      gap='xl'
-      component={Stack}
-      w='100%'
-      h='auto'
-      bg='gray.7'
-      style={{ borderRadius: '0' }}
-    >
-      <Group justify='space-between' align='center' px={8}>
-        <SegmentedControl
-          bg='transparent'
-          id='history-range-control'
-          value={historyRange.toString()}
-            data={historyRangeOptions}
-          onChange={onHistoryRangeChange}
-          radius={10}
-          styles={(theme) => ({
-            indicator:{
-              backgroundColor: theme.colors.gray[9],
-            },
-            root:{ gap: theme.spacing.xs },
-            label: {color: theme.colors.gray[0]},
-          })}
-          withItemsBorders={false}
-          transitionDuration={150}
-          transitionTimingFunction='linear'
-        />
-      </Group>
-      <Group align="flex-start">
+  const DateRangeControl = () => (
+    <SegmentedControl
+      bg='transparent'
+      id='history-range-control'
+      value={historyRange.toString()}
+      data={historyRangeOptions}
+      onChange={onHistoryRangeChange}
+      radius={10}
+      styles={(theme) => ({
+        indicator:{
+          backgroundColor: theme.colors.gray[9],
+        },
+        root:{ gap: theme.spacing.xs },
+        label: {color: theme.colors.gray[0]},
+      })}
+      withItemsBorders={false}
+      transitionDuration={150}
+      transitionTimingFunction='linear'
+    />
+  )
+
+  const DisplayControl = () => (
+    <SegmentedControl
+      bg='transparent'
+      id='data-display-option-control'
+      value={dataDisplayOption}
+      data={[
+        { label: 'History', value: 'history' },
+        { label: 'Calibration', value: 'calibration' },
+      ]}
+      onChange={(value) => onDataDisplayOptionChange(value as 'history' | 'calibration')}
+      radius={10}
+      styles={(theme) => ({
+        indicator:{
+          backgroundColor: theme.colors.gray[9],
+        },
+        root:{ gap: theme.spacing.xs },
+        label: {color: theme.colors.gray[0]},
+      })}
+      withItemsBorders={false}
+      transitionDuration={150}
+      transitionTimingFunction='linear'
+    />
+  )
+
+  const MetricsControl = () => (
+    <Chip.Group multiple value={selectedMetrics} onChange={onSelectedMetricsChange}>
+      <Stack justify='flex-start' gap={8}>
+        {chartMetricsData.map((metric) => (
+          <Chip
+            key={metric.name} value={metric.name} color={metric.color} size='sm'
+            styles={{ label : {width: '100px'} }}
+          >
+            <TextSmRegular>
+              {metric.name}
+            </TextSmRegular>
+          </Chip>
+        ))}
+      </Stack>
+    </Chip.Group>
+  )
+
+  const LineChartComponent = () => (
+    <Group align="flex-start">
         <Group flex={3}>
           <LineChart
             data={historyData}
@@ -93,40 +132,58 @@ export function ModelHistoryGraphView({
             connectNulls={false}
           />
         </Group>
-        <Chip.Group multiple value={selectedMetrics} onChange={onSelectedMetricsChange}>
-          <Stack justify='flex-start' gap={8}>
-            {chartMetricsData.map((metric) => (
-              <Chip
-                key={metric.name} value={metric.name} color={metric.color} size='sm'
-                styles={{ label : {width: '100px'} }}
-              >
-                {metric.name}
-              </Chip>
-            ))}
-          </Stack>
-        </Chip.Group>
+        <MetricsControl/>
       </Group>
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" px={8}>
-        <StatCard
-          metric="accuracy"
-          color="blue.3"
-          average={summaryStats.averageAccuracy}
-          max={summaryStats.maxAccuracy}
+  )
+
+  return (
+    <Paper
+      visibleFrom={visibilityBreakpoint}
+      p='xl'
+      shadow='sm'
+      gap='xl'
+      component={Stack}
+      w='100%'
+      h='auto'
+      bg='gray.7'
+      style={{ borderRadius: '0' }}
+    >
+      <Group justify='space-between' align='center' px={8}>
+        <DateRangeControl/>
+        <DisplayControl/>
+      </Group>
+      {dataDisplayOption === 'history' ? <LineChartComponent /> :
+        <CalibrationPlot
+          calibrationData={calibrationData}
+          title="Calibration Plot"
+          height={400}
+          width="100%"
+          visibilityBreakpoint={visibilityBreakpoint}
         />
-        <StatCard
-          metric="auc"
-          color="green.3"
-          average={summaryStats.averageAuc}
-          max={summaryStats.maxAuc}
-        />
-        <StatCard
-          metric="root brier"
-          color="red.3"
-          average={summaryStats.averageRootBrier}
-          max={summaryStats.minRootBrier}
-          secondaryLabel="Min"
-        />
-      </SimpleGrid>
+      }
+      {dataDisplayOption === 'history' && (
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" px={8}>
+          <StatCard
+            metric="accuracy"
+            color="blue.3"
+            average={summaryStats.averageAccuracy}
+            max={summaryStats.maxAccuracy}
+          />
+          <StatCard
+            metric="auc"
+            color="green.3"
+            average={summaryStats.averageAuc}
+            max={summaryStats.maxAuc}
+          />
+          <StatCard
+            metric="root brier"
+            color="red.3"
+            average={summaryStats.averageRootBrier}
+            max={summaryStats.minRootBrier}
+            secondaryLabel="Min"
+          />
+        </SimpleGrid>
+      )}
     </Paper>
   );
 }
