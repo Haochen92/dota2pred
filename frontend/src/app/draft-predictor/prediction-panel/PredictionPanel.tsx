@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Group, Button, Loader, Stack, UnstyledButton} from '@mantine/core';
+import { Group, Button, Loader, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useMutation } from '@tanstack/react-query';
 
@@ -91,19 +91,19 @@ export default function PredictionPanel() {
                 {mutation.isPending && <Loader size="xl" type='dots'/>}
             </Group>
         </Stack>
-        <Stack hiddenFrom='sm' px={8} w='70%'>
+        <Stack hiddenFrom='sm' px={8} w='100%'>
             {/* Mobile View */}
-            <Group>
+            <Group w='100%' justify='space-between'>
                 <Button
                     style={{'borderRadius': 16}}
                     flex={1}
-                    justify='flex-start'
+                    justify='space-around'
                     onClick={handleClick} disabled={!form.isValid() || mutation.isPending} bg='gray.7' radius='md'
                     rightSection={<IconSparkles size={18}/>}
                 >
                     <TextSmMedium>Predict</TextSmMedium>
                 </Button>
-                <Button flex={1} justify='flex-start' style={{'borderRadius':16}} onClick={handleReset} bg='gray.7' radius='md' disabled={mutation.isPending} rightSection={<IconRestore size={18}/>}>
+                <Button flex={1} justify='space-around' style={{'borderRadius':16}} onClick={handleReset} bg='gray.7' radius='md' disabled={mutation.isPending} rightSection={<IconRestore size={18}/>}>
                     <TextSmMedium>Reset</TextSmMedium>
                 </Button>
             </Group>
