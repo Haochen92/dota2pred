@@ -1,6 +1,6 @@
 "use client";
 
-import { Paper, Stack, Group, Text, Table, ScrollArea } from "@mantine/core";
+import { Paper, Stack, Group, Text, Table, ScrollArea, Skeleton } from "@mantine/core";
 import { BarChart } from "@mantine/charts";
 import type { CalibrationPlotPoint } from "@/types/contracts";
 import { pctFormatter } from "@/utils/features-formatter";
@@ -49,9 +49,23 @@ export default function CalibrationPlot({
       </Group>
 
       {!hasData ? (
-        <Text c="gray.3" size="sm" ta="center" py="xl">
-          No calibration data available
-        </Text>
+        <Stack gap="md" w="100%">
+          {/* Desktop chart skeleton */}
+          <Skeleton visibleFrom={visibilityBreakpoint} h={height} radius="md" />
+
+          {/* Mobile table skeleton */}
+          <Stack hiddenFrom={visibilityBreakpoint} gap="xs">
+            <Skeleton h={20} w="60%" radius="sm" />
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Group key={index} grow>
+                <Skeleton h={16} radius="sm" />
+                <Skeleton h={16} radius="sm" />
+                <Skeleton h={16} radius="sm" />
+                <Skeleton h={16} radius="sm" />
+              </Group>
+            ))}
+          </Stack>
+        </Stack>
       ) : (
         <>
           {/* Desktop chart */}
@@ -74,7 +88,7 @@ export default function CalibrationPlot({
           />
 
           {/* Mobile simple table */}
-          <ScrollArea w="100%" hiddenFrom={visibilityBreakpoint} type='hover'>
+          <ScrollArea w="100%" hiddenFrom={visibilityBreakpoint} type="hover">
             <Table
               highlightOnHover
               withTableBorder={false}
