@@ -1,6 +1,6 @@
-import { Group, Stack, alpha, getGradient } from '@mantine/core';
+import { Group } from '@mantine/core';
 import HeroIcon from '@/components/icons/HeroIcon';
-import { TextLgRegular, TextLgBold } from '@/components/typography/TextVariants';
+import { TextMdRegular, TextLgBold } from '@/components/typography/TextVariants';
 
 
 type TeamDisplayProps = {
@@ -43,9 +43,9 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
                     </TextLgBold>
                 </Group>
                 <Group  justify='flex-end'>
-                    <TextLgRegular ta="left" h='auto' lineClamp={1} tt='uppercase' >
+                    <TextMdRegular ta="left" h='auto' lineClamp={1} tt='uppercase' >
                         {teamName}
-                    </TextLgRegular>
+                    </TextMdRegular>
                 </Group>
             </Group>
         </Group>
