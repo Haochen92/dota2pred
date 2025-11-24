@@ -74,7 +74,9 @@ export default function HerosContainer({attribute}: HeroCategoryTitleProps) {
         );
     }
 
-    console.log(heroesData);
+    if (process.env.NODE_ENV === 'development') {
+        console.log(heroesData);
+    }
 
     return (
     <>
