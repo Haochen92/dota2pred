@@ -7,7 +7,7 @@ export default function HeroesPanel() {
         <>
             <SimpleGrid
                 visibleFrom='sm'
-                cols={{base: 2, sm: 1, lg: 2}}
+                cols={{base: 2, sm: 1, md: 2}}
                 spacing='24' w='100%' h='auto'
                 p={20}
                 bg='gray.9'
