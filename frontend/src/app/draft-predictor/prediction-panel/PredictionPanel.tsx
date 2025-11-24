@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Group, Button, Loader, Stack } from '@mantine/core';
+import { Group, Button, Loader, Stack, Notification } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useMutation } from '@tanstack/react-query';
 
@@ -65,6 +65,12 @@ export default function PredictionPanel() {
             prediction={prediction}
             probability={probability}
         />
+        {
+            mutation.isError &&
+                <Notification title="Something went wrong" mb="md" color='red' onClose={() => mutation.reset()}>
+                    Unable to get prediction. Please try again.
+                </Notification>
+        }
 
         <Stack visibleFrom='sm' px={12}>
             {/* Desktop View */}
