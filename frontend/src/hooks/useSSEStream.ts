@@ -18,7 +18,9 @@ export default function useSSEStream() : LiveMatchData[] {
             try {
                 const notification: LiveStateUpdateRequest = JSON.parse(event.data);
                 const list_matches: LiveMatchData[] = notification.live_matches
-                console.log(`SSE received ${list_matches.length} live matches at ${new Date().toISOString()}`);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`SSE received ${list_matches.length} live matches at ${new Date().toISOString()}`);
+                }
                 setData(list_matches);
             } catch (error) {
                 console.error("Error parsing SSE event data:", error);
