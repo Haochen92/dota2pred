@@ -87,8 +87,9 @@ export default function PredictionDetailsView({ viewProps }: { viewProps: Predic
           <Legend />
           <Tooltip
             label={`${winner} Win Probability`}
-            withArrow
             position="top"
+            withArrow
+            events={{ hover: true, focus: true, touch: true }}
           >
             <Badge color={`${winnerColor}.2`} variant='filled' size='xl' c='white'>
               {formattedWinPercentage}
