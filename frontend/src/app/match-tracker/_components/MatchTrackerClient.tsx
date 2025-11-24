@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import { Container, Stack, Title } from '@mantine/core';
+import { Container, Stack, Title, Notification } from '@mantine/core';
 
 // Child Components
 import FiltersBar from '@/components/match-filter/FiltersBar';
@@ -33,17 +33,27 @@ export default function MatchTrackerClient() {
         <ErrorBoundary>
           <Suspense fallback={<MatchTableSkeleton />}>
             {/* Render error, loading state, or the match table */}
-            {isValidating
-              ? <MatchTableSkeleton />
-              : <MatchTable matchData={matchTableData} />
+            {
+              completedError ? (
+                <Notification title="Something went wrong" mb="md" color='red'>
+                  Unable to load match data. Please try again.
+                </Notification>
+              ) : isValidating ? (
+                <MatchTableSkeleton />
+              ) : (
+                <MatchTable matchData={matchTableData} />
+              )
             }
-
             {/* The pagination component controls the shared page state. */}
-            <TablePagination
-              page={page}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            {
+              !completedError && (
+                <TablePagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )
+            }
           </Suspense>
         </ErrorBoundary>
       </Stack>
