@@ -2,7 +2,7 @@
 'use client';
 
 import useSWR from 'swr';
-import fetchModelHistory from '@/api/fetch-model-history';
+import fetchModelHistory from '@/api-client/fetch-model-history';
 import { Suspense } from 'react';
 import { Title, NumberFormatter, Center, Loader } from '@mantine/core';
 

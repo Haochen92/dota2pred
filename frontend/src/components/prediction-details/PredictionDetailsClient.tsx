@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import fetchPredictionDetails from "@/api/fetch-prediction-details";
+import fetchPredictionDetails from "@/api-client/fetch-prediction-details";
 import type { PredictionDetailsRequest, PredictionDetailsResponse } from "@/types/contracts";
 import type { PredictionDetailsViewProps, PredictionDetailsContentProps } from "@/types/domain";
 import PredictionDetailsView from "./PredictionDetailsView";

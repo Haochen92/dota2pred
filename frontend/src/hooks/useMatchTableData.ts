@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect } from 'react';
 import useSWR from 'swr';
-import fetchCompletedMatches from '@/api/fetch-completed-matches';
+import fetchCompletedMatches from '@/api-client/fetch-completed-matches';
 
 // Hooks
 import useSSEStream from '@/hooks/useSSEStream';

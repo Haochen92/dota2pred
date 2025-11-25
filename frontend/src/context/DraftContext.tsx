@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { useForm } from "@mantine/form";
 import type { DraftContextType, FormValues, ActiveSlot } from "@/types/domain";
 import type { PredictionResponse } from "@/types/contracts";
-import fetchDraftPrediction from "@/api/fetch-draft-prediction";
+import fetchDraftPrediction from "@/api-client/fetch-draft-prediction";
 
 export const DraftContext = createContext<DraftContextType | null>(null);
 

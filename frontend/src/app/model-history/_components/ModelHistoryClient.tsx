@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useMemo, useEffect } from "react";
 import useSWR from "swr";
-import fetchModelHistory from "@/api/fetch-model-history";
+import fetchModelHistory from "@/api-client/fetch-model-history";
 import type { ModelHistoryRequest, AggregateBy, HistoryRange, ModelHistoryResponse } from "@/types/contracts/index";
 import ModelHistorySkeleton from './ModelHistorySkeleton';
 import ModelHistoryGraphView from './ModelHistoryGraphView';

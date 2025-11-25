@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { HeroImageData } from "@/types/contracts";
-import fetchHeroData from "@/api/fetch-hero-data";
-import fetchPatchData from "@/api/fetch-patch-data";
-import fetchLeagueInfo from "@/api/fetch-league-info";
+import fetchHeroData from "@/api-client/fetch-hero-data";
+import fetchPatchData from "@/api-client/fetch-patch-data";
+import fetchLeagueInfo from "@/api-client/fetch-league-info";
 
 // Temporary types until API schema is regenerated
 interface LeagueData {

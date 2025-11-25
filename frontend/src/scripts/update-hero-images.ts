@@ -1,5 +1,5 @@
 import { HeroImageData } from "@/types/contracts/index";
-import fetchHeroData from "@/api/fetch-hero-data";
+import fetchHeroData from "@/api-client/fetch-hero-data";
 import getRootDir from "@/utils/get-root-dir";
 import fsp from 'fs/promises';
 import path from 'path';
