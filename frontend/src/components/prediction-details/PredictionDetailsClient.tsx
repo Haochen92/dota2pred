@@ -9,13 +9,13 @@ import PredictionDetailsSkeleton from "./PredictionDetailsSkeleton";
 
 
 function PredictionDetailsContent({ matchId, mode }: PredictionDetailsContentProps) {
-    const fetcher = () => {
+    const fetcher = ({matchId}: {matchId: number}) => {
         const params: PredictionDetailsRequest = { match_id: matchId };
         return fetchPredictionDetails(params);
     };
 
     const { data, error, isLoading } = useSWR<PredictionDetailsResponse, Error>(
-        ['prediction_details', matchId],
+        {matchId},
         fetcher,
         { revalidateOnFocus: true, keepPreviousData: true }
     );
