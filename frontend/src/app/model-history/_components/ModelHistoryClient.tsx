@@ -56,16 +56,14 @@ function ModelHistoryContent() {
         setHistoryRange(Number(value) as HistoryRange);
     };
 
-    const historyRequestKey = useMemo(() => ['model_history', { historyRange, aggregateBy }], [historyRange, aggregateBy]);
-
-    const historyFetcher = () => {
+    const historyFetcher = ({historyRange, aggregateBy}: {historyRange: HistoryRange, aggregateBy: AggregateBy}) => {
         const params: ModelHistoryRequest = { history_range: historyRange, aggregate_by: aggregateBy };
         return fetchModelHistory(params);
     };
 
-    const fallbackData: ModelHistoryResponse = useMemo(() => ({ history: [], calibration_plot: { bins: [] } }), []);
+    const fallbackData: ModelHistoryResponse = { history: [], calibration_plot: { bins: [] } };
 
-    const { data } = useSWR(historyRequestKey, historyFetcher, {
+    const { data } = useSWR({historyRange, aggregateBy}, historyFetcher, {
         revalidateOnFocus: true,
         revalidateOnReconnect: true,
         refreshInterval: 0,
