@@ -9,14 +9,22 @@ interface LeagueDataResponse {
     leagues: LeagueData[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
 
 export default async function fetchLeagueInfo(): Promise<LeagueData[]> {
-    const endpointUrl = `${API_BASE_URL}/leagues/get_league_info`
-    const res = await fetch(endpointUrl)
-    if (!res.ok) {
-        throw new Error('Failed to fetch league data')
-    }
-    const data: LeagueDataResponse = await res.json()
-    return data.leagues
+  const endpointUrl = `${API_BASE_URL}/leagues/get_league_info`;
+  const res = await fetch(endpointUrl, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch league data: ${res.status} ${res.statusText} ${text}`);
+  }
+
+  const data: LeagueDataResponse = await res.json();
+  return data.leagues;
 }
