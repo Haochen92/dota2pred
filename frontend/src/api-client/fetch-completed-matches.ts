@@ -18,17 +18,21 @@ const fetchCompletedMatches = async (filters: MatchListFilters): Promise<Paginat
   if (filters?.patch_end_time) q.set('patch_end_time', filters.patch_end_time);
 
   // Array filters
-  if (filters && Array.isArray(filters["hero_ids[]"])) {
-    filters["hero_ids[]"]!.forEach((id) => q.append('hero_ids[]', String(id)));
+  const heroIds = filters?.["hero_ids[]"];
+  if (Array.isArray(heroIds)) {
+    heroIds.forEach((id) => q.append('hero_ids[]', String(id)));
   }
 
-  if (filters && Array.isArray(filters['team_ids[]'])) {
-    filters['team_ids[]']!.forEach((id) => q.append('team_ids[]', String(id)));
+  const teamIds = filters?.['team_ids[]'];
+  if (Array.isArray(teamIds)) {
+    teamIds.forEach((id) => q.append('team_ids[]', String(id)));
   }
+
   if (filters?.league_id !== undefined && filters.league_id !== null) q.set('league_id', String(filters.league_id));
 
   const fullUrl = `${basePath}?${q.toString()}`;
   const res = await fetch(fullUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
+
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to fetch matches: ${res.status} ${res.statusText} ${text}`);
