@@ -16,15 +16,18 @@ export interface MatchFilterOptions {
 }
 
 
-// For DraftContext
+/** Global pointer for the current selected activeslot in the draft UI */
 export interface ActiveSlot {
+    /** which team the current active slot belongs to */
     team: 'radiantTeam' | 'direTeam';
+    /** index number of slot in the team's draft array (0-4) */
     index: number;
 }
 
 export interface FormValues {
     radiantTeam: (null | number)[];
     direTeam: (null | number)[];
+    /** Currently selected slot in the draft UI (or `null` when none is selected). */
     activeSlot: null | ActiveSlot;
 }
 
