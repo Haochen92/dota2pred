@@ -97,8 +97,8 @@ async def create_deployment():
     await collect_public_matches_for_latest_patch.deploy(
         name="collect_public_matches_for_latest_patch",
         work_pool_name="dota_oracle_scheduler",
-        # Run daily; the flow gates itself until 14 days after a new patch
-        cron="0 4 * * *",
+        # Run every week on Friday at midnight
+        cron="0 0 * * FRI",
         concurrency_limit=1,
     )
     logger.info("Deployment 'collect_public_matches_for_latest_patch' applied successfully.")
