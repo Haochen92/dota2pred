@@ -26,13 +26,22 @@ export function DraftProvider({children}: {children: React.ReactNode}) {
         if (!activeSlot) return;
 
         const { team, index } = activeSlot;
-        const valueKey = `${team}.${index}`;
+        const valueKey = `${team}.${index}`; // Mantine's useForm parses .paths e.g. radiantTeam.0 for values
 
         // Append the hero to the correct team at the specified index
         form.setFieldValue(valueKey, heroId);
 
-        // Clear the active slot after selection
-        form.setFieldValue('activeSlot', null); }
+        // Auto advance to the next slot, using modulo to wrap around
+        const teamArray = form.values[team];
+        const nextIndex = (index + 1) % teamArray.length;
+
+        if (teamArray[nextIndex] === null) {
+            form.setFieldValue('activeSlot', { team, index: nextIndex });
+        } else {
+            // If the next slot is already filled, clear activeSlot
+            form.setFieldValue('activeSlot', null);
+        }
+    }
 
 
     const handleRemoveHero = (slot: ActiveSlot)  => {

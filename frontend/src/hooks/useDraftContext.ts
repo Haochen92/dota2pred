@@ -4,7 +4,6 @@ import { DraftContext } from "@/context/DraftContext";
 export default function useDraftContext() {
     const context = useContext(DraftContext);
 
-    // This check is the improvement
     if (context === null) {
         throw new Error('useDraftContext must be used within a DraftProvider');
     }
