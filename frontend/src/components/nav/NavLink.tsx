@@ -2,15 +2,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import classes from './NavLink.module.css'
-import { Anchor, AnchorProps } from '@mantine/core';
+import { Anchor } from '@mantine/core';
 import { TextLgBold } from '@/components/typography/TextVariants';
 
-interface NavLinkProps extends Omit<AnchorProps, 'href'> {
+interface NavLinkProps {
   href: string;
   text: string;
 }
 
-export default function NavLink({ href, text, ...props }: NavLinkProps) {
+export default function NavLink({ href, text }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -19,7 +19,6 @@ export default function NavLink({ href, text, ...props }: NavLinkProps) {
       component={Link}
       href={href}
       className={`${classes.link} ${isActive ? classes.active : ''}`}
-      {...props}
     >
       <TextLgBold component="span">{text}</TextLgBold>
     </Anchor>
