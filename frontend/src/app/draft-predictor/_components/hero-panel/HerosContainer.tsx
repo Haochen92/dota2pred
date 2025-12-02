@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from 'react'
-import { SimpleGrid, Stack, Skeleton } from "@mantine/core"
+import { SimpleGrid, Stack } from "@mantine/core"
 import HeroCategoryTitle from './HeroCategoryTitle';
 import type { HeroCategoryTitleProps } from "./HeroCategoryTitle";
 import { useConstantsStore } from "@/hooks/useConstantsStore";
 import { HeroImageData } from "@/types/contracts";
 import useDraftContext from '@/hooks/useDraftContext';
 import SelectableHero from '../shared/SelectableHero';
+import HeroCategorySkeleton from './HeroCategorySkeleton';
 
 const attributeMapping = {
     'strength': 'str',
@@ -50,28 +51,7 @@ export default function HerosContainer({attribute}: HeroCategoryTitleProps) {
     const canPick = activeSlot !== null;
 
     if (isLoading) {
-        return (
-            <>
-                <Stack w='100%' h='100%' align='flex-start' justify='flex-start' gap={16} visibleFrom='sm'>
-                    {/* Desktop View, visibleFrom='sm' */ }
-                    <HeroCategoryTitle attribute={attribute} />
-                    <SimpleGrid cols={7} spacing={8} h='auto'>
-                        {Array.from({length:35}).map((_, i) => (
-                            <Skeleton key={i} height={55} width={80} radius='md' />
-                        ))}
-                    </SimpleGrid>
-                </Stack>
-                <Stack w='100%' h='100%' align='flex-start' justify='flex-start' gap={16} hiddenFrom='sm'>
-                    <HeroCategoryTitle attribute={attribute} />
-                    <SimpleGrid cols={5} spacing={4} h='auto'>
-                        {Array.from({length:35}).map((_, i) => (
-                            <Skeleton key={i} height={45} width={70} radius='md' />
-                        ))}
-                    </SimpleGrid>
-                </Stack>
-            </>
-
-        );
+        return <HeroCategorySkeleton attribute={attribute} />;
     }
 
     if (process.env.NODE_ENV === 'development') {

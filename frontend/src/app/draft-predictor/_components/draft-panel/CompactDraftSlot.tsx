@@ -2,7 +2,11 @@ import type { DraftSlotProps } from "@/types/domain";
 import HeroAvatar from "@/components/icons/HeroAvatar";
 import { UnstyledButton} from "@mantine/core";
 
-
+/**
+ * Compact draft slot shown in mobile view.
+ * Uses Hero Avatar for displaying hero icons.
+ * Displays the picked hero (if any) and highlights when active.
+ */
 export default function CompactDraftSlot({
     heroId,
     onClick,

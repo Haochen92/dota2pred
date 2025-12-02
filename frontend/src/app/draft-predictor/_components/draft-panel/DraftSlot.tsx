@@ -2,7 +2,10 @@ import HeroIcon from "@/components/icons/HeroIcon";
 import type { DraftSlotProps } from "@/types/domain";
 import { UnstyledButton} from "@mantine/core";
 
-
+/**
+ * A component representing a draft slot for selecting a hero, for Desktop view
+ * Uses HeroIcon to display the selected hero.
+ */
 export default function DraftSlot({
     heroId,
     onClick,
