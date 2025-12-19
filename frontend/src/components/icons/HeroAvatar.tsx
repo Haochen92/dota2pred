@@ -23,7 +23,7 @@ export default function HeroAvatar ({hero_id, hero_name, minHeight, minWidth } :
     >
         <Image
             fill={true}
-            src={`/icons/heroes/icons/${hero_id}.png`}
+            src={`/images/heroes/icons/${hero_id}.png`}
             alt={hero_name ? `${hero_name}.png` : `${hero_id}.png`}
             style={{objectFit:"cover"}}
         />
