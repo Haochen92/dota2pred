@@ -8,7 +8,9 @@ import os from 'os';
 // --- Configuration ---
 const ROOT_DIR = getRootDir();
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public', 'images', 'heroes');
-const CDN_HOST = 'https://cdn.dota2.com'; // Use https for security
+// Note: cdn.dota2.com currently serves these assets over HTTP with a cert
+// that does not match the HTTPS hostname, so we must use plain HTTP here.
+const CDN_HOST = 'http://cdn.dota2.com';
 
 /**
  * Downloads an image from a URL and saves it to a specified filepath.
