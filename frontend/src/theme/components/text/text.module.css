@@ -27,39 +27,39 @@
   /* ...and so on for md and sm sizes */
 
   &[data-variant='md-bold'] {
-    font-size: var(--mantine-font-size-sm);
+    font-size: var(--mantine-font-size-md);
     font-weight: 700;
-    line-height: var(--mantine-line-height-sm);
+    line-height: var(--mantine-line-height-md);
   }
 
   &[data-variant='md-medium'] {
-    font-size: var(--mantine-font-size-sm);
+    font-size: var(--mantine-font-size-md);
     font-weight: 500;
-    line-height: var(--mantine-line-height-sm);
+    line-height: var(--mantine-line-height-md);
   }
 
   &[data-variant='md-regular'] {
-    font-size: var(--mantine-font-size-sm);
+    font-size: var(--mantine-font-size-md);
     font-weight: 400;
-    line-height: var(--mantine-line-height-sm);
+    line-height: var(--mantine-line-height-md);
   }
 
   &[data-variant='sm-bold'] {
-    font-size: var(--mantine-font-size-xs);
+    font-size: var(--mantine-font-size-sm);
     font-weight: 700;
-    line-height: var(--mantine-line-height-xs);
+    line-height: var(--mantine-line-height-sm);
   }
 
   &[data-variant='sm-medium'] {
-    font-size: var(--mantine-font-size-xs);
+    font-size: var(--mantine-font-size-sm);
     font-weight: 500;
-    line-height: var(--mantine-line-height-xs);
+    line-height: var(--mantine-line-height-sm);
   }
 
   &[data-variant='sm-regular'] {
-    font-size: var(--mantine-font-size-xs);
+    font-size: var(--mantine-font-size-sm);
     font-weight: 400;
-    line-height: var(--mantine-line-height-xs);
+    line-height: var(--mantine-line-height-sm);
   }
 
   &[data-variant='special'] {
