@@ -81,9 +81,7 @@ class PublicMatchCollector:
     ) -> Dict[str, Any]:
         """Decide whether to stop, hop the cursor downward, or restart from the top."""
         if pass_new > 0:
-            logger.info(
-                f"Progress made ({pass_new} new matches). Resetting cursor to {start_match_id} for next pass."
-            )
+            logger.info(f"Progress made ({pass_new} new matches). Resetting cursor to {start_match_id} for next pass.")
             return {"stop": False, "next_cursor": start_match_id}
 
         if self._hop_on_no_progress > 0:
@@ -91,9 +89,7 @@ class PublicMatchCollector:
             if new_cursor == current_cursor:
                 logger.info("No progress and cannot hop further. Stopping collection.")
                 return {"stop": True, "next_cursor": current_cursor}
-            logger.info(
-                f"No progress. Hopping start cursor from {current_cursor} to {new_cursor}."
-            )
+            logger.info(f"No progress. Hopping start cursor from {current_cursor} to {new_cursor}.")
             return {"stop": False, "next_cursor": new_cursor}
 
         logger.info("No progress made in the last pass. Stopping collection.")
@@ -132,9 +128,7 @@ class PublicMatchCollector:
                     stop_at_match_id=end_match_id,
                 ):
                     if match.match_id < end_match_id:
-                        logger.info(
-                            f"End boundary reached at match {match.match_id}. Finishing pass {passes}."
-                        )
+                        logger.info(f"End boundary reached at match {match.match_id}. Finishing pass {passes}.")
                         break
 
                     try:
@@ -144,9 +138,7 @@ class PublicMatchCollector:
                         continue
 
                     if len(batch) >= self._insert_batch_size:
-                        newly_inserted = await self._process_batch(
-                            repo, batch, passes, total_new, target_match_count
-                        )
+                        newly_inserted = await self._process_batch(repo, batch, passes, total_new, target_match_count)
                         pass_new += newly_inserted
                         total_new += newly_inserted
                         batch.clear()
@@ -155,18 +147,14 @@ class PublicMatchCollector:
                             break
 
                 # Final batch for the pass
-                newly_inserted = await self._process_batch(
-                    repo, batch, passes, total_new, target_match_count
-                )
+                newly_inserted = await self._process_batch(repo, batch, passes, total_new, target_match_count)
                 pass_new += newly_inserted
                 total_new += newly_inserted
 
                 if total_new >= target_match_count:
                     break
 
-                next_action = self._determine_next_action(
-                    pass_new, start_cursor, start_match_id, end_match_id
-                )
+                next_action = self._determine_next_action(pass_new, start_cursor, start_match_id, end_match_id)
                 if next_action["stop"]:
                     break
 
@@ -174,9 +162,7 @@ class PublicMatchCollector:
                 if self._backoff > 0 and pass_new > 0:
                     await asyncio.sleep(self._backoff)
 
-        logger.info(
-            f"Collection finished. Total new: {total_new}. Target: {target_match_count}. Passes: {passes}."
-        )
+        logger.info(f"Collection finished. Total new: {total_new}. Target: {target_match_count}. Passes: {passes}.")
         return {
             "total_new": total_new,
             "passes": passes,

@@ -6,9 +6,7 @@ from dota_oracle_common.models.match import PublicMatch, PublicMatchTable
 def to_public_match_table(m: PublicMatch) -> PublicMatchTable:
     """Map PublicMatch schema to PublicMatchTable row, validating team sizes."""
     if len(m.radiant_team) != 5 or len(m.dire_team) != 5:
-        raise ValueError(
-            f"Invalid team sizes for match {m.match_id}: {len(m.radiant_team)} / {len(m.dire_team)}"
-        )
+        raise ValueError(f"Invalid team sizes for match {m.match_id}: {len(m.radiant_team)} / {len(m.dire_team)}")
 
     return PublicMatchTable(
         match_id=m.match_id,
@@ -28,4 +26,3 @@ def to_public_match_table(m: PublicMatch) -> PublicMatchTable:
         slot_131_hero_id=m.dire_team[3],
         slot_132_hero_id=m.dire_team[4],
     )
-

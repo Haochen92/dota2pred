@@ -62,14 +62,10 @@ async def stream_public_matches(
     while True:
         # Early stop if we've crossed the lower boundary without seeing any data
         if stop_at_match_id is not None and cursor is not None and cursor <= stop_at_match_id:
-            logger.info(
-                f"Cursor {cursor} <= stop_at_match_id {stop_at_match_id}; stopping stream at boundary."
-            )
+            logger.info(f"Cursor {cursor} <= stop_at_match_id {stop_at_match_id}; stopping stream at boundary.")
             break
         try:
-            batch = await fetch_public_matches_page(
-                less_than_match_id=cursor, min_rank=min_rank, max_rank=max_rank
-            )
+            batch = await fetch_public_matches_page(less_than_match_id=cursor, min_rank=min_rank, max_rank=max_rank)
         except Exception as e:
             logger.error(
                 f"Error fetching /publicMatches at cursor={cursor}. Hopping back by {hop_current}. Error: {e}",
@@ -93,9 +89,7 @@ async def stream_public_matches(
                     "/publicMatches returned an empty page at cursor with no further hop context; stopping stream."
                 )
                 break
-            logger.warning(
-                f"/publicMatches empty page at cursor={cursor}. Hopping back by {hop_current} and retrying."
-            )
+            logger.warning(f"/publicMatches empty page at cursor={cursor}. Hopping back by {hop_current} and retrying.")
             cursor = max(0, cursor - hop_current)
             hop_current = min(hop_current * 2, hop_max)
             # If we've now moved past the lower boundary, stop.

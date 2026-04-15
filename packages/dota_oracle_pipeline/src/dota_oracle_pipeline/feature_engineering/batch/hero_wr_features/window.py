@@ -58,17 +58,19 @@ class HeroWinrateWindowFeatureGenerator:
             r_wrs = [self._read_wr_window(hero_history.get(h), alpha, beta) for h in radiant_picks]
             d_wrs = [self._read_wr_window(hero_history.get(h), alpha, beta) for h in dire_picks]
 
-            row = HeroWinrateTable(**{
+            row = HeroWinrateTable(
                 **{
-                    "match_id": match.match_id,
-                },
-                **{
-                    "radiant_avg_hero_winrate": float(sum(r_wrs) / len(r_wrs)) if r_wrs else default_wr,
-                    "dire_avg_hero_winrate": float(sum(d_wrs) / len(d_wrs)) if d_wrs else default_wr,
-                    "radiant_max_hero_winrate": max(r_wrs) if r_wrs else default_wr,
-                    "dire_max_hero_winrate": max(d_wrs) if d_wrs else default_wr,
+                    **{
+                        "match_id": match.match_id,
+                    },
+                    **{
+                        "radiant_avg_hero_winrate": float(sum(r_wrs) / len(r_wrs)) if r_wrs else default_wr,
+                        "dire_avg_hero_winrate": float(sum(d_wrs) / len(d_wrs)) if d_wrs else default_wr,
+                        "radiant_max_hero_winrate": max(r_wrs) if r_wrs else default_wr,
+                        "dire_max_hero_winrate": max(d_wrs) if d_wrs else default_wr,
+                    },
                 }
-            })
+            )
             rows.append(row)
 
             radiant_won = get_radiant_won(match)

@@ -49,9 +49,7 @@ class PlayerHeroWindowFeatureGenerator:
 
         for match in matches:
             # Read features (pre-update) for causal correctness
-            fields = self._build_feature_fields_window(
-                match, ph_histories, alpha, beta, default_wr
-            )
+            fields = self._build_feature_fields_window(match, ph_histories, alpha, beta, default_wr)
             features.append(PlayerHeroFeatureTable(match_id=match.match_id, **fields))  # type: ignore[arg-type]
 
             # Update histories only after outcome is known

@@ -75,19 +75,14 @@ class S3Wrapper:
             file_path: file path for download location
             object_key: full path of object in s3 bucket to retrieve
         """
-        
+
         dest = Path(file_path)
 
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            logger.info("Starting download: s3://%s/%s -> %s",
-                    self.bucket_name, object_key, dest)
-            
-            self.transfer.download_file(
-                filename=str(dest), 
-                bucket=self.bucket_name, 
-                key=object_key
-            )
+            logger.info("Starting download: s3://%s/%s -> %s", self.bucket_name, object_key, dest)
+
+            self.transfer.download_file(filename=str(dest), bucket=self.bucket_name, key=object_key)
 
         except (ClientError, Exception) as e:
             logger.error(e)

@@ -22,9 +22,5 @@ class PatchTable(SQLModel, table=True):
     end_time: Optional[datetime] = Field(sa_column=Column("end_time", TIMESTAMP(timezone=True), nullable=True))
 
     # New optional match_id boundaries for this patch window
-    start_match_id: Optional[int] = Field(
-        default=None, sa_column=Column("start_match_id", BigInteger, nullable=True)
-    )
-    end_match_id: Optional[int] = Field(
-        default=None, sa_column=Column("end_match_id", BigInteger, nullable=True)
-    )
+    start_match_id: Optional[int] = Field(default=None, sa_column=Column("start_match_id", BigInteger, nullable=True))
+    end_match_id: Optional[int] = Field(default=None, sa_column=Column("end_match_id", BigInteger, nullable=True))

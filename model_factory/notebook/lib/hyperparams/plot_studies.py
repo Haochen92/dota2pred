@@ -3,14 +3,20 @@ import pandas as pd
 from typing import Tuple, Iterable, List
 from optuna.trial import TrialState
 from optuna.visualization import (
-    plot_optimization_history, plot_param_importances,
-    plot_slice, plot_parallel_coordinate, plot_contour, plot_edf
+    plot_optimization_history,
+    plot_param_importances,
+    plot_slice,
+    plot_parallel_coordinate,
+    plot_contour,
+    plot_edf,
 )
 from IPython.display import display
+
 
 def importance_table(study: optuna.study.Study, top_k: int = 10) -> pd.DataFrame:
     """Tabular param importances (sorted)."""
     from optuna.importance import get_param_importances
+
     imps = get_param_importances(study)  # FANOVA by default if available
     df = (
         pd.DataFrame(list(imps.items()), columns=["param", "importance"])
@@ -20,20 +26,24 @@ def importance_table(study: optuna.study.Study, top_k: int = 10) -> pd.DataFrame
     )
     return df
 
+
 def top_params(study: optuna.study.Study, k: int = 6) -> List[str]:
     """Pick top-k params by importance."""
     return importance_table(study, top_k=k)["param"].tolist()
+
 
 def valid_pairs(study: optuna.study.Study, params: Iterable[str], min_trials: int = 10) -> List[Tuple[str, str]]:
     """Param pairs that co-occur in >= min_trials."""
     from collections import defaultdict
     from itertools import combinations
+
     counts = defaultdict(int)
     for t in study.get_trials(deepcopy=False, states=(TrialState.COMPLETE,)):
         keys = [p for p in t.params.keys() if p in params]
         for a, b in combinations(sorted(keys), 2):
             counts[(a, b)] += 1
     return [pair for pair, c in counts.items() if c >= min_trials]
+
 
 def plot_study(
     study: optuna.study.Study,
@@ -78,6 +88,7 @@ def plot_study(
     df_top_trials = get_top_trials_df(study)
     display(df_top_trials)
 
+
 def get_top_trials_df(study: optuna.Study, n_trials: int = 10) -> pd.DataFrame:
     """
     Extracts the top performing trials from an Optuna study into a pandas DataFrame.
@@ -102,12 +113,8 @@ def get_top_trials_df(study: optuna.Study, n_trials: int = 10) -> pd.DataFrame:
         return pd.DataFrame()
 
     # 2. Sort them based on the study's optimization direction
-    is_maximize = (study.direction == optuna.study.StudyDirection.MAXIMIZE)
-    sorted_trials = sorted(
-        completed_trials,
-        key=lambda t: t.value,
-        reverse=is_maximize
-    )
+    is_maximize = study.direction == optuna.study.StudyDirection.MAXIMIZE
+    sorted_trials = sorted(completed_trials, key=lambda t: t.value, reverse=is_maximize)
 
     # 3. Select the top N trials and prepare data for the DataFrame
     top_trials = sorted_trials[:n_trials]
@@ -115,14 +122,10 @@ def get_top_trials_df(study: optuna.Study, n_trials: int = 10) -> pd.DataFrame:
     trial_data = []
     for i, trial in enumerate(top_trials):
         # Start with the core trial information
-        row = {
-            'rank': i + 1,
-            'value': trial.value,
-            'trial_num': trial.number
-        }
+        row = {"rank": i + 1, "value": trial.value, "trial_num": trial.number}
         # Add all hyperparameters from the trial to the same dictionary
         row.update(trial.params)
         trial_data.append(row)
-        
+
     # 4. Create and return the DataFrame
     return pd.DataFrame(trial_data)

@@ -131,6 +131,4 @@ class PublicMatchTable(SQLModel, table=True):
     slot_131_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
     slot_132_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
 
-    __table_args__ = (
-        Index("ix_public_matches_start_time", "start_time"),
-    )
+    __table_args__ = (Index("ix_public_matches_start_time", "start_time"),)

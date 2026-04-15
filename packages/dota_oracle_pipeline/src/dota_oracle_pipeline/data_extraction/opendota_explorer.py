@@ -35,4 +35,3 @@ async def find_match_id_by_timestamp(target_time: datetime) -> Optional[int]:
     except Exception as e:
         logger.error(f"Failed to find match_id by timestamp: {e}", exc_info=True)
         return None
-

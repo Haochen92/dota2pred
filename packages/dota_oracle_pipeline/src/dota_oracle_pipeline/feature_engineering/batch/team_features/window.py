@@ -78,4 +78,3 @@ class TeamWindowFeatureGenerator:
         games = len(history)
         t1_win_rate = (t1_wins + alpha) / (games + beta)
         return t1_win_rate if rad_id == key[0] else (1.0 - t1_win_rate)
-

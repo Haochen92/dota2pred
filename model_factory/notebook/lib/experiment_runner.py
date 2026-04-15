@@ -20,11 +20,11 @@ def run_experiment(
     - Trains each model once and reports accuracy
     """
     print("Starting new experiment run...\n")
-    
+
     # merge features and targets to ensure final row alignment
     all_train_dfs = feature_sets_train + [y_train_df]
     final_df_train = merge_features_on_match_id(all_train_dfs, on_key=merge_key)
-    
+
     all_test_dfs = feature_sets_test + [y_test_df]
     final_df_test = merge_features_on_match_id(all_test_dfs, on_key=merge_key)
 
@@ -34,13 +34,8 @@ def run_experiment(
     y_train = final_df_train[target_col]
     y_test = final_df_test[target_col]
 
-
     results, leaderboard = evaluate_models(
-        models=models_dict,
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test
+        models=models_dict, X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test
     )
     print("\nExperiment completed. Leaderboard:")
     print(leaderboard)

@@ -54,7 +54,7 @@ async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = N
 
     Returns:
         dict[Any, Any]: Parsed JSON results from API
-        
+
     """
     if not API_KEY:
         raise ValueError("Missing API KEY, unable to fetch data")
@@ -77,6 +77,7 @@ async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = N
             error_message = f"{type(e).__name__}: {str(e)}"
             logger.error(error_message)
             raise
+
 
 @task(
     retries=4,

@@ -75,9 +75,7 @@ def backup_postgresql_db() -> Path:
     if db_password:
         env["PGPASSWORD"] = db_password
 
-    logger.info(
-        f"Starting pg_dump for db='{db_name}' host='{db_host}' port='{db_port}' to '{dump_file_path}'"
-    )
+    logger.info(f"Starting pg_dump for db='{db_name}' host='{db_host}' port='{db_port}' to '{dump_file_path}'")
     try:
         subprocess.run(cmd, check=True, env=env)
         logger.info(f"Backup created successfully: {dump_file_path}")

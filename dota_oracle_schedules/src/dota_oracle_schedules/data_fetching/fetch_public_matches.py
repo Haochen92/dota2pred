@@ -56,12 +56,7 @@ async def collect_public_matches_for_latest_patch_flow(
     """
     session_factory = DatabaseManager.get_session_factory()
     async with session_factory() as session:
-        stmt = (
-            select(PatchTable)
-            .where(PatchTable.end_time.is_(None))
-            .order_by(PatchTable.start_time.desc())
-            .limit(1)
-        )
+        stmt = select(PatchTable).where(PatchTable.end_time.is_(None)).order_by(PatchTable.start_time.desc()).limit(1)
         result = await session.execute(stmt)
         latest_patch: Optional[PatchTable] = result.scalar_one_or_none()
 
@@ -79,18 +74,14 @@ async def collect_public_matches_for_latest_patch_flow(
             return
 
         if latest_patch.start_match_id is None:
-            logger.critical(
-                "Latest patch is missing start_match_id. Run hydrate_patch_boundaries_task() first."
-            )
+            logger.critical("Latest patch is missing start_match_id. Run hydrate_patch_boundaries_task() first.")
             return
 
         # For the latest patch (open-ended), start from the most recent matches and stop at start_match_id
         start_id = MAX_MATCH_ID_CURSOR
         end_id = latest_patch.start_match_id
 
-    collector = _build_collector(
-        DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank
-    )
+    collector = _build_collector(DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank)
     await collector.collect_range(
         start_match_id=start_id,
         end_match_id=end_id,
@@ -128,9 +119,7 @@ async def backfill_public_matches_by_patches_flow(
             logger.info(
                 f"Backfilling patch {pnum} between match_id [{end_id}, {start_id}] up to {matches_per_patch} unique matches."
             )
-            collector = _build_collector(
-                DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank
-            )
+            collector = _build_collector(DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank)
             await collector.collect_range(
                 start_match_id=start_id,
                 end_match_id=end_id,

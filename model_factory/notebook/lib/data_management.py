@@ -9,6 +9,7 @@ This module centralizes the logic to:
 
 All DB access is asynchronous — call these helpers with `await` in notebooks.
 """
+
 from __future__ import annotations
 
 from typing import Iterable, List, Sequence, Tuple
@@ -125,6 +126,7 @@ def load_data(*, data_dir: str = "../data/", file_name: str = "pro_match_dataset
 # ---------------------------------------------------------------------------
 # Persistence helpers for full MatchTable objects
 # ---------------------------------------------------------------------------
+
 
 def _match_to_dict(m: MatchTable) -> Dict[str, Any]:
     base = m.model_dump()

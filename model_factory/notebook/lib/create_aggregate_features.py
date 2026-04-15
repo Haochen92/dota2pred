@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def aggregate_player_win_rates(player_hero_df: pd.DataFrame) -> pd.DataFrame:
     """
     Aggregates player-hero win rates for Radiant and Dire teams.
@@ -22,20 +23,20 @@ def aggregate_player_win_rates(player_hero_df: pd.DataFrame) -> pd.DataFrame:
 
     # 1. Define the column names for each team
     radiant_cols = [
-        'player_hero_0_win_rate',
-        'player_hero_1_win_rate',
-        'player_hero_2_win_rate',
-        'player_hero_3_win_rate',
-        'player_hero_4_win_rate'
+        "player_hero_0_win_rate",
+        "player_hero_1_win_rate",
+        "player_hero_2_win_rate",
+        "player_hero_3_win_rate",
+        "player_hero_4_win_rate",
     ]
     dire_cols = [
-        'player_hero_128_win_rate',
-        'player_hero_129_win_rate',
-        'player_hero_130_win_rate',
-        'player_hero_131_win_rate',
-        'player_hero_132_win_rate'
+        "player_hero_128_win_rate",
+        "player_hero_129_win_rate",
+        "player_hero_130_win_rate",
+        "player_hero_131_win_rate",
+        "player_hero_132_win_rate",
     ]
-    
+
     # Ensure all required columns exist before proceeding
     required_cols = radiant_cols + dire_cols
     for col in required_cols:
@@ -43,19 +44,20 @@ def aggregate_player_win_rates(player_hero_df: pd.DataFrame) -> pd.DataFrame:
             raise KeyError(f"DataFrame is missing required column: '{col}'")
 
     # 2. Calculate the average win rate for each team across each row (axis=1)
-    df['radiant_avg_player_wr'] = df[radiant_cols].mean(axis=1)
-    df['dire_avg_player_wr'] = df[dire_cols].mean(axis=1)
+    df["radiant_avg_player_wr"] = df[radiant_cols].mean(axis=1)
+    df["dire_avg_player_wr"] = df[dire_cols].mean(axis=1)
 
     # 3. Calculate the difference between the team averages
-    df['radiant_dire_player_hero_wr_diff'] = df['radiant_avg_player_wr'] - df['dire_avg_player_wr']
+    df["radiant_dire_player_hero_wr_diff"] = df["radiant_avg_player_wr"] - df["dire_avg_player_wr"]
 
     return df
 
 
 def create_aggregate_team_features(team_df: pd.DataFrame) -> pd.DataFrame:
-    team_df['radiant_dire_team_wr_diff'] = team_df['radiant_win_rate'] - team_df['dire_win_rate']
+    team_df["radiant_dire_team_wr_diff"] = team_df["radiant_win_rate"] - team_df["dire_win_rate"]
     return team_df
 
+
 def create_aggregate_hero_features(hero_df: pd.DataFrame) -> pd.DataFrame:
-    hero_df['radiant_dire_hero_wr_diff'] = hero_df['radiant_avg_hero_winrate'] - hero_df['dire_avg_hero_winrate']
+    hero_df["radiant_dire_hero_wr_diff"] = hero_df["radiant_avg_hero_winrate"] - hero_df["dire_avg_hero_winrate"]
     return hero_df

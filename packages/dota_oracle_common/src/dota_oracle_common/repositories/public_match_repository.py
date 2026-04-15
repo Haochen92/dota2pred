@@ -39,10 +39,10 @@ class PublicMatchRepository(BaseRepository):
         rows = [i.model_dump() for i in instances]
         on_conflict_keys = self._get_primary_key_names(PublicMatchTable)
         stmt = (
-            pg_insert(PublicMatchTable) 
+            pg_insert(PublicMatchTable)
             .values(rows)
             .on_conflict_do_nothing(index_elements=on_conflict_keys)
-            .returning(PublicMatchTable.match_id) # type: ignore
+            .returning(PublicMatchTable.match_id)  # type: ignore
         )
         result = await self.session.execute(stmt)
         inserted_ids = [r[0] for r in result.fetchall()]
