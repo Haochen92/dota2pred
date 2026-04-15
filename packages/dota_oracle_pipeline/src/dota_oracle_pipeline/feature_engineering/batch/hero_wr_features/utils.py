@@ -1,6 +1,5 @@
 from collections import Counter
-from dataclasses import dataclass
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -48,7 +47,9 @@ def extract_hero_picks_optional(match: MatchTable) -> Tuple[List[Optional[int]],
     return radiant, dire
 
 
-def apply_decay_to_pair(wins_w: float, games_w: float, last_ts: int, now_ts: int, half_life_days: float) -> Tuple[float, float]:
+def apply_decay_to_pair(
+    wins_w: float, games_w: float, last_ts: int, now_ts: int, half_life_days: float
+) -> Tuple[float, float]:
     if now_ts <= last_ts:
         return wins_w, games_w
     if half_life_days <= 0:
@@ -91,7 +92,7 @@ def analyze_hero_counts(all_matches: List[MatchTable]) -> pd.DataFrame:
 
     count_distribution = Counter(hero_counts.values())
     df = (
-        pd.DataFrame(count_distribution.items(), columns=["play_count", "num_heroes"]) 
+        pd.DataFrame(count_distribution.items(), columns=["play_count", "num_heroes"])
         .sort_values("play_count")
         .reset_index(drop=True)
     )
@@ -102,4 +103,3 @@ def analyze_hero_counts(all_matches: List[MatchTable]) -> pd.DataFrame:
 
     print("Analysis complete.")
     return df
-

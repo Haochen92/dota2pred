@@ -1,6 +1,6 @@
 from collections import Counter
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, List
+from typing import Optional, Tuple, List
 
 import pandas as pd
 
@@ -22,6 +22,7 @@ class PlayerHeroDecayState:
         weighted_games: Decayed count of games.
         last_timestamp: Unix timestamp (seconds) of last update.
     """
+
     weighted_wins: float = 0.0
     weighted_games: float = 0.0
     last_timestamp: int = 0
@@ -37,9 +38,7 @@ def sorted_by_start_time(all_matches: List[MatchTable]) -> List[MatchTable]:
     return sorted(all_matches, key=lambda m: m.start_time)
 
 
-def get_player_hero_key(
-    match: MatchTable, slot: int
-) -> Tuple[Optional[int], Optional[int]]:
+def get_player_hero_key(match: MatchTable, slot: int) -> Tuple[Optional[int], Optional[int]]:
     """Extracts (account_id, hero_id) for a given `slot` from `match`."""
     account_id = getattr(match, f"slot_{slot}_account_id", None)
     hero_id = getattr(match, f"slot_{slot}_hero_id", None)
@@ -131,9 +130,7 @@ def read_wr_decay_dynamic(
 def analyze_pair_counts(all_matches: List[MatchTable]) -> pd.DataFrame:
     """Summarizes how often unique (player, hero) pairs occur across matches."""
     if not all_matches:
-        return pd.DataFrame(
-            columns=["play_count", "num_pairs", "cumulative_pairs", "cumulative_pct"]
-        )
+        return pd.DataFrame(columns=["play_count", "num_pairs", "cumulative_pairs", "cumulative_pct"])
 
     print(f"Analyzing counts for {len(all_matches)} matches...")
 
@@ -145,14 +142,12 @@ def analyze_pair_counts(all_matches: List[MatchTable]) -> pd.DataFrame:
                 pair_counts[key] += 1
 
     if not pair_counts:
-        return pd.DataFrame(
-            columns=["play_count", "num_pairs", "cumulative_pairs", "cumulative_pct"]
-        )
+        return pd.DataFrame(columns=["play_count", "num_pairs", "cumulative_pairs", "cumulative_pct"])
 
     count_distribution = Counter(pair_counts.values())
 
     df = (
-        pd.DataFrame(count_distribution.items(), columns=["play_count", "num_pairs"]) 
+        pd.DataFrame(count_distribution.items(), columns=["play_count", "num_pairs"])
         .sort_values("play_count")
         .reset_index(drop=True)
     )

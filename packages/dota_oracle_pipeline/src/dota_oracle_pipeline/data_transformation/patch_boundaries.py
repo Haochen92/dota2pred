@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime, timezone
 
 from prefect import task
 from sqlalchemy import select, or_
@@ -30,9 +29,7 @@ async def hydrate_patch_boundaries_task() -> int:
     updated = 0
 
     async with session_factory() as session:
-        stmt = select(PatchTable).where(
-            or_(PatchTable.start_match_id.is_(None), PatchTable.end_match_id.is_(None))
-        )
+        stmt = select(PatchTable).where(or_(PatchTable.start_match_id.is_(None), PatchTable.end_match_id.is_(None)))
         res = await session.execute(stmt)
         patches: List[PatchTable] = list(res.scalars().all())
 
@@ -52,9 +49,7 @@ async def hydrate_patch_boundaries_task() -> int:
                 end_mid = await find_match_id_by_timestamp(patch.end_time)
 
             if start_mid is None:
-                logger.warning(
-                    f"Unable to resolve start boundary for patch {patch.patch_number}. Skipping update."
-                )
+                logger.warning(f"Unable to resolve start boundary for patch {patch.patch_number}. Skipping update.")
                 continue
 
             patch.start_match_id = int(start_mid)
@@ -69,4 +64,3 @@ async def hydrate_patch_boundaries_task() -> int:
             )
 
     return updated
-

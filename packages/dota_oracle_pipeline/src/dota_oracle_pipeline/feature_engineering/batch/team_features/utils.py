@@ -1,5 +1,4 @@
-from collections import deque
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from dota_oracle_common.models.match.table import MatchTable
 
@@ -20,7 +19,9 @@ def get_radiant_won(match: MatchTable) -> Optional[bool]:
     return match.outcome.radiant_win if match.outcome else None
 
 
-def apply_decay_to_pair(wins: float, games: float, last_ts: int, now_ts: int, half_life_days: float) -> Tuple[float, float]:
+def apply_decay_to_pair(
+    wins: float, games: float, last_ts: int, now_ts: int, half_life_days: float
+) -> Tuple[float, float]:
     if now_ts <= last_ts:
         return wins, games
     delta_seconds = now_ts - last_ts
@@ -36,4 +37,3 @@ def get_matchup_key_and_outcome(rad_id: int, dire_id: int, radiant_won: bool) ->
     key = tuple(sorted((rad_id, dire_id)))
     t1_won = radiant_won if rad_id == key[0] else not radiant_won
     return key, t1_won
-
