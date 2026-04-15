@@ -18,7 +18,7 @@ class CompletedMatchRequest(BaseModel):
 
 
 # Model for public match prediction request
-HeroId = Annotated[int, Field(ge=1, le=150)]
+HeroId = Annotated[int, Field(ge=1)]
 
 
 class PublicMatchPredictionRequest(BaseModel):
