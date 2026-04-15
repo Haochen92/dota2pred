@@ -10,21 +10,40 @@ from typing import Dict, List
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlmodel import select
 
 from dota_oracle_common.models.inference.table import MatchPredictionTable
 from dota_oracle_common.models.live_games.schema import LiveLeagueGame, ScoreBoard, Faction
+from dota_oracle_common.models.leagues import LeagueTable
 from dota_oracle_common.models.match.schema import ProMatchOutcome
 from dota_oracle_common.models.match.table import MatchOutcomeTable, MatchTable
 from live_orchestrator_app.app_container import AppContainer
 
 from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 logger = get_logger(__name__)
 pytestmark = [pytest.mark.asyncio(loop_scope="session"), pytest.mark.e2e]
+
+
+@pytest_asyncio.fixture(scope="module")
+async def seed_test_leagues(e2e_postgres_engine):
+    """Seed league rows required by live match inserts."""
+    leagues = [
+        LeagueTable(leagueid=801, name="Test League 801"),
+        LeagueTable(leagueid=802, name="Test League 802"),
+        LeagueTable(leagueid=803, name="Test League 803"),
+    ]
+
+    async with async_sessionmaker(bind=e2e_postgres_engine)() as session:
+        async with session.begin():
+            session.add_all(leagues)
+
+    yield
 
 
 class VerificationState(BaseModel):
@@ -50,6 +69,7 @@ class TestLivePipelineE2E:
         matches = {}
         # Use realistic timestamps (recent dates)
         base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        league_ids = [801, 802, 803]
 
         for i, match_id in enumerate(self.MATCH_IDS):
             # Start with an ongoing game to get proper structure
@@ -81,7 +101,7 @@ class TestLivePipelineE2E:
             # Create LiveLeagueGame directly (simulating API response)
             live_game = LiveLeagueGame(
                 match_id=match_id,
-                league_id=ongoing_match.league_id,
+                league_id=league_ids[i],
                 start_time=start_time,
                 radiant_team=ongoing_match.radiant_team,
                 dire_team=ongoing_match.dire_team,
@@ -173,7 +193,9 @@ class TestLivePipelineE2E:
         )
 
     @pytest.mark.dependency(depends=["test_initial_state"])
-    async def test_cycle_1_new_match_discovery(self, configured_test_container: AppContainer, cycle1_live_games):
+    async def test_cycle_1_new_match_discovery(
+        self, configured_test_container: AppContainer, cycle1_live_games, seed_test_leagues
+    ):
         """CYCLE 1: Tests the discovery and full processing of two new matches."""
         app = await configured_test_container.app()
         redis_service = await configured_test_container.redis_service()
@@ -212,6 +234,7 @@ class TestLivePipelineE2E:
         self,
         configured_test_container: AppContainer,
         cycle2_live_games,
+        seed_test_leagues,
     ):
         """CYCLE 2: Tests discovery of one new match while others are pending."""
         app = await configured_test_container.app()
@@ -241,7 +264,7 @@ class TestLivePipelineE2E:
 
     @pytest.mark.dependency(depends=["test_cycle_2_additional_match"])
     async def test_cycle_3_match_completion(
-        self, configured_test_container: AppContainer, cycle3_live_games, completed_match_outcomes
+        self, configured_test_container: AppContainer, cycle3_live_games, completed_match_outcomes, seed_test_leagues
     ):
         """CYCLE 3: Tests the completion of one match and its state removal from pending."""
         app = await configured_test_container.app()

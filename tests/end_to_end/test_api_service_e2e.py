@@ -101,6 +101,7 @@ class TestMatchesRouterE2E:
             match_id=1001,
             duration=1800.0,
             patch="7.32",
+            leagueid=None,
             radiant_team_id=1,
             dire_team_id=2,
             slot_0_hero_id=1,  # Anti-Mage
@@ -122,6 +123,7 @@ class TestMatchesRouterE2E:
             match_id=1002,
             duration=2400.0,
             patch="7.33",
+            leagueid=None,
             radiant_team_id=3,
             dire_team_id=4,
             slot_0_hero_id=11,
@@ -179,7 +181,7 @@ class TestMatchesRouterE2E:
     async def test_get_matches_no_filters(self, full_stack_client: AsyncClient, seed_test_matches):
         """Tests fetching matches without any filters."""
         logger.info("Testing GET /matches without filters...")
-        response = await full_stack_client.get("/matches/")
+        response = await full_stack_client.get("/matches/?offset=0&limit=20")
 
         assert response.status_code == 200
         data = response.json()
@@ -190,9 +192,9 @@ class TestMatchesRouterE2E:
         logger.info("Successfully fetched all 2 seeded matches.")
 
     async def test_get_matches_filter_by_hero(self, full_stack_client: AsyncClient, seed_test_matches):
-        """Tests filtering matches by hero name."""
+        """Tests filtering matches by hero ID."""
         logger.info("Testing GET /matches with hero filter...")
-        response = await full_stack_client.get("/matches/?hero_name=Anti-Mage")
+        response = await full_stack_client.get("/matches/?offset=0&limit=20&hero_ids%5B%5D=1")
 
         assert response.status_code == 200
         data = response.json()
@@ -202,11 +204,10 @@ class TestMatchesRouterE2E:
     async def test_get_matches_pagination(self, full_stack_client: AsyncClient, seed_test_matches):
         """Tests pagination functionality."""
         logger.info("Testing GET /matches pagination...")
-        response = await full_stack_client.get("/matches/?page=2&page_size=1")
+        response = await full_stack_client.get("/matches/?offset=1&limit=1")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["page"] == 2
         assert len(data["matches"]) == 1
         assert data["matches"][0]["match_id"] == seed_test_matches["match1_id"]  # Second match (oldest)
         logger.info("Pagination test successful.")
