@@ -1,12 +1,10 @@
 from functools import reduce
 import pandas as pd
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Iterable, Optional, Tuple
 from sklearn.model_selection import train_test_split
 
-def merge_features_on_match_id(
-    dfs: Iterable[pd.DataFrame],
-    on_key: str = "match_id"
-) -> pd.DataFrame:
+
+def merge_features_on_match_id(dfs: Iterable[pd.DataFrame], on_key: str = "match_id") -> pd.DataFrame:
     """
     Merge multiple feature DataFrames on a specified key using inner joins.
 
@@ -29,42 +27,31 @@ def merge_features_on_match_id(
             raise ValueError(f"DataFrame at index {i} is missing the join key '{on_key}'")
 
     # use functools reduce for conciseness
-    merged_df = reduce(
-        lambda left, right: pd.merge(left, right, on=on_key, how="inner"),
-        df_list
-    )
-    
+    merged_df = reduce(lambda left, right: pd.merge(left, right, on=on_key, how="inner"), df_list)
+
     return merged_df
 
 
 def create_train_test_split(
     dataframe: pd.DataFrame,
     test_size: float = 0.2,
-
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    
+
     train_df, test_df = train_test_split(
-        dataframe,
-        test_size=test_size,
-        random_state=42,
-        shuffle=False  # Important: shuffle to avoid temporal leakage
+        dataframe, test_size=test_size, random_state=42, shuffle=False  # Important: shuffle to avoid temporal leakage
     )
 
     return train_df, test_df
 
 
 def make_train_test_split(
-    X: pd.DataFrame,
-    y: pd.Series,
-    test_size: float = 0.3,
-    random_state: int = 42,
-    head: Optional[int] = None
+    X: pd.DataFrame, y: pd.Series, test_size: float = 0.3, random_state: int = 42, head: Optional[int] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    
+
     if head is not None:
         X = X.head(head)
         y = y.head(head)
-        
+
     n_total = len(X)
     split_idx = int(n_total * (1 - test_size))
 
@@ -83,8 +70,3 @@ def make_train_test_split(
     y_test = y.iloc[split_idx:]
 
     return X_train, X_test, y_train, y_test
-        
-    
-    
-    
-    

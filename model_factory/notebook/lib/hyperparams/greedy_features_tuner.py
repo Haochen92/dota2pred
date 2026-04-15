@@ -1,4 +1,8 @@
-from dota_oracle_pipeline.feature_engineering.batch import TeamDecayFeatureGenerator, PlayerHeroDynamicPriorFeatureGenerator, HeroWinrateDecayFeatureGenerator
+from dota_oracle_pipeline.feature_engineering.batch import (
+    TeamDecayFeatureGenerator,
+    PlayerHeroDynamicPriorFeatureGenerator,
+    HeroWinrateDecayFeatureGenerator,
+)
 from lib.utils import merge_features_on_match_id
 from dota_oracle_common.models.match import MatchTable
 from dota_oracle_common.models.features.schema import (
@@ -10,7 +14,7 @@ from dota_oracle_common.models.features.schema import (
 
 # Imports
 import pandas as pd
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score, train_test_split
 from sklearn.metrics import get_scorer
@@ -46,14 +50,16 @@ PLAYER_HERO_DYNAMIC_PRIOR_CONFIG = {
 TRIALS_MULTIPLIER = 15  # Multiplier to determine number of trials based on number of parameters
 
 # Database setup for Optuna
-DB_FILENAME = "../data/feature_tuning.db" 
+DB_FILENAME = "../data/feature_tuning.db"
 STORAGE_URL = f"sqlite:///{DB_FILENAME}"
+
 
 class FeatureTuner:
     def __init__(
-        self, model: Any, 
-        train_outcome_df: pd.DataFrame, 
-        sorted_match_list: List[MatchTable], 
+        self,
+        model: Any,
+        train_outcome_df: pd.DataFrame,
+        sorted_match_list: List[MatchTable],
         num_split: int = 5,
         evaluation_metric: str = "accuracy",
         direction: str = "maximize",
@@ -70,16 +76,16 @@ class FeatureTuner:
         self.evaluation_metric = evaluation_metric
         self.direction = direction
         self.study_name_suffix = study_name_suffix
-        
+
         self.study_team_decay: Optional[optuna.study.Study] = None
         self.study_hero_decay: Optional[optuna.study.Study] = None
         self.study_player_hero: Optional[optuna.study.Study] = None
-        
+
         # Validation strategy: "cross_validation" (default) or "train_test"
         if validation_split not in ("cross_validation", "train_test"):
             raise ValueError("validation_split must be either 'cross_validation' or 'train_test'")
         self.validation_split = validation_split
-        
+
     def get_studies(self) -> Dict[str, optuna.study.Study]:
         """
         Returns the Optuna study objects after tuning is complete.
@@ -88,38 +94,38 @@ class FeatureTuner:
             RuntimeError: If this method is called before tune_features() has been run.
 
         Returns:
-            Dict[str, optuna.study.Study]: A dictionary containing the study objects for 
+            Dict[str, optuna.study.Study]: A dictionary containing the study objects for
                                           'team_decay', 'hero_decay', and 'player_hero'.
         """
         if not all([self.study_team_decay, self.study_hero_decay, self.study_player_hero]):
             raise RuntimeError("Tuning has not been run yet. Please call the tune_features() method first.")
-        
+
         return {
             "team_decay": self.study_team_decay,
             "hero_decay": self.study_hero_decay,
             "player_hero": self.study_player_hero,
-        } # type: ignore
+        }  # type: ignore
 
     def tune_features(self) -> FeatureHyperparams:
-        
+
         # --- Stage 0: Generate Default (untuned) Features ---
         print("Generating default features...")
-        default_hero_winrate_decay_features = self.hero_winrate_decay_generator.generate(
-            self.sorted_match_list
-        )
+        default_hero_winrate_decay_features = self.hero_winrate_decay_generator.generate(self.sorted_match_list)
         default_player_hero_dynamic_prior_features = self.player_hero_dynamic_prior_generator.generate(
             self.sorted_match_list
         )
-        
+
         untuned_hero_df = pd.DataFrame(instance.model_dump() for instance in default_hero_winrate_decay_features)
-        untuned_player_hero_df = pd.DataFrame(instance.model_dump() for instance in default_player_hero_dynamic_prior_features)
-        
+        untuned_player_hero_df = pd.DataFrame(
+            instance.model_dump() for instance in default_player_hero_dynamic_prior_features
+        )
+
         # --- Stage 1: Tune Team Decay Features ---
         print("\n--- Starting Stage 1: Tuning Team Decay Features ---")
         self.study_team_decay = self._create_study("team_decay_tuning_study" + self.study_name_suffix)
         self.study_team_decay.optimize(
-            lambda trial: self._objective_tune_team_features(trial, untuned_hero_df, untuned_player_hero_df), 
-            n_trials=TRIALS_MULTIPLIER * len(TEAM_DECAY_CONFIG)
+            lambda trial: self._objective_tune_team_features(trial, untuned_hero_df, untuned_player_hero_df),
+            n_trials=TRIALS_MULTIPLIER * len(TEAM_DECAY_CONFIG),
         )
         best_team_params = self.study_team_decay.best_params
         print(f"Best Team Decay Params: {best_team_params}")
@@ -138,11 +144,11 @@ class FeatureTuner:
         self.study_hero_decay = self._create_study("hero_winrate_decay_tuning_study" + self.study_name_suffix)
         self.study_hero_decay.optimize(
             lambda trial: self._objective_tune_hero_features(trial, tuned_team_df, untuned_player_hero_df),
-            n_trials=TRIALS_MULTIPLIER * len(HERO_WINRATE_DECAY_CONFIG)
+            n_trials=TRIALS_MULTIPLIER * len(HERO_WINRATE_DECAY_CONFIG),
         )
         best_hero_params = self.study_hero_decay.best_params
         print(f"Best Hero Decay Params: {best_hero_params}")
-        
+
         # Generate tuned hero features for the next stage
         tuned_hero_features = self.hero_winrate_decay_generator.generate(
             self.sorted_match_list,
@@ -151,17 +157,17 @@ class FeatureTuner:
             half_life_days=best_hero_params["half_life_days"],
         )
         tuned_hero_df = pd.DataFrame(instance.model_dump() for instance in tuned_hero_features)
-        
+
         # --- Stage 3: Tune Player-Hero Dynamic Prior Features ---
         print("\n--- Starting Stage 3: Tuning Player-Hero Dynamic Prior Features ---")
         self.study_player_hero = self._create_study("player_hero_dynamic_prior_tuning_study" + self.study_name_suffix)
         self.study_player_hero.optimize(
             lambda trial: self._objective_tune_player_hero_features(trial, tuned_team_df, tuned_hero_df),
-            n_trials=TRIALS_MULTIPLIER * len(PLAYER_HERO_DYNAMIC_PRIOR_CONFIG)
+            n_trials=TRIALS_MULTIPLIER * len(PLAYER_HERO_DYNAMIC_PRIOR_CONFIG),
         )
         best_player_hero_params = self.study_player_hero.best_params
         print(f"Best Player-Hero Params: {best_player_hero_params}")
-        
+
         # --- Final Stage: Consolidate and Return ---
         print("\nFeature tuning complete!")
 
@@ -176,7 +182,7 @@ class FeatureTuner:
         )
 
     # Removed alpha/beta conversion: generators accept k/m directly.
-         
+
     def _create_study(self, study_name: str, storage_url=STORAGE_URL) -> optuna.study.Study:
         return optuna.create_study(
             sampler=optuna.samplers.TPESampler(seed=42, multivariate=True, group=True),
@@ -194,9 +200,7 @@ class FeatureTuner:
         """
         if self.validation_split == "cross_validation":
             time_series_cv = TimeSeriesSplit(n_splits=self.num_split)
-            scores = cross_val_score(
-                self.model, X, y, cv=time_series_cv, scoring=self.evaluation_metric, n_jobs=-1
-            )
+            scores = cross_val_score(self.model, X, y, cv=time_series_cv, scoring=self.evaluation_metric, n_jobs=-1)
             return float(scores.mean())
 
         # train_test: simple chronological split (no shuffle), last 20% is validation
@@ -205,15 +209,11 @@ class FeatureTuner:
             # Fallback to small CV if dataset too small for a 20% split
             n_splits = max(2, min(3, n))
             time_series_cv = TimeSeriesSplit(n_splits=n_splits)
-            scores = cross_val_score(
-                self.model, X, y, cv=time_series_cv, scoring=self.evaluation_metric, n_jobs=-1
-            )
+            scores = cross_val_score(self.model, X, y, cv=time_series_cv, scoring=self.evaluation_metric, n_jobs=-1)
             return float(scores.mean())
 
         # Use sklearn's train_test_split with shuffle=False to preserve chronology
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=0.2, shuffle=False
-        )
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
 
         model = clone(self.model)
         model.fit(X_train, y_train)
@@ -222,7 +222,9 @@ class FeatureTuner:
         score = scorer(model, X_val, y_val)
         return float(score)
 
-    def _objective_tune_team_features(self, trial: optuna.trial.Trial, untuned_hero_df: pd.DataFrame, untuned_player_hero_df: pd.DataFrame) -> float:
+    def _objective_tune_team_features(
+        self, trial: optuna.trial.Trial, untuned_hero_df: pd.DataFrame, untuned_player_hero_df: pd.DataFrame
+    ) -> float:
         # 1. Suggest parameters for tuning
         params = {
             "prior_mean": trial.suggest_float(
@@ -252,13 +254,17 @@ class FeatureTuner:
         team_decay_df = pd.DataFrame(instance.model_dump() for instance in team_decay_features)
 
         # 3. Combine with other features and evaluate
-        combined_df = merge_features_on_match_id([self.train_outcome_df, team_decay_df, untuned_hero_df, untuned_player_hero_df])
-        y = combined_df['radiant_win']
-        X = combined_df.drop(columns=['match_id', 'radiant_win'])
-        
+        combined_df = merge_features_on_match_id(
+            [self.train_outcome_df, team_decay_df, untuned_hero_df, untuned_player_hero_df]
+        )
+        y = combined_df["radiant_win"]
+        X = combined_df.drop(columns=["match_id", "radiant_win"])
+
         return self._evaluate_feature_set(X, y)
-    
-    def _objective_tune_hero_features(self, trial: optuna.trial.Trial, tuned_team_df: pd.DataFrame, untuned_player_hero_df: pd.DataFrame) -> float:
+
+    def _objective_tune_hero_features(
+        self, trial: optuna.trial.Trial, tuned_team_df: pd.DataFrame, untuned_player_hero_df: pd.DataFrame
+    ) -> float:
         # 1. Suggest parameters for tuning
         params = {
             "prior_mean": trial.suggest_float(
@@ -288,13 +294,17 @@ class FeatureTuner:
         hero_winrate_decay_df = pd.DataFrame(instance.model_dump() for instance in hero_winrate_decay_features)
 
         # 3. Combine with other features and evaluate
-        combined_df = merge_features_on_match_id([self.train_outcome_df, tuned_team_df, hero_winrate_decay_df, untuned_player_hero_df])
-        y = combined_df['radiant_win']
-        X = combined_df.drop(columns=['match_id', 'radiant_win'])
-        
+        combined_df = merge_features_on_match_id(
+            [self.train_outcome_df, tuned_team_df, hero_winrate_decay_df, untuned_player_hero_df]
+        )
+        y = combined_df["radiant_win"]
+        X = combined_df.drop(columns=["match_id", "radiant_win"])
+
         return self._evaluate_feature_set(X, y)
 
-    def _objective_tune_player_hero_features(self, trial: optuna.trial.Trial, tuned_team_df: pd.DataFrame, tuned_hero_df: pd.DataFrame) -> float:
+    def _objective_tune_player_hero_features(
+        self, trial: optuna.trial.Trial, tuned_team_df: pd.DataFrame, tuned_hero_df: pd.DataFrame
+    ) -> float:
         # 1. Suggest parameters for tuning
         params = {
             "player_prior_count": trial.suggest_float(
@@ -323,7 +333,7 @@ class FeatureTuner:
                 PLAYER_HERO_DYNAMIC_PRIOR_CONFIG["hero_half_life_days"],
             ),
         }
-        
+
         # 2. Generate features with suggested parameters
         player_hero_features = self.player_hero_dynamic_prior_generator.generate(
             self.sorted_match_list,
@@ -334,10 +344,10 @@ class FeatureTuner:
             hero_half_life_days=params["hero_half_life_days"],
         )
         player_hero_df = pd.DataFrame(instance.model_dump() for instance in player_hero_features)
-        
+
         # 3. Combine with other features and evaluate
         combined_df = merge_features_on_match_id([self.train_outcome_df, tuned_team_df, tuned_hero_df, player_hero_df])
-        y = combined_df['radiant_win']
-        X = combined_df.drop(columns=['match_id', 'radiant_win'])
-        
+        y = combined_df["radiant_win"]
+        X = combined_df.drop(columns=["match_id", "radiant_win"])
+
         return self._evaluate_feature_set(X, y)

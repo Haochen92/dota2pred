@@ -71,6 +71,8 @@ api-service = {path = "services/api_service", develop = true}
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+extend-exclude = ["*.ipynb"]
+force-exclude = true
 
 [tool.black]
 line-length = 120
