@@ -9,10 +9,29 @@ from typing import AsyncGenerator, Dict
 from datetime import datetime, timezone
 
 from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.repositories.patch_repository import PatchRepository
+from api_service.matches.match_pagination_service import MatchPaginationService
 
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def integration_test_match_pagination_service(db_session: AsyncSession) -> MatchPaginationService:
+    """Build the real pagination service against the integration test database."""
+    hero_map = {
+        1: "Anti-Mage",
+        2: "Axe",
+        3: "Bane",
+        4: "Bloodseeker",
+        5: "Crystal Maiden",
+    }
+    return MatchPaginationService(
+        db_session=db_session,
+        patch_repository=PatchRepository(db_session),
+        hero_map=hero_map,
+    )
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -65,6 +84,8 @@ async def seed_pagination_test_data(
             start_time=(
                 datetime(2023, 6, 15, tzinfo=timezone.utc) if i < 10 else datetime(2024, 2, 15, tzinfo=timezone.utc)
             ),
+            slot_0_hero_id=1 if i < 10 else 2,
+            slot_1_hero_id=2 if i < 10 else 3,
         )
         matches.append(match)
 

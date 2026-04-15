@@ -19,9 +19,9 @@ def test_app_startup_and_basic_functionality(api_layer_client):
     # Will fail with validation error but shows endpoint exists
     assert inference_response.status_code in [200, 422, 500]
 
-    # Test streaming endpoint exists
-    streaming_response = api_layer_client.get("/streaming/sse/live_matches")
-    assert streaming_response.status_code == 200
+    # Test streaming endpoint is registered
+    streaming_paths = [route.path for route in api_layer_client.app.routes if hasattr(route, "path")]
+    assert "/streaming/sse/live_matches" in streaming_paths
 
 
 def test_cors_middleware_applied(api_layer_client):

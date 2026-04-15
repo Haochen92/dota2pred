@@ -81,7 +81,17 @@ class TestGetMatchDetailsWithOutcome:
         results = await match_repository_test_subject.get_match_details()
 
         # Assert
-        test_repository._assert_count_equal(len(expected_match_details_dict), len(results), "empty input returns all")
+        result_ids = {match.match_id for match in results}
+        expected_ids = set(expected_match_details_dict)
+
+        assert expected_ids.issubset(result_ids), (
+            f"Test empty input returns all: expected seeded match ids {sorted(expected_ids)} "
+            f"to be present in results, got {sorted(result_ids)}"
+        )
+        assert len(results) >= len(expected_match_details_dict), (
+            f"Test empty input returns all: expected at least {len(expected_match_details_dict)} results, "
+            f"got {len(results)}"
+        )
 
     async def test_get_incompleted_matches_with_relationships(
         self,

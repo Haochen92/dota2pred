@@ -1,7 +1,5 @@
-# in tests/integration/test_finite_publisher_stream.py
 import pytest
 import asyncio
-import json
 from api_service.streaming.redis_pubsub_service import RedisPubSubService
 from tests.factories.api_service_factory import LiveStateUpdateRequestFactory
 
@@ -34,8 +32,9 @@ async def test_subscriber_receives_all_messages_from_finite_publisher(
         # 1. Define the continuous subscriber task (unchanged).
         async def subscriber():
             try:
-                async for message_str in integration_test_redis_pubsub_service.listen_to_channel(test_channel):
-                    await results_queue.put(message_str)
+                async for dto in integration_test_redis_pubsub_service.subscribe_to_channel(test_channel):
+                    if dto is not None:
+                        await results_queue.put(dto)
             except asyncio.CancelledError:
                 print("Subscriber task cancelled.")
                 raise
@@ -58,12 +57,12 @@ async def test_subscriber_receives_all_messages_from_finite_publisher(
         received_messages = []
         for _ in range(message_count_to_send):
             message = await asyncio.wait_for(results_queue.get(), timeout=5.0)
-            received_messages.append(json.loads(message))
+            received_messages.append(message)
 
         # 5. Assertions.
         assert len(received_messages) == message_count_to_send
-        assert received_messages[0]["live_matches"][0]["match_id"] == 1
-        assert received_messages[9]["live_matches"][0]["match_id"] == 10
+        assert received_messages[0].live_matches[0].match_id == 1
+        assert received_messages[9].live_matches[0].match_id == 10
 
     finally:
         # 6. SIMPLIFIED CLEANUP

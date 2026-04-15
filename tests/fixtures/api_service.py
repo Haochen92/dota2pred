@@ -24,11 +24,13 @@ This file provides a clear hierarchy of fixtures based on the type of test being
     - Example: def test_e2e_live_update_and_db_read(full_stack_client): ...
 """
 
+import asyncio
 from typing import Callable
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI, APIRouter
-from unittest.mock import create_autospec
+from unittest.mock import create_autospec, MagicMock
+import pytest_asyncio
 
 # Import actual services and dependency functions for speccing and type-safe overrides
 from api_service.dependencies import (
@@ -62,7 +64,19 @@ def mock_match_pagination_service() -> MatchPaginationService:
 @pytest.fixture
 def mock_redis_pubsub_service() -> RedisPubSubService:
     """Provides a high-fidelity mock of the entire RedisPubSubService."""
-    return create_autospec(RedisPubSubService, instance=True)
+    mock = create_autospec(RedisPubSubService, instance=True)
+    mock.get_cached_snapshot.return_value = None
+    mock.cache_snapshot.return_value = None
+    return mock
+
+
+@pytest.fixture
+def mock_pubsub_hub() -> MagicMock:
+    """Provides a lightweight mock hub for SSE endpoint tests."""
+    hub = MagicMock()
+    hub.register.return_value = asyncio.Queue()
+    hub.unregister.return_value = None
+    return hub
 
 
 @pytest.fixture
@@ -131,6 +145,7 @@ def api_layer_app_factory(
     mock_db_session_factory,
     mock_match_pagination_service: MatchPaginationService,
     mock_redis_pubsub_service: RedisPubSubService,
+    mock_pubsub_hub: MagicMock,
     mock_http_client: httpx.AsyncClient,
     mock_public_inference_service: PubInferenceService,
     mock_model_history_service: ModelHistoryService,
@@ -143,6 +158,8 @@ def api_layer_app_factory(
     def _create_app() -> FastAPI:
         app = FastAPI(title="API Layer Test App")
         app.state.db_session_factory = mock_db_session_factory
+        app.state.pubsub_service = mock_redis_pubsub_service
+        app.state.pubsub_hub = mock_pubsub_hub
 
         def override_pagination_service():
             return mock_match_pagination_service
@@ -213,3 +230,11 @@ def streaming_router() -> APIRouter:
     from api_service.streaming.router import router
 
     return router
+
+
+@pytest_asyncio.fixture(scope="function")
+async def integration_test_redis_pubsub_service(test_redis_client) -> RedisPubSubService:
+    """Provides a real RedisPubSubService backed by the test Redis container."""
+    await test_redis_client.flushdb()
+    yield RedisPubSubService(redis_client=test_redis_client)
+    await test_redis_client.flushdb()
