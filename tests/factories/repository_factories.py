@@ -97,6 +97,7 @@ class MatchOutcomeTableFactory(ModelFactory[MatchOutcomeTable]):
 class MatchTableFactory(ModelFactory[MatchTable]):
     start_time = Use(lambda: datetime.now(timezone.utc))
     duration = Use(lambda: 1800.0)  # 30 minutes in seconds
+    leagueid = None
 
     @classmethod
     def build(cls, **kwargs):
