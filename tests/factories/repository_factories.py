@@ -9,7 +9,12 @@ from dota_oracle_common.models.match import MatchOutcomeTable, MatchTable
 from dota_oracle_common.models.features import PlayerHeroFeatureTable, TeamFeaturesTable, HeroFeaturesTable
 from dota_oracle_common.models.inference import MatchPredictionTable
 from dota_oracle_common.models.heroes import HeroDataTable
-from dota_oracle_common.models.histories import PlayerHeroHistoryTable, TeamHistoryTable, TeamMatchupHistoryTable
+from dota_oracle_common.models.histories import (
+    HeroDecayedStateTable,
+    PlayerHeroDecayedStateTable,
+    TeamDecayedStateTable,
+    TeamMatchupDecayedStateTable,
+)
 from dota_oracle_common.models.patches import PatchTable
 from dota_oracle_common.models.leagues import LeagueTable
 
@@ -43,20 +48,26 @@ Histories Tables
 
 
 @register_fixture
-class PlayerHeroHistoryTableFactory(ModelFactory[PlayerHeroHistoryTable]):
-    start_time = Use(lambda: datetime.now(timezone.utc))
+class PlayerHeroDecayedStateTableFactory(ModelFactory[PlayerHeroDecayedStateTable]):
+    last_update_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
 @register_fixture
-class TeamHistoryTableFactory(ModelFactory[TeamHistoryTable]):
-    start_time = Use(lambda: datetime.now(timezone.utc))
+class TeamDecayedStateTableFactory(ModelFactory[TeamDecayedStateTable]):
+    last_update_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
 @register_fixture
-class TeamMatchupHistoryTableFactory(ModelFactory[TeamMatchupHistoryTable]):
-    start_time = Use(lambda: datetime.now(timezone.utc))
+class TeamMatchupDecayedStateTableFactory(ModelFactory[TeamMatchupDecayedStateTable]):
+    last_update_time = Use(lambda: datetime.now(timezone.utc))
+    pass
+
+
+@register_fixture
+class HeroDecayedStateTableFactory(ModelFactory[HeroDecayedStateTable]):
+    last_update_time = Use(lambda: datetime.now(timezone.utc))
     pass
 
 
