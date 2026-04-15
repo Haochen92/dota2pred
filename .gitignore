@@ -51,6 +51,7 @@ htmlcov/
 # assistant caches
 .assistant
 *.assistant
+.codex
 
 
 # Testing Notebooks
