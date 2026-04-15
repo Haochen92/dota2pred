@@ -3,6 +3,7 @@ Unit tests for the patch data scheduler functions.
 """
 
 import pytest
+from unittest.mock import AsyncMock
 
 from dota_oracle_schedules.data_fetching.fetch_patch_data import store_patch_data, patch_data_orchestrator
 from pydantic import ValidationError
@@ -97,6 +98,7 @@ async def test_patch_data_orchestrator_success(mock_db_session_factory, dota_pat
     mock_store_patch_data = mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.store_patch_data")
     mock_hydrate = mocker.patch(
         "dota_oracle_schedules.data_fetching.fetch_patch_data.hydrate_patch_boundaries_task",
+        new_callable=AsyncMock,
         return_value=1,
     )
 
@@ -126,6 +128,7 @@ async def test_patch_data_orchestrator_store_exception(mock_db_session_factory, 
     )
     mock_hydrate = mocker.patch(
         "dota_oracle_schedules.data_fetching.fetch_patch_data.hydrate_patch_boundaries_task",
+        new_callable=AsyncMock,
         return_value=0,
     )
 

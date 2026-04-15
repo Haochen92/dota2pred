@@ -102,11 +102,12 @@ def unit_test_feature_encoder() -> FeatureEncoder:
 
 
 @pytest.fixture
-def unit_test_feature_preparation_service(
-    model_meta_data_api_response_factory, mock_feature_encoder
-) -> FeaturePreparationService:
+def unit_test_feature_preparation_service(model_meta_data_api_response_factory) -> FeaturePreparationService:
     """Provides a FeaturePreparationService instance for unit testing."""
-    return FeaturePreparationService(model_meta_data_api_response_factory.build(), feature_encoder=mock_feature_encoder)
+    metadata = model_meta_data_api_response_factory.build()
+    if not metadata.version_metadata.feature_columns:
+        metadata.version_metadata.feature_columns = ["match_id"]
+    return FeaturePreparationService(metadata)
 
 
 @pytest.fixture

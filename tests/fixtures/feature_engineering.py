@@ -15,7 +15,7 @@ from dota_oracle_pipeline.feature_engineering import PlayerHeroFeaturesCreator, 
 
 @pytest.fixture
 def player_hero_features_creator() -> PlayerHeroFeaturesCreator:
-    return PlayerHeroFeaturesCreator(max_history_length=20)
+    return PlayerHeroFeaturesCreator()
 
 
 @pytest.fixture

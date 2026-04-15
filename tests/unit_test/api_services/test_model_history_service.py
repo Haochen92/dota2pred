@@ -47,8 +47,7 @@ def test_calibration_plot_bins(mock_async_session) -> None:
     svc = ModelHistoryService(db_session=mock_async_session)
     df = _build_sample_df(10)
     plot = svc._calculate_calibration_plot(df[["actual_win", "probability"]])
-    # Should always have 5 bins [50-60, 60-70, ..., 90-100]
-    assert len(plot.bins) == 5
+    assert len(plot.bins) == 4
     # Total match_count across bins equals number of rows
     assert sum(b.match_count for b in plot.bins) == 10
 

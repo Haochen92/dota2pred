@@ -21,7 +21,10 @@ async def test_process_events_successfully(
     work_item = ConsumedEvent[CompletedMatchPayload](match_id=12345, event_id="event_123", payload=payload)
 
     mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
-    mock_history_updater = mocker.patch.object(completion_event_processor.history_updater, "update_histories")
+    mock_history_updater = mocker.patch.object(
+        completion_event_processor.history_updater,
+        "update_all_histories_for_match",
+    )
 
     # Use the provided mock_db_session_factory
     completion_event_processor.db_session_factory = mock_db_session_factory
@@ -66,7 +69,10 @@ async def test_process_events_match_repository_fails(
     db_error = Exception("Database error")
     mock_match_repository.insert_match_outcome.side_effect = db_error
     mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
-    mock_history_updater = mocker.patch.object(completion_event_processor.history_updater, "update_histories")
+    mock_history_updater = mocker.patch.object(
+        completion_event_processor.history_updater,
+        "update_all_histories_for_match",
+    )
 
     # Use the provided mock_db_session_factory
     completion_event_processor.db_session_factory = mock_db_session_factory
@@ -99,7 +105,9 @@ async def test_process_events_history_updater_fails(
     history_error = Exception("History update error")
     mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
     mock_history_updater = mocker.patch.object(
-        completion_event_processor.history_updater, "update_histories", side_effect=history_error
+        completion_event_processor.history_updater,
+        "update_all_histories_for_match",
+        side_effect=history_error,
     )
 
     # Use the provided mock_db_session_factory

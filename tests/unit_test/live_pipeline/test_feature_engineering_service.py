@@ -28,10 +28,8 @@ async def test_create_and_store_features_sucessfully(
 
     match_instance = match_table_factory.build(match_id=123)
 
-    # Mock static method
-    mock_heroes_creator = mocker.patch(f"{F_PATH}.HeroesFeatureCreator.create_hero_features")
-    mock_heroes_creator.return_value = [hero_features_table_factory.build(match_id=123)]
-
+    mock_hero_feature_creator = AsyncMock()
+    mock_hero_feature_creator.create_hero_features.return_value = [hero_features_table_factory.build(match_id=123)]
     mock_team_feature_creator = AsyncMock()
     mock_team_feature_creator.create_team_features.return_value = [team_features_table_factory.build(match_id=123)]
     mock_player_hero_feature_creator = AsyncMock()
@@ -40,7 +38,9 @@ async def test_create_and_store_features_sucessfully(
     ]
 
     feature_engineering_service = FeatureEngineeringService(
-        team_feature_creator=mock_team_feature_creator, player_hero_feature_creator=mock_player_hero_feature_creator
+        hero_feature_creator=mock_hero_feature_creator,
+        team_feature_creator=mock_team_feature_creator,
+        player_hero_feature_creator=mock_player_hero_feature_creator,
     )
 
     # Act
@@ -49,11 +49,11 @@ async def test_create_and_store_features_sucessfully(
     )
 
     # Assert
+    mock_hero_feature_creator.create_hero_features.assert_awaited_once_with(mock_async_session, [match_instance])
     mock_team_feature_creator.create_team_features.assert_awaited_once_with(mock_async_session, [match_instance])
     mock_player_hero_feature_creator.create_player_hero_features.assert_awaited_once_with(
         mock_async_session, [match_instance]
     )
-    mock_heroes_creator.assert_called_once_with([match_instance])
     assert mock_store_features.await_count == 3
 
     mock_store_features.assert_any_await(feature_instances=ANY, table_class=HeroFeaturesTable)
@@ -75,10 +75,8 @@ async def test_missing_feature_raise_error(
     # Arrange
     match_instance = match_table_factory.build(match_id=123)
 
-    # Mock static method
-    mock_heroes_creator = mocker.patch(f"{F_PATH}.HeroesFeatureCreator.create_hero_features")
-    mock_heroes_creator.return_value = None  # Simulate a missing feature
-
+    mock_hero_feature_creator = AsyncMock()
+    mock_hero_feature_creator.create_hero_features.return_value = None
     mock_team_feature_creator = AsyncMock()
     mock_team_feature_creator.create_team_features.return_value = [team_features_table_factory.build(match_id=123)]
     mock_player_hero_feature_creator = AsyncMock()
@@ -87,7 +85,9 @@ async def test_missing_feature_raise_error(
     ]
 
     feature_engineering_service = FeatureEngineeringService(
-        team_feature_creator=mock_team_feature_creator, player_hero_feature_creator=mock_player_hero_feature_creator
+        hero_feature_creator=mock_hero_feature_creator,
+        team_feature_creator=mock_team_feature_creator,
+        player_hero_feature_creator=mock_player_hero_feature_creator,
     )
 
     # Act & Assert

@@ -44,7 +44,7 @@ async def test_process_event_successfully(
     assert result.match_id == 12345
     assert result.radiant_win == expected_prediction_result
 
-    mock_prepare_features.assert_awaited_once_with(payload, mock_async_session)
+    mock_prepare_features.assert_awaited_once_with(payload)
     mock_predict_and_store.assert_awaited_once_with(
         db_session=mock_async_session, match_id=12345, input_array_for_inference=mock_input_array
     )
@@ -78,7 +78,7 @@ async def test_process_event_feature_preparation_returns_none(
     ):
         await prediction_event_processor.process_event(event)
 
-    mock_prepare_features.assert_awaited_once_with(payload, mock_async_session)
+    mock_prepare_features.assert_awaited_once_with(payload)
     mock_predict_and_store.assert_not_awaited()
 
 
@@ -113,7 +113,7 @@ async def test_process_event_feature_preparation_returns_empty_array(
     ):
         await prediction_event_processor.process_event(event)
 
-    mock_prepare_features.assert_awaited_once_with(payload, mock_async_session)
+    mock_prepare_features.assert_awaited_once_with(payload)
     mock_predict_and_store.assert_not_awaited()
 
 
@@ -146,7 +146,7 @@ async def test_process_event_feature_preparation_service_raises_exception(
     with pytest.raises(Exception, match="Feature preparation failed"):
         await prediction_event_processor.process_event(event)
 
-    mock_prepare_features.assert_awaited_once_with(payload, mock_async_session)
+    mock_prepare_features.assert_awaited_once_with(payload)
     mock_predict_and_store.assert_not_awaited()
 
 
@@ -180,7 +180,7 @@ async def test_process_event_prediction_service_raises_exception(
     with pytest.raises(Exception, match="Prediction failed"):
         await prediction_event_processor.process_event(event)
 
-    mock_prepare_features.assert_awaited_once_with(payload, mock_async_session)
+    mock_prepare_features.assert_awaited_once_with(payload)
     mock_predict_and_store.assert_awaited_once_with(
         db_session=mock_async_session, match_id=12345, input_array_for_inference=mock_input_array
     )

@@ -1,17 +1,14 @@
 import pytest
-from api_service.streaming.redis_pubsub_service import RedisPubSubService
-from ...factories.api_service_factory import LiveStateUpdateRequestFactory
+from unittest.mock import AsyncMock
+
 import redis.asyncio as aioredis
 
-f_path = "api_service.streaming.redis_pubsub_service.RedisPubSubService"
+from api_service.streaming.redis_pubsub_service import RedisPubSubService
+from ...factories.api_service_factory import LiveStateUpdateRequestFactory
 
 
 class TestRedisPubSubService:
-
     async def test_publish_calls_redis_correctly(self, unit_test_redis_pubsub_service: RedisPubSubService):
-        # ARRANGE
-
-        # Configure the mock's return value
         unit_test_redis_pubsub_service.redis.publish.return_value = 1
         mock_publish = unit_test_redis_pubsub_service.redis.publish
 
@@ -19,52 +16,44 @@ class TestRedisPubSubService:
         mock_payload = LiveStateUpdateRequestFactory.build()
         expected_json = mock_payload.model_dump_json()
 
-        # ACT
         receivers = await unit_test_redis_pubsub_service.publish_live_update(channel=test_channel, payload=mock_payload)
 
-        # ASSERT
         mock_publish.assert_awaited_once_with(test_channel, expected_json)
         assert receivers == 1
 
-    # --- TEST 2: The Failure Case with Tenacity ---
     async def test_publish_retries_and_raises_exception(self, unit_test_redis_pubsub_service: RedisPubSubService):
-        # ARRANGE
         unit_test_redis_pubsub_service.redis.publish.side_effect = aioredis.ConnectionError("Simulated Failure")
         mock_publish = unit_test_redis_pubsub_service.redis.publish
 
         mock_payload = LiveStateUpdateRequestFactory.build()
 
-        # ACT & ASSERT
         with pytest.raises(aioredis.ConnectionError):
             await unit_test_redis_pubsub_service.publish_live_update(channel="any-channel", payload=mock_payload)
 
-        # ASSERT the call count to verify tenacity's retries
         assert mock_publish.await_count == 3
 
-    async def test_listen_to_channel_yield_messages_successfully(
-        self, mocker, unit_test_redis_pubsub_service: RedisPubSubService
+    async def test_subscribe_to_channel_yields_valid_messages_successfully(
+        self,
+        mocker,
+        unit_test_redis_pubsub_service: RedisPubSubService,
     ):
+        payload = LiveStateUpdateRequestFactory.build()
+        mock_pubsub = AsyncMock()
+        mock_pubsub.get_message = AsyncMock(return_value={"data": payload.model_dump_json()})
 
-        mock_messages = ['{"message":"one"}', '{"message":"two"}']
+        mock_create_pubsub = mocker.patch.object(
+            unit_test_redis_pubsub_service,
+            "_create_pubsub",
+            new_callable=AsyncMock,
+            return_value=mock_pubsub,
+        )
 
-        # Arrange
-        async def mock_stream(self, channel: str):
-            for message in mock_messages:
-                yield message
+        generator = unit_test_redis_pubsub_service.subscribe_to_channel("test-channel")
+        received_message = await anext(generator)
+        await generator.aclose()
 
-        mock_get_stream = mocker.patch(f"{f_path}._get_message_stream", side_effect=mock_stream, autospec=True)
-
-        # Act
-
-        received_messages = []
-
-        async for message in unit_test_redis_pubsub_service.listen_to_channel("test-channel"):
-            received_messages.append(message)
-            if len(received_messages) == len(mock_messages):
-                break
-
-        mock_get_stream.assert_called_once_with(unit_test_redis_pubsub_service, "test-channel")
-
-        assert len(received_messages) == len(mock_messages)
-        assert received_messages[0] == mock_messages[0]
-        assert received_messages[1] == mock_messages[1]
+        mock_create_pubsub.assert_awaited_once()
+        mock_pubsub.subscribe.assert_awaited_once_with("test-channel")
+        mock_pubsub.unsubscribe.assert_awaited_once_with("test-channel")
+        mock_pubsub.close.assert_awaited_once()
+        assert received_message == payload
