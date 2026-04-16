@@ -1,11 +1,11 @@
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
-from typing import AsyncGenerator, Dict, Generator
+from typing import AsyncGenerator, Dict
 
+import httpx
 from httpx import AsyncClient
 from fastapi import FastAPI
-from testcontainers.compose import DockerCompose
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlmodel import SQLModel
 
@@ -13,8 +13,14 @@ from sqlmodel import SQLModel
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.heroes.table import HeroDataTable
-from dota_oracle_pipeline.data_extraction.fetch_hero_data import fetch_hero_data
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
+from dota_oracle_common.models.features import AllFeaturesDTO
+from dota_oracle_common.models.inference.schema import (
+    ModelMetaDataAPIResponse,
+    PerformanceMetrics,
+    TrainingDataSummary,
+    VersionMetaData,
+)
 
 # Live Orchestrator App imports (for live pipeline tests)
 from live_orchestrator_app.app_container import AppContainer
@@ -29,6 +35,60 @@ from api_service.streaming.router import router as streaming_router
 
 logger = get_logger(__name__)
 
+INFERENCE_BASE_URL = "http://inference-service.test"
+API_SERVICE_BASE_URL = "http://api-service:8000"
+
+
+def _build_model_metadata(name: str, feature_columns: list[str]) -> Dict:
+    metadata = ModelMetaDataAPIResponse(
+        name=name,
+        description="Deterministic E2E test model",
+        intended_use="E2E-only mocked inference backend",
+        version="e2e-test",
+        trained_date="2026-04-15T00:00:00Z",
+        version_metadata=VersionMetaData(
+            feature_columns=feature_columns,
+            performance_metrics=PerformanceMetrics(accuracy=0.5),
+            training_summary=TrainingDataSummary(
+                source_description="deterministic test fixture",
+                total_match_counts=0,
+            ),
+        ),
+    )
+    return metadata.model_dump(mode="json")
+
+
+PRO_METADATA_RESPONSE = _build_model_metadata(
+    name="dota_oracle_pro_match_model",
+    feature_columns=list(AllFeaturesDTO.model_fields.keys()),
+)
+PUBLIC_METADATA_RESPONSE = _build_model_metadata(
+    name="dota_oracle_pub_match_model",
+    feature_columns=["hero_wr_diff"],
+)
+
+
+def _build_inference_mock_transport() -> httpx.MockTransport:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if request.url.scheme in {"http", "https"} and str(request.url).startswith(INFERENCE_BASE_URL):
+            if path == "/metadata/public":
+                return httpx.Response(200, json=PUBLIC_METADATA_RESPONSE)
+            if path == "/metadata/pro":
+                return httpx.Response(200, json=PRO_METADATA_RESPONSE)
+            if path in {"/predict/public", "/predict/pro"}:
+                return httpx.Response(200, json={"prediction": [1], "probability": [0.73]})
+            return httpx.Response(404, json={"detail": f"Unhandled inference path: {path}"})
+
+        if request.url.scheme in {"http", "https"} and str(request.url).startswith(API_SERVICE_BASE_URL):
+            if path == "/streaming/live-state-update":
+                return httpx.Response(202, json={"status": "success"})
+            return httpx.Response(404, json={"detail": f"Unhandled API service path: {path}"})
+
+        return httpx.Response(404, json={"detail": f"Unhandled test URL: {request.url}"})
+
+    return httpx.MockTransport(handler)
+
 
 # =================================================================================
 # LEVEL 1: DOCKER COMPOSE ENVIRONMENT SETUP (Session-Scoped)
@@ -36,35 +96,31 @@ logger = get_logger(__name__)
 
 
 @pytest.fixture(scope="session")
-def e2e_environment() -> Generator[Dict[str, str], None, None]:
+def e2e_environment(postgres_container_instance, redis_container_instance) -> Dict[str, str]:
     """
-    Manages the lifecycle of the Docker Compose environment for E2E tests.
-    Starts all services, waits for healthchecks, yields connection details,
-    and tears down the environment at the end of the test session.
+    Provides connection details for the E2E environment.
+
+    This reuses the existing Postgres/Redis testcontainers and a mocked
+    inference HTTP backend, avoiding a CI dependency on a prebuilt Bento image.
     """
-    compose = DockerCompose(context="./tests/end_to_end/", compose_file_name="docker-compose.test.yml")
+    db_host = postgres_container_instance.get_container_host_ip()
+    db_port = postgres_container_instance.get_exposed_port(5432)
+    db_user = postgres_container_instance.username
+    db_password = postgres_container_instance.password
+    db_name = postgres_container_instance.dbname
+    db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
-    with compose:
-        db_host = compose.get_service_host("db", 5432)
-        db_port = compose.get_service_port("db", 5432)
-        db_url = f"postgresql+asyncpg://test:test@{db_host}:{db_port}/test"
+    redis_host = redis_container_instance.get_container_host_ip()
+    redis_port = redis_container_instance.get_exposed_port(6379)
+    redis_url = f"redis://{redis_host}:{redis_port}"
 
-        redis_host = compose.get_service_host("redis", 6379)
-        redis_port = compose.get_service_port("redis", 6379)
-        redis_url = f"redis://{redis_host}:{redis_port}"
-
-        inference_host = compose.get_service_host("bentoml", 3000)
-        inference_port = compose.get_service_port("bentoml", 3000)
-        inference_url = f"http://{inference_host}:{inference_port}"
-
-        logger.info("All services in Docker Compose are healthy and ready.")
-
-        yield {
-            "db_url": db_url,
-            "redis_url": redis_url,
-            "inference_url": inference_url,
-        }
-    logger.info("E2E Docker Compose environment has been shut down.")
+    environment = {
+        "db_url": db_url,
+        "redis_url": redis_url,
+        "inference_url": INFERENCE_BASE_URL,
+    }
+    logger.info("E2E environment ready with testcontainers-backed DB/Redis and mocked inference service.")
+    return environment
 
 
 # =================================================================================
@@ -104,50 +160,53 @@ async def e2e_redis_client(e2e_environment: dict):
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_hero_data(e2e_postgres_engine):
-    """Populates the test database with essential hero data from an external API."""
-    try:
-        logger.info("Fetching hero data from API...")
-        hero_data_dict = await fetch_hero_data()
-        logger.info(f"Fetched {len(hero_data_dict)} heroes from API")
+    """Populates the test database with deterministic local hero data."""
+    hero_names = {
+        1: "Anti-Mage",
+        2: "Axe",
+        3: "Bane",
+        4: "Bloodseeker",
+        5: "Crystal Maiden",
+        6: "Drow Ranger",
+        7: "Earthshaker",
+        8: "Juggernaut",
+        9: "Mirana",
+        10: "Morphling",
+        11: "Shadow Fiend",
+        12: "Phantom Lancer",
+        13: "Puck",
+        14: "Pudge",
+        15: "Razor",
+        16: "Sand King",
+        17: "Storm Spirit",
+        18: "Sven",
+        19: "Tiny",
+    }
+    heroes_to_insert = {
+        hero_id: HeroDataTable(
+            id=hero_id,
+            localized_name=hero_names.get(hero_id, f"Hero {hero_id}"),
+            roles=["Carry"] if hero_id % 2 else ["Support"],
+        )
+        for hero_id in range(1, 151)
+    }
 
-        if not hero_data_dict:
-            pytest.fail("Failed to fetch hero data, which is required for E2E tests.")
+    async with AsyncSession(e2e_postgres_engine) as session:
+        heroes_repo = HeroesRepository(session)
+        await heroes_repo.upsert_hero_data(heroes_to_insert)
+        await session.commit()
 
-        heroes_to_insert = {hero_id: HeroDataTable(**data.model_dump()) for hero_id, data in hero_data_dict.items()}
+        hero_map = await heroes_repo.get_hero_id_map()
+        logger.info(f"Verification: Retrieved hero map with {len(hero_map)} heroes")
 
-        async with AsyncSession(e2e_postgres_engine) as session:
-            heroes_repo = HeroesRepository(session)
-            await heroes_repo.upsert_hero_data(heroes_to_insert)
-            await session.commit()
-
-            # Verify the data was stored and is accessible
-            hero_map = await heroes_repo.get_hero_id_map()
-            logger.info(f"Verification: Retrieved hero map with {len(hero_map)} heroes")
-
-            # Check if our test hero IDs are present
-            test_hero_ids = [1, 2, 3, 4, 5]  # Anti-Mage, Axe, Bane, Bloodseeker, Crystal Maiden
-            for hero_id in test_hero_ids:
-                if hero_id in hero_map:
-                    logger.info(f"Verified hero {hero_id}: {hero_map[hero_id]}")
-                else:
-                    logger.warning(f"Test hero {hero_id} not found in hero map!")
-
-        logger.info(f"Successfully populated database with {len(heroes_to_insert)} heroes using repository.")
-        print(f"\nINFO: Populated database with {len(heroes_to_insert)} heroes.")
-    except Exception as e:
-        logger.error(f"Error setting up hero data: {e}")
-        import traceback
-
-        logger.error(f"Full traceback: {traceback.format_exc()}")
-        pytest.skip(f"Could not fetch hero data to populate DB, skipping E2E tests: {e}")
+    logger.info(f"Successfully populated database with {len(heroes_to_insert)} deterministic heroes.")
 
 
 @pytest_asyncio.fixture(scope="session")
 async def http_client() -> AsyncGenerator[AsyncClient, None]:
-    """Provides a shared httpx.AsyncClient for making external requests."""
-    import httpx
-
-    async with httpx.AsyncClient() as client:
+    """Provides a shared httpx.AsyncClient backed by a deterministic mock transport."""
+    transport = _build_inference_mock_transport()
+    async with httpx.AsyncClient(transport=transport) as client:
         yield client
 
 
