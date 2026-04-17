@@ -1,0 +1,126 @@
+# Development override for hot-reload functionality
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml watch
+
+services:
+  dota-frontend:
+    # Build from the dev stage for watch/hot-reload
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    command: null
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    develop:
+      watch:
+        # --- REBUILD TRIGGERS ---
+        # If dependencies change, rebuild the image
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/package-lock.json
+          action: rebuild
+
+        # --- SYNC TRIGGERS ---
+        # Sync source code for hot reload
+        - path: ./frontend/src
+          target: /app/src
+          action: sync
+        - path: ./frontend/public
+          target: /app/public
+          action: sync
+
+        # Sync configs and restart to ensure they're picked up correctly
+        - path: ./frontend/next.config.mjs
+          target: /app/next.config.mjs
+          action: sync+restart
+        - path: ./frontend/tsconfig.json
+          target: /app/tsconfig.json
+          action: sync+restart
+        - path: ./frontend/postcss.config.cjs
+          target: /app/postcss.config.cjs
+          action: sync+restart
+        - path: ./frontend/.env.local
+          target: /app/.env.local
+          action: sync+restart
+  api-service:
+    command: ["uvicorn", "api_service.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    develop:
+      watch:
+        # --- REBUILD TRIGGERS ---
+        # If dependencies change, rebuild the image
+        - path: ./services/api_service/poetry.lock
+          action: rebuild
+        - path: ./services/api_service/pyproject.toml
+          action: rebuild
+
+        # --- SYNC TRIGGERS ---
+        # Sync main application source code
+        - path: ./services/api_service/src/api_service
+          target: /app/api_service
+          action: sync
+
+        # Sync local common package
+        - path: ./packages/dota_oracle_common/src/dota_oracle_common
+          target: /app/dota_oracle_common
+          action: sync
+
+        # Sync local pipeline package
+        - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
+          target: /app/dota_oracle_pipeline
+          action: sync
+
+  live-orchestrator-app:
+    command: ["watchfiles", "--filter", "python", "prefect worker start -p 'dota-work-pool'"]
+    develop:
+      watch:
+        # --- REBUILD TRIGGERS ---
+        - path: ./live_orchestrator_app/poetry.lock
+          action: rebuild
+        - path: ./live_orchestrator_app/pyproject.toml
+          action: rebuild
+
+        # --- SYNC TRIGGERS ---
+        # Sync main application source code
+        - path: ./live_orchestrator_app/src/live_orchestrator_app
+          target: /app/live_orchestrator_app
+          action: sync
+
+        # Sync local common package
+        - path: ./packages/dota_oracle_common/src/dota_oracle_common
+          target: /app/dota_oracle_common
+          action: sync
+
+        # Sync local pipeline package
+        - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
+          target: /app/dota_oracle_pipeline
+          action: sync
+
+  dota-oracle-schedules:
+    command: ["watchfiles", "--filter", "python", "prefect worker start --pool 'dota_oracle_scheduler'"]
+    develop:
+      watch:
+        # --- REBUILD TRIGGERS ---
+        - path: ./dota_oracle_schedules/poetry.lock
+          action: rebuild
+        - path: ./dota_oracle_schedules/pyproject.toml
+          action: rebuild
+
+        # --- SYNC TRIGGERS ---
+        # Sync main application source code
+        - path: ./dota_oracle_schedules/src/dota_oracle_schedules
+          target: /app/dota_oracle_schedules
+          action: sync
+
+        # Sync local common package
+        - path: ./packages/dota_oracle_common/src/dota_oracle_common
+          target: /app/dota_oracle_common
+          action: sync
+
+        # Sync local pipeline package
+        - path: ./packages/dota_oracle_pipeline/src/dota_oracle_pipeline
+          target: /app/dota_oracle_pipeline
+          action: sync

@@ -33,12 +33,7 @@ class BaseRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def _insert_data(
-        self,
-        *,
-        model_class: Type[T],
-        instances: Union[T, List[T]],
-    ) -> bool:
+    async def _insert_data(self, *, model_class: Type[T], instances: Union[T, List[T]], batch_size: int = 2000) -> bool:
 
         try:
             logger.info("Validating inputs...")
@@ -48,10 +43,16 @@ class BaseRepository:
 
             on_conflict_keys = self._get_primary_key_names(model_class)
 
-            stmt = pg_insert(model_class).values(input_values).on_conflict_do_nothing(index_elements=on_conflict_keys)
+            for i in range(0, len(input_values), batch_size):
+                batch = input_values[i : i + batch_size]
+                if not batch:
+                    continue
 
-            await self.session.execute(stmt)
-            await self.session.flush()
+                logger.info(f"Inserting batch {i // batch_size + 1}...")
+
+                stmt = pg_insert(model_class).values(batch).on_conflict_do_nothing(index_elements=on_conflict_keys)
+                await self.session.execute(stmt)
+
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -60,12 +61,7 @@ class BaseRepository:
             logger.error(f"Unexpected error when inserting data: {e}", exc_info=True)
             raise
 
-    async def _upsert_data(
-        self,
-        *,
-        model_class: Type[T],
-        instances: Union[T, List[T]],
-    ) -> bool:
+    async def _upsert_data(self, *, model_class: Type[T], instances: Union[T, List[T]], batch_size: int = 2000) -> bool:
 
         try:
             logger.info("Validating inputs...")
@@ -77,14 +73,21 @@ class BaseRepository:
 
             update_dict = self._get_update_excluded_dict(model_class)
 
-            stmt = (
-                pg_insert(model_class)
-                .values(input_values)
-                .on_conflict_do_update(index_elements=on_conflict_keys, set_=update_dict)
-            )
+            for i in range(0, len(input_values), batch_size):
+                batch = input_values[i : i + batch_size]
+                if not batch:
+                    continue
 
-            await self.session.execute(stmt)
-            await self.session.flush()
+                logger.info(f"Upserting batch {i // batch_size + 1}...")
+
+                stmt = (
+                    pg_insert(model_class)
+                    .values(batch)
+                    .on_conflict_do_update(index_elements=on_conflict_keys, set_=update_dict)
+                )
+
+                await self.session.execute(stmt)
+
             return True
         except SQLAlchemyError as e:
             logger.error(f"DB error encountered when attempting to insert data {e}", exc_info=True)
@@ -100,6 +103,9 @@ class BaseRepository:
         id_filters: Optional[List[int]] = None,
         relationships: Optional[List[str]] = None,
         limit: Optional[int] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        time_column: str = "start_time",
     ) -> List[T]:
 
         pk_attributes = self._get_primary_key_attribute(model_class)
@@ -114,6 +120,8 @@ class BaseRepository:
 
             if id_filters:
                 stmt = self._filter_by_ids(single_pk_attribute, id_filters, stmt)
+            if start_time is not None or end_time is not None:
+                stmt = self._filter_by_time_range(model_class, stmt, start_time, end_time, time_column)
             if relationships:
                 stmt = self._add_relationships(model_class, relationships, stmt)
             if limit:
@@ -173,6 +181,36 @@ class BaseRepository:
             return stmt
 
         stmt = stmt.where(pk_attribute.in_(id_filters))
+
+        return stmt
+
+    def _filter_by_time_range(
+        self, model_class: Type[T], stmt: Any, start_time: Optional[int], end_time: Optional[int], time_column: str
+    ) -> Any:
+        """
+        Apply time range filters to the SQL statement.
+
+        Args:
+            model_class: The SQLModel class being queried
+            stmt: The SQLAlchemy select statement
+            start_time: Optional start time (inclusive)
+            end_time: Optional end time (exclusive)
+            time_column: Name of the time column to filter on
+
+        Returns:
+            Modified SQL statement with time filters applied
+        """
+        if not hasattr(model_class, time_column):
+            if start_time is not None or end_time is not None:
+                logger.warning(
+                    f"Date range filtering requested but column '{time_column}' not found on {model_class.__name__}"
+                )
+            return stmt
+
+        if start_time is not None:
+            stmt = stmt.where(getattr(model_class, time_column) >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(getattr(model_class, time_column) < end_time)  # Use '<' for exclusive end
 
         return stmt
 

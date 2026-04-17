@@ -1,0 +1,71 @@
+/**
+ * This file contains the CSS "recipes" for our custom Text variants.
+ * It uses the theme tokens (translated into CSS variables) from our base theme.
+ */
+.root {
+  /* Variant: .textlg700 */
+  &[data-variant='lg-bold'] {
+    font-size: var(--mantine-font-size-lg);
+    font-weight: 700;
+    line-height: var(--mantine-line-height-lg);
+  }
+
+  /* Variant: .textlg500 */
+  &[data-variant='lg-medium'] {
+    font-size: var(--mantine-font-size-lg);
+    font-weight: 500;
+    line-height: var(--mantine-line-height-lg);
+  }
+
+  /* Variant: .textlg400 */
+  &[data-variant='lg-regular'] {
+    font-size: var(--mantine-font-size-lg);
+    font-weight: 400;
+    line-height: var(--mantine-line-height-lg);
+  }
+
+  /* ...and so on for md and sm sizes */
+
+  &[data-variant='md-bold'] {
+    font-size: var(--mantine-font-size-md);
+    font-weight: 700;
+    line-height: var(--mantine-line-height-md);
+  }
+
+  &[data-variant='md-medium'] {
+    font-size: var(--mantine-font-size-md);
+    font-weight: 500;
+    line-height: var(--mantine-line-height-md);
+  }
+
+  &[data-variant='md-regular'] {
+    font-size: var(--mantine-font-size-md);
+    font-weight: 400;
+    line-height: var(--mantine-line-height-md);
+  }
+
+  &[data-variant='sm-bold'] {
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 700;
+    line-height: var(--mantine-line-height-sm);
+  }
+
+  &[data-variant='sm-medium'] {
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 500;
+    line-height: var(--mantine-line-height-sm);
+  }
+
+  &[data-variant='sm-regular'] {
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 400;
+    line-height: var(--mantine-line-height-sm);
+  }
+
+  &[data-variant='special'] {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+}

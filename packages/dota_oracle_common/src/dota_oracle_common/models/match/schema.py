@@ -1,5 +1,6 @@
 from pydantic import BaseModel, RootModel
 from typing import Optional, List
+from .base import Match, MatchWithOutcome
 
 
 class LeagueData(BaseModel):
@@ -60,7 +61,11 @@ class MatchesAPIResponse(BaseModel):
     dire_name: Optional[str] = None
     dire_team_id: Optional[int] = None
 
-    league: LeagueData
+    # league information
+    leagueid: Optional[int] = None
+    league: Optional[LeagueData] = None
+
+    # Players and Picks
     players: List[PlayerData]
 
 
@@ -73,7 +78,7 @@ class ProMatchOutcome(BaseModel):
     """
 
     match_id: int
-    radiant_win: bool
+    radiant_win: Optional[bool] = None
 
 
 class ProMatchAPIResponse(RootModel[List[ProMatchOutcome]]):
@@ -84,3 +89,62 @@ class ProMatchAPIResponse(RootModel[List[ProMatchOutcome]]):
     """
 
     root: List[ProMatchOutcome]
+
+
+# API Payloads DTO
+
+
+class MatchNotifcationAPIPayload(Match):
+    """Match model combined with prediction data.
+
+    Inherits from Match and adds prediciton result
+
+    Attributes:
+        model_prediction: predicted outcome for the match
+    """
+
+    predicted_outcome: Optional[bool] = None
+    league_data: Optional[LeagueData] = None
+
+
+class CompletedMatchAPIPayload(MatchWithOutcome):
+    """Completed Match with predictions and actual outcome
+    Inherits from Match with Outcome and add prediction results
+    """
+
+    predicted_outcome: Optional[bool] = None
+    league_data: Optional[LeagueData] = None
+
+
+class PublicMatch(BaseModel):
+    """
+    Parsed Match Data from Opendota publicMatches Endpoint
+
+    Fields:
+    match_id: int (UUID of match)
+    start_time: int (Unix Timestamp of match start time)
+    duration: int (Duration of game in seconds)
+    avg_rank_tier:int (A numerical representation of the match's skill bracket)
+
+
+    radiant_team: List[int] (A List of integers representing hero ids in team radiant)
+    dire_team: List[int] (A List of integers representing hero ids in team dire)
+    """
+
+    match_id: int
+    start_time: int
+    duration: int
+    avg_rank_tier: int
+    num_rank_tier: int
+    radiant_win: bool
+
+    radiant_team: List[int]
+    dire_team: List[int]
+
+
+class PublicMatchAPIResponse(RootModel[List[PublicMatch]]):
+    """
+    API response from Opendota's PublicMatch endpoint
+    """
+
+    root: List[PublicMatch]

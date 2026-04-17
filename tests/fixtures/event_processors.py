@@ -4,7 +4,6 @@ Event processor-related fixtures for tests.
 
 import pytest
 from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 # Event processor imports
 from live_orchestrator_app.completion.completion_event_processor import CompletionEventProcessor
@@ -49,36 +48,36 @@ def mock_completion_event_processor() -> CompletionEventProcessor:
 
 
 @pytest.fixture
-def new_match_event_processor(mock_async_engine: AsyncEngine) -> NewMatchEventProcessor:
-    return NewMatchEventProcessor(db_engine=mock_async_engine)
+def new_match_event_processor(mock_db_session_factory: AsyncMock) -> NewMatchEventProcessor:
+    return NewMatchEventProcessor(db_session_factory=mock_db_session_factory)
 
 
 @pytest.fixture
-def completion_event_processor(mock_history_update_service, mock_async_engine) -> CompletionEventProcessor:
-    processor = CompletionEventProcessor(
-        db_engine=mock_async_engine, history_update_service=mock_history_update_service
+def completion_event_processor(
+    mock_history_update_service, mock_db_session_factory: AsyncMock
+) -> CompletionEventProcessor:
+    return CompletionEventProcessor(
+        db_session_factory=mock_db_session_factory, history_update_service=mock_history_update_service
     )
-
-    return processor
 
 
 @pytest.fixture
 def feature_engineering_event_processor(
-    mock_feature_engineering_service: FeatureEngineeringService, mock_async_engine: AsyncEngine
+    mock_feature_engineering_service: FeatureEngineeringService, mock_db_session_factory: AsyncMock
 ) -> FeatureEngineeringEventProcessor:
     return FeatureEngineeringEventProcessor(
-        feature_engineering_service=mock_feature_engineering_service, db_engine=mock_async_engine
+        feature_engineering_service=mock_feature_engineering_service, db_session_factory=mock_db_session_factory
     )
 
 
 @pytest.fixture
 def prediction_event_processor(
-    mock_async_engine: AsyncEngine,
+    mock_db_session_factory: AsyncMock,
     mock_feature_preparation_service: FeaturePreparationService,
     mock_match_prediction_service: MatchPredictionService,
 ) -> PredictionEventProcessor:
     return PredictionEventProcessor(
-        db_engine=mock_async_engine,
+        db_session_factory=mock_db_session_factory,
         feature_preparation_service=mock_feature_preparation_service,
         match_prediction_service=mock_match_prediction_service,
     )

@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute(
         """
-        DELETE FROM match_outcomes 
+        DELETE FROM match_outcomes
         WHERE match_id NOT IN (SELECT match_id FROM matches)
     """
     )

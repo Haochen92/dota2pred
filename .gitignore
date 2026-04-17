@@ -17,8 +17,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -44,7 +44,40 @@ htmlcov/
 
 # Environment Variables
 .env
+.env.production
+.env.*
+!.env.example
 
 # assistant caches
 .assistant
 *.assistant
+.codex
+
+
+# Testing Notebooks
+test.ipynb
+
+# Frontend public folder
+frontend/public/
+frontend/node_modules/
+
+# Python virtual environment
+.venv/
+
+# pre-commit and tool caches
+.pre-commit-cache/
+.cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Experiment outputs (ML)
+wandb/
+mlruns/
+
+# Private keys and certificates
+*.pem
+*.key
+*.crt
+id_rsa
+id_rsa.pub

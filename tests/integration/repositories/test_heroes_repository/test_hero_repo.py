@@ -30,7 +30,7 @@ class TestStoreHeroData:
         }
 
         # ACT
-        await hero_repository_test_subject.store_hero_data(input_data)
+        await hero_repository_test_subject.upsert_hero_data(input_data)
 
         # Use base repository method to get data
         stored_heroes = await test_repository._get_data(model_class=HeroDataTable, id_filters=[10, 11])
@@ -66,7 +66,7 @@ class TestStoreHeroData:
         initial_data = {"Sven": hero_data_table_factory.build(id=13, localized_name="Sven", base_armor=5.3)}
 
         # ACT - Initial insert
-        await hero_repository_test_subject.store_hero_data(initial_data)
+        await hero_repository_test_subject.upsert_hero_data(initial_data)
 
         # Fetch stored data using base repository method
         stored_hero_data = await test_repository._get_data(model_class=HeroDataTable, id_filters=[13])
@@ -95,7 +95,7 @@ class TestStoreHeroData:
 
         # ACT - Update with modified data
         reinsert_data = {"Sven": hero_data_table_factory.build(id=13, localized_name="Sven", base_armor=10.6)}
-        await hero_repository_test_subject.store_hero_data(reinsert_data)
+        await hero_repository_test_subject.upsert_hero_data(reinsert_data)
 
         # Fetch updated data
         updated_hero_data = await test_repository._get_data(model_class=HeroDataTable, id_filters=[13])

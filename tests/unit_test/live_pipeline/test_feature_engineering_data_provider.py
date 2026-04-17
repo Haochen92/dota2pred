@@ -1,77 +1,85 @@
 import pytest
+from dota_oracle_common.models.redis.schema import ConsumedEvent, FeatureEngineeringPayload
+
 
 F_PATH = "live_orchestrator_app.feature_engineering.feature_engineering_data_provider"
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(
-    feature_engineering_data_provider, mocker, stream_match_event_data_factory, match_table_factory
-) -> None:
+async def test_get_work_items_successfully(feature_engineering_data_provider, mocker, match_table_factory) -> None:
+    """
+    Tests the happy path where events are fetched from Redis.
+    """
+    # ARRANGE
+    match_id_1 = 12345
+    match_id_2 = 67890
 
-    stream_event_data_1 = stream_match_event_data_factory.build()
-    stream_event_data_2 = stream_match_event_data_factory.build()
+    match_details_1 = match_table_factory.build(match_id=match_id_1)
+    match_details_2 = match_table_factory.build(match_id=match_id_2)
 
-    mock_events_dict = {"event_1": stream_event_data_1, "event_2": stream_event_data_2}
-
-    match_id_1 = stream_event_data_1.match_id
-    match_id_2 = stream_event_data_2.match_id
-
-    mock_data_lookup = {
-        match_id_1: match_table_factory.build(match_id=match_id_1),
-        match_id_2: match_table_factory.build(match_id=match_id_2),
-    }
-
-    # Mock methods
-    mock_redis = feature_engineering_data_provider.redis
-    mock_redis.fetch_new_matches_for_feature_eng.return_value = mock_events_dict
-
-    mock_validate_events = mocker.patch.object(
-        feature_engineering_data_provider, "_validate_events", return_value=mock_events_dict
+    consumed_event_1 = ConsumedEvent[FeatureEngineeringPayload](
+        match_id=match_id_1, event_id="event_1", payload=FeatureEngineeringPayload(match_details=match_details_1)
     )
-
-    mock_fetch_match_details = mocker.patch.object(
-        feature_engineering_data_provider, "_fetch_match_details", return_value=mock_data_lookup
+    consumed_event_2 = ConsumedEvent[FeatureEngineeringPayload](
+        match_id=match_id_2, event_id="event_2", payload=FeatureEngineeringPayload(match_details=match_details_2)
     )
+    mock_events_list = [consumed_event_1, consumed_event_2]
+
+    # Mock external calls
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.return_value = mock_events_list
 
     # ACT
     actual_work_items = await feature_engineering_data_provider.get_work_items()
 
     # ASSERT
-    assert len(actual_work_items) == 2, f"expected 2, got {len(actual_work_items)}"
+    assert len(actual_work_items) == 2
 
-    mock_redis.fetch_new_matches_for_feature_eng.assert_awaited_once()
-    mock_validate_events.assert_called_once_with(mock_events_dict)
-    mock_fetch_match_details.assert_awaited_once_with(mock_events_dict)
+    # Check the content of the work items
+    work_item_1 = next(item for item in actual_work_items if item.event_id == "event_1")
+    work_item_2 = next(item for item in actual_work_items if item.event_id == "event_2")
+
+    assert isinstance(work_item_1, ConsumedEvent)
+    assert work_item_1.match_id == match_id_1
+    assert work_item_1.payload.match_details == match_details_1
+
+    assert isinstance(work_item_2, ConsumedEvent)
+    assert work_item_2.match_id == match_id_2
+    assert work_item_2.payload.match_details == match_details_2
+
+    # Assert interactions
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_fetch_match_details_successfully(
-    feature_engineering_data_provider,
-    mock_match_repository,
-    mocker,
-    stream_match_event_data_factory,
-    match_table_factory,
-) -> None:
-    stream_event_data_1 = stream_match_event_data_factory.build()
-    stream_event_data_2 = stream_match_event_data_factory.build()
+async def test_get_work_items_when_redis_returns_no_events(feature_engineering_data_provider):
+    """Tests that the function returns an empty list if Redis has no new events."""
+    # ARRANGE
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.return_value = []
 
-    mock_events_dict = {"event_1": stream_event_data_1, "event_2": stream_event_data_2}
-
-    mock_match_details_list = [
-        match_table_factory.build(match_id=stream_event_data_1.match_id),
-        match_table_factory.build(match_id=stream_event_data_2.match_id),
-    ]
-
-    mocker.patch(f"{F_PATH}.MatchRepository", return_value=mock_match_repository)
-
-    mock_get_match_details = mocker.patch.object(
-        mock_match_repository, "get_match_details", return_value=mock_match_details_list
-    )
-
-    # Act
-    match_data_lookup = await feature_engineering_data_provider._fetch_match_details(mock_events_dict)
+    # ACT
+    actual_work_items = await feature_engineering_data_provider.get_work_items()
 
     # ASSERT
-    assert len(match_data_lookup) == 2
+    assert actual_work_items == []
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.assert_awaited_once()
 
-    mock_get_match_details.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_get_work_items_with_custom_consumer(feature_engineering_data_provider, match_table_factory):
+    """Tests that custom consumer name is passed through to redis service."""
+    # ARRANGE
+    custom_consumer = "custom_consumer"
+    match_details = match_table_factory.build()
+
+    consumed_event = ConsumedEvent[FeatureEngineeringPayload](
+        match_id=12345, event_id="event_1", payload=FeatureEngineeringPayload(match_details=match_details)
+    )
+
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.return_value = [consumed_event]
+
+    # ACT
+    actual_work_items = await feature_engineering_data_provider.get_work_items(custom_consumer)
+
+    # ASSERT
+    assert len(actual_work_items) == 1
+    feature_engineering_data_provider.redis.fetch_new_matches_for_feature_eng.assert_awaited_once_with(custom_consumer)

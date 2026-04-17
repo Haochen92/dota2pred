@@ -4,8 +4,8 @@ MICROSERVICE MIGRATION GUIDE - DETAILED TECHNICAL DOCUMENTATION
 
 📋 COMPLETE MIGRATION OVERVIEW
 
-The migration transformed a monolithic backend into a distributed microservice 
-architecture with shared packages, proper dependency management, and 
+The migration transformed a monolithic backend into a distributed microservice
+architecture with shared packages, proper dependency management, and
 containerized deployment.
 
 ===============================================================================
@@ -14,7 +14,7 @@ containerized deployment.
 
 CREATING MULTIPLE PYPROJECT.TOML FILES
 
-We created a multi-package structure with separate pyproject.toml files for 
+We created a multi-package structure with separate pyproject.toml files for
 different concerns:
 
 packages/
@@ -76,7 +76,7 @@ This contains:
 
 SERVICE-SPECIFIC PYPROJECT.TOML FILES
 
-Each service has its own pyproject.toml with specific dependencies and 
+Each service has its own pyproject.toml with specific dependencies and
 references to shared packages:
 
 1. API Service (services/api_service/pyproject.toml):
@@ -270,7 +270,7 @@ from dota_oracle_common.models.inference.schema import ModelMetaData
 def load_and_save_model():
     # Load from joblib file
     model = load("models/random_forest_model.joblib")
-    
+
     # Create metadata using shared schemas
     metadata = ModelMetaData(
         name="rf_model",
@@ -278,7 +278,7 @@ def load_and_save_model():
         trained_date=dt.now(),
         version_metadata=version_data
     )
-    
+
     # Save to BentoML store
     saved_model = bentoml.sklearn.save_model(
         name="rf_model",
@@ -297,7 +297,7 @@ RUN python save_model.py
 @bentoml.service(name='match_prediction', image=my_image)
 class MatchPredictionService:
     rf_model = BentoModel('rf_model:latest')  # References saved model
-    
+
     def __init__(self):
         self.model = bentoml.sklearn.load_model(self.rf_model)
 
@@ -414,7 +414,7 @@ ENDPOINTS AVAILABLE:
 - http://localhost:3000/get_metadata - Model metadata
 - http://localhost:5050 - pgAdmin database interface
 
-This migration created a robust, scalable architecture that maintains code 
+This migration created a robust, scalable architecture that maintains code
 reusability while enabling independent service development and deployment!
 
 ===============================================================================

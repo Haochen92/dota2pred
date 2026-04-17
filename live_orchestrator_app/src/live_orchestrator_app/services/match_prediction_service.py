@@ -1,5 +1,5 @@
 from dota_oracle_common.repositories.prediction_repository import PredictionRepository
-from live_orchestrator_app.inference.model_inference_service import ModelInferenceService
+from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
 from live_orchestrator_app.services.feature_preparation_service import FeaturePreparationService
 import numpy as np
 from dota_oracle_common.utils.set_logging import get_logger
@@ -22,23 +22,30 @@ class MatchPredictionService:
 
     async def predict_and_store(
         self, db_session: AsyncSession, match_id: int, input_array_for_inference: np.ndarray
-    ) -> None:
+    ) -> int:
+
+        # Predict
         try:
             prediction_instance: ModelPredictionAPIResponse = await self.model_inference_service.get_prediction(
                 input_array_for_inference
             )
             prediction_list = prediction_instance.prediction
+            prediction_probability_list = prediction_instance.probability
             prediction = prediction_list[0]
+            prediction_proba = prediction_probability_list[0] if prediction_probability_list else None
+
             logger.info(f"Successfully fetched prediction for match: {match_id}, value: {prediction}")
         except Exception as e:
             logger.error(f"Error when making prediction for {match_id}: {e}", exc_info=True)
             raise e
 
+        # Store
         try:
             metadata = self.model_inference_service.model_metadata
             prediction_table = MatchPredictionTable(
                 match_id=match_id,
                 prediction=bool(prediction),
+                prediction_probability=prediction_proba,
                 predictor_name=metadata.name,
                 predictor_version=metadata.version,
                 prediction_date=get_current_utc_iso_timestamp(),
@@ -49,3 +56,5 @@ class MatchPredictionService:
         except Exception as e:
             logger.error(f"Failed to store predictions for match {match_id}: {e}", exc_info=True)
             raise e
+
+        return prediction

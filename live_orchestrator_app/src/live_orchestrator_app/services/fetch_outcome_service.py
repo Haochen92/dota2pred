@@ -12,15 +12,19 @@ class FetchOutcomeService:
         if not completed_match_ids:
             logger.warning("No complete matches to process")
 
-        max_match_id, min_match_id = max(completed_match_ids), min(completed_match_ids)
+        max_match_id, min_match_id = max(completed_match_ids) + 1, min(
+            completed_match_ids
+        )  # +1 to include the latest match as well
         try:
             pro_match_instances = await fetch_pro_match(max_match_id, min_match_id)
 
             if not pro_match_instances:
-                logger.warning(f"no completed matches between match_ids: {min_match_id} - {max_match_id}")
+                logger.info(f"no completed matches between match_ids: {min_match_id} - {max_match_id}")
                 return {}
 
             outcome_dict = {instance.match_id: instance.radiant_win for instance in pro_match_instances}
+
+            logger.info(f"Found {len(outcome_dict)} matches between match: {max_match_id} - {min_match_id}")
             return outcome_dict
         except Exception as e:
             error_msg = (

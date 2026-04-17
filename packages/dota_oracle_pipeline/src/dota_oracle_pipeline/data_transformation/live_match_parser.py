@@ -15,6 +15,7 @@ async def parse_live_league_games(raw_live_games: List[OngoingLeagueGame]) -> Li
             # Populate common fields
             match_data = {
                 "match_id": row.match_id,
+                "leagueid": row.league_id if row.league_id is not None else None,
                 "radiant_team_id": row.radiant_team.team_id,
                 "radiant_name": row.radiant_team.team_name,
                 "dire_team_id": row.dire_team.team_id,
@@ -24,12 +25,12 @@ async def parse_live_league_games(raw_live_games: List[OngoingLeagueGame]) -> Li
             }
 
             # Populate player data
-            for team in ["radiant", "dire"]:
-                faction = getattr(row.scoreboard, team)
-                for player in faction.players:
-                    slot = player.player_slot
-                    player_data = {f"slot_{slot}_account_id": player.account_id, f"slot_{slot}_hero_id": player.hero_id}
-                    match_data.update(player_data)
+            all_players = row.scoreboard.radiant.players + row.scoreboard.dire.players
+
+            for player in all_players:
+                slot = player.player_slot
+                match_data[f"slot_{slot}_account_id"] = player.account_id
+                match_data[f"slot_{slot}_hero_id"] = player.hero_id
 
             parsed_live_league_games.append(MatchTable(**match_data))
         except Exception as e:

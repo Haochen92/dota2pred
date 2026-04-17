@@ -1,7 +1,6 @@
-from dota_oracle_common.models.redis.schema import StreamMatchEventData
+import pydantic
 from dota_oracle_common.utils.set_logging import get_logger
-from live_orchestrator_app.services.redis_service import RedisService
-from live_orchestrator_app.services.history_update_service import HistoryUpdateService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
 from dota_oracle_common.utils.async_utils import TaskRunner
@@ -15,12 +14,10 @@ class CompletionOrchestrator:
     def __init__(
         self,
         redis_service: RedisService,
-        history_update_service: HistoryUpdateService,
         completion_data_provider: CompletionDataProvider,
         completion_event_processor: CompletionEventProcessor,
     ):
         self.redis = redis_service
-        self.history_updater = history_update_service
         self.data_provider = completion_data_provider
         self.processor = completion_event_processor
 
@@ -31,20 +28,20 @@ class CompletionOrchestrator:
             curr_matches: Dictionary of match_id to match details
         """
         # Retrieve work items from redis and match api for matches in events that have completed
+        logger.info("Starting Completion Cycle...")
 
         completion_work_items = await self.data_provider.get_work_items("consumer_one")
 
+        logger.info(f"Found {len(completion_work_items)} completed live matches")
+
         if not completion_work_items:
+            logger.info("None of the existing live matches have completed. Ending cycle early")
             return 0
 
-        concurrent_tasks = []
-        work_item_map = {}
-
-        for item in completion_work_items:
-            task = AsyncTask(key=item.event_id, coro=self.processor.process_events(item))
-            concurrent_tasks.append(task)
-            # populate map for faster lookup
-            work_item_map[item.event_id] = item.event_data
+        concurrent_tasks = [
+            AsyncTask(key=item.event_id, inputs=item, coro=self.processor.process_events(item))
+            for item in completion_work_items
+        ]
 
         results = await TaskRunner.run_concurrently(concurrent_tasks)
 
@@ -53,23 +50,28 @@ class CompletionOrchestrator:
 
         for task_result in results:
             event_id: str = task_result.key
-            event_data: StreamMatchEventData = work_item_map[event_id]
+            original_event = task_result.inputs
+            match_id = original_event.match_id
             try:
-                result = task_result.get_result()
-                if isinstance(result, Exception):
+                result = task_result.outcome
+                if isinstance(result, BaseException):
                     raise result
-                await self.redis.mark_match_as_completed(match_id=event_data.match_id, event_id_to_ack=event_id)
+                await self.redis.mark_match_as_completed(match_id=match_id, event_id_to_ack=event_id)
                 count_success += 1
-            except Exception as e:
+
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
                 await self.redis.handle_processing_failure(
-                    event_data=event_data,
+                    event_data=original_event,
                     event_id=event_id,
-                    error=e,
+                    error=ve,
                     consumer_group=COMPLETION_GROUP,
                     event_stream=STREAM_PENDING_COMPLETION,
                 )
                 count_failure += 1
                 continue
+            except Exception as e:
+                logger.error(f"Unexpected error during completion cycle: {e}", exc_info=True)
+                raise
 
         logger.info(f"Completion Orchestrator: Successfully processed {count_success} and failed {count_failure}")
 

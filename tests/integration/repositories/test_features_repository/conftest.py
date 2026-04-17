@@ -36,7 +36,7 @@ async def seed_prerequisite_match_ids_fk(db_session: AsyncSession, match_table_f
     match_table_instances = [match_table_factory.build(match_id=test_match_id) for test_match_id in match_ids_all]
 
     db_session.add_all(match_table_instances)
-    await db_session.commit()
+    await db_session.flush()
 
     logger.debug("Prerequisite match data seeded for current test transaction.")
 
@@ -72,7 +72,7 @@ async def seed_features_data(
     )
 
     db_session.add_all(all_data)
-    await db_session.commit()
+    await db_session.flush()
 
     logger.info("Seeding complete.")
 

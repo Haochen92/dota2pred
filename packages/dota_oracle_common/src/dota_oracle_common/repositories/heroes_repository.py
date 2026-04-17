@@ -1,7 +1,7 @@
 from ..models.heroes import HeroDataTable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from sqlmodel import select
 from ..utils.set_logging import get_logger
 from .base_repository import BaseRepository
@@ -13,7 +13,7 @@ class HeroesRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def store_hero_data(self, heroes_input: Dict[str, HeroDataTable]) -> None:
+    async def upsert_hero_data(self, heroes_input: Dict[str, HeroDataTable]) -> None:
         if not heroes_input:
             logger.warning(f"Missing heroes_data: {heroes_input}")
             return
@@ -54,4 +54,21 @@ class HeroesRepository(BaseRepository):
             raise
         except Exception as e:
             logger.error(f"Unexpected error when attempting to create hero map: {e}", exc_info=True)
+            raise
+
+    async def get_all_hero_data(self) -> List[HeroDataTable]:
+        try:
+            stmt = select(HeroDataTable)
+            res = await self.session.execute(stmt)
+            heroes = res.scalars().all()
+            if not heroes:
+                logger.warning("Missing Hero data")
+                return []
+
+            return heroes  # type: ignore
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when attempting to fetch all hero data: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error when attempting to fetch all hero data: {e}", exc_info=True)
             raise

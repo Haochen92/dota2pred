@@ -30,54 +30,54 @@ def upgrade() -> None:
     # Add them back with CASCADE
     op.execute(
         """
-        ALTER TABLE hero_features 
-        ADD CONSTRAINT hero_features_match_id_fkey 
+        ALTER TABLE hero_features
+        ADD CONSTRAINT hero_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id) ON DELETE CASCADE
     """
     )
     op.execute(
         """
-        ALTER TABLE player_hero_features 
-        ADD CONSTRAINT player_hero_features_match_id_fkey 
+        ALTER TABLE player_hero_features
+        ADD CONSTRAINT player_hero_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id) ON DELETE CASCADE
     """
     )
     op.execute(
         """
-        ALTER TABLE team_features 
-        ADD CONSTRAINT team_features_match_id_fkey 
+        ALTER TABLE team_features
+        ADD CONSTRAINT team_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id) ON DELETE CASCADE
     """
     )
 
     op.execute(
         """
-        DELETE FROM matches 
-        WHERE slot_0_hero_id IS NULL 
-           OR slot_1_hero_id IS NULL 
-           OR slot_2_hero_id IS NULL 
-           OR slot_3_hero_id IS NULL 
-           OR slot_4_hero_id IS NULL 
-           OR slot_128_hero_id IS NULL 
-           OR slot_129_hero_id IS NULL 
-           OR slot_130_hero_id IS NULL 
-           OR slot_131_hero_id IS NULL 
+        DELETE FROM matches
+        WHERE slot_0_hero_id IS NULL
+           OR slot_1_hero_id IS NULL
+           OR slot_2_hero_id IS NULL
+           OR slot_3_hero_id IS NULL
+           OR slot_4_hero_id IS NULL
+           OR slot_128_hero_id IS NULL
+           OR slot_129_hero_id IS NULL
+           OR slot_130_hero_id IS NULL
+           OR slot_131_hero_id IS NULL
            OR slot_132_hero_id IS NULL
     """
     )
 
     op.execute(
         """
-        DELETE FROM matches 
-        WHERE slot_0_account_id IS NULL 
-           OR slot_1_account_id IS NULL 
-           OR slot_2_account_id IS NULL 
-           OR slot_3_account_id IS NULL 
-           OR slot_4_account_id IS NULL 
-           OR slot_128_account_id IS NULL 
-           OR slot_129_account_id IS NULL 
-           OR slot_130_account_id IS NULL 
-           OR slot_131_account_id IS NULL 
+        DELETE FROM matches
+        WHERE slot_0_account_id IS NULL
+           OR slot_1_account_id IS NULL
+           OR slot_2_account_id IS NULL
+           OR slot_3_account_id IS NULL
+           OR slot_4_account_id IS NULL
+           OR slot_128_account_id IS NULL
+           OR slot_129_account_id IS NULL
+           OR slot_130_account_id IS NULL
+           OR slot_131_account_id IS NULL
            OR slot_132_account_id IS NULL
     """
     )
@@ -124,22 +124,22 @@ def downgrade() -> None:
 
     op.execute(
         """
-        ALTER TABLE hero_features 
-        ADD CONSTRAINT hero_features_match_id_fkey 
+        ALTER TABLE hero_features
+        ADD CONSTRAINT hero_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id)
     """
     )
     op.execute(
         """
-        ALTER TABLE player_hero_features 
-        ADD CONSTRAINT player_hero_features_match_id_fkey 
+        ALTER TABLE player_hero_features
+        ADD CONSTRAINT player_hero_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id)
     """
     )
     op.execute(
         """
-        ALTER TABLE team_features 
-        ADD CONSTRAINT team_features_match_id_fkey 
+        ALTER TABLE team_features
+        ADD CONSTRAINT team_features_match_id_fkey
         FOREIGN KEY (match_id) REFERENCES matches(match_id)
     """
     )

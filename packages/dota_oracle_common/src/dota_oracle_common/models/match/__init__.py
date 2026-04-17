@@ -1,6 +1,16 @@
 from .base import Match, MatchOutcome, MatchWithOutcome
-from .schema import MatchesAPIResponse, LeagueData, PlayerData, ProMatchAPIResponse, ProMatchOutcome
-from .table import MatchTable, MatchOutcomeTable
+from .schema import (
+    MatchesAPIResponse,
+    LeagueData,
+    PlayerData,
+    ProMatchAPIResponse,
+    ProMatchOutcome,
+    MatchNotifcationAPIPayload,
+    CompletedMatchAPIPayload,
+    PublicMatch,
+    PublicMatchAPIResponse,
+)
+from .table import MatchTable, MatchOutcomeTable, PublicMatchTable
 
 __all__ = [
     "Match",
@@ -11,6 +21,11 @@ __all__ = [
     "PlayerData",
     "ProMatchAPIResponse",
     "ProMatchOutcome",
+    "MatchNotifcationAPIPayload",
+    "CompletedMatchAPIPayload",
     "MatchTable",
     "MatchOutcomeTable",
+    "PublicMatchTable",
+    "PublicMatch",
+    "PublicMatchAPIResponse",
 ]

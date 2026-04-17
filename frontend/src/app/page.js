@@ -1,19 +1,10 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import Navbar from "@/components/nav/Navbar";
-import { AppShell } from "@mantine/core";
+export const metadata = {
+  title: 'Dota Oracle - Home',
+  description: 'Welcome to the Dota Oracle match prediction tool.',
+};
 
-export default function Home({children}) {
-  return (
-    <AppShell
-      header={{height:80, offset:true}}
-    >
-      <AppShell.Header>
-        <Navbar/>
-      </AppShell.Header>
-      <AppShell.Main h='100vh' style={{backgroundColor:'var(--blue-100)'}}>
-        {children}
-      </AppShell.Main>
-    </AppShell>
-  );
+export default function HomePage() {
+  redirect('/match-tracker');
 }

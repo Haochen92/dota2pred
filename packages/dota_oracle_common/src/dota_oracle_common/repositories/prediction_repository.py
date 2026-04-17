@@ -1,10 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.inference import MatchPredictionTable
+from ..models.match import MatchTable, MatchOutcomeTable
 from ..utils.set_logging import get_logger
 from .base_repository import BaseRepository
 from typing import Optional, List
+from datetime import datetime
 from sqlmodel import select
+from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
 logger = get_logger(__name__)
@@ -34,6 +37,52 @@ class PredictionRepository(BaseRepository):
                 f", predictor: {match_prediction.predictor_name}, {e}",
                 exc_info=True,
             )
+
+    async def store_match_predictions_bulk(self, match_predictions: List[MatchPredictionTable]) -> None:
+        """
+        Bulk upsert a list of MatchPredictionTable instances.
+
+        Uses BaseRepository._upsert_data to perform batched ON CONFLICT DO UPDATE upserts.
+        """
+        if not match_predictions:
+            logger.warning("Received empty list for storing match predictions. Skipping.")
+            return
+        try:
+            await self._upsert_data(
+                model_class=MatchPredictionTable,
+                instances=match_predictions,
+            )
+        except Exception:
+            logger.error("Bulk upsert of match predictions failed", exc_info=True)
+            raise
+
+    async def get_earliest_missing_prediction_time(self, predictor_name: str) -> Optional[datetime]:
+        """
+        Find the earliest completed match that does NOT have a prediction row for the given predictor.
+        Returns the match start_time or None if all have predictions.
+        """
+        try:
+            # LEFT JOIN predictions filtered by predictor_name; null means missing
+            pred = MatchPredictionTable
+            m = MatchTable
+            o = MatchOutcomeTable
+
+            join_condition = and_(pred.match_id == m.match_id, pred.predictor_name == predictor_name)
+            stmt = (
+                select(m.start_time)
+                .select_from(m)
+                .join(o, o.match_id == m.match_id)
+                .outerjoin(pred, join_condition)
+                .where(pred.match_id.is_(None))
+                .order_by(m.start_time.asc())
+                .limit(1)
+            )
+            res = await self.session.execute(stmt)
+            row = res.first()
+            return row[0] if row else None
+        except Exception as e:
+            logger.error(f"Error finding earliest missing prediction time for '{predictor_name}': {e}", exc_info=True)
+            raise
 
     async def get_prediction_predictor_name_match_id(
         self, match_id: int, predictor_name: str

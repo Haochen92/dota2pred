@@ -6,13 +6,8 @@ from polyfactory.pytest_plugin import register_fixture
 from dota_oracle_common.models.live_games.schema import OngoingLeagueGame, Player
 from dota_oracle_common.models.inference.schema import ModelPredictionAPIResponse, ModelMetaDataAPIResponse
 from dota_oracle_common.models.match.schema import MatchesAPIResponse, PlayerData
-from dota_oracle_common.models.pipeline.schema import (
-    NewMatchWorkItem,
-    FeatureEngineeringWorkItem,
-    PredictionWorkItem,
-    CompletionWorkItem,
-)
 from dota_oracle_common.models.utils import TaskResult, AsyncTask
+from dota_oracle_common.models.patches.schema import DotaPatch, DotaPatchAPIResponse
 
 
 # ================================
@@ -57,30 +52,20 @@ class ModelMetaDataAPIResponseFactory(ModelFactory[ModelMetaDataAPIResponse]):
 
 
 @register_fixture
-class NewMatchWorkItemFactory(ModelFactory[NewMatchWorkItem]):
-    pass
-
-
-@register_fixture
-class FeatureEngineeringWorkItemFactory(ModelFactory[FeatureEngineeringWorkItem]):
-    pass
-
-
-@register_fixture
-class PredictionWorkItemFactory(ModelFactory[PredictionWorkItem]):
-    pass
-
-
-@register_fixture
-class CompletionWorkItemFactory(ModelFactory[CompletionWorkItem]):
-    outcome = Use(lambda: True)
-
-
-@register_fixture
 class TaskResultFactory(ModelFactory[TaskResult]):
     pass
 
 
 @register_fixture
 class AsyncTaskFactory(ModelFactory[AsyncTask]):
+    pass
+
+
+@register_fixture
+class DotaPatchFactory(ModelFactory[DotaPatch]):
+    pass
+
+
+@register_fixture
+class DotaPatchAPIResponseFactory(ModelFactory[DotaPatchAPIResponse]):
     pass

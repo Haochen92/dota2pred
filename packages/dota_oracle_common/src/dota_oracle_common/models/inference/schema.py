@@ -4,21 +4,44 @@ from typing import List, Optional
 from datetime import datetime
 
 
+"""
+###############
+# MODEL METADATA
+################
+"""
+
+
 # API responses
 class PerformanceMetrics(BaseModel):
     """Model performance metrics container.
 
     Attributes:
         accuracy: Classification accuracy (float)
-        f1_score: F1 score metric (float)
-        precision: Precision metric (float)
-        recall: Recall metric (float)
+        roc_auc: ROC AUC score metric (float)
+        log_loss: Log loss metric (float)
     """
 
-    accuracy: float = 0.0
-    f1_score: float = 0.0
-    precision: float = 0.0
-    recall: float = 0.0
+    accuracy: Optional[float] = None
+    roc_auc: Optional[float] = None
+    log_loss: Optional[float] = None
+
+
+class TrainingDataSummary(BaseModel):
+    """Summary statistics of the training data.
+
+    Attributes:
+        source: source of training data (str)
+        num_features: Number of features used (int)
+        class_distribution: Distribution of target classes (dict)
+    """
+
+    source_description: str = ""
+    splitting_strategy: str = ""
+    total_match_counts: int = 0
+    start_match_id: int = 0
+    end_match_id: int = 0
+    start_date: datetime = datetime.now()
+    end_date: datetime = datetime.now()
 
 
 class VersionMetaData(BaseModel):
@@ -32,6 +55,7 @@ class VersionMetaData(BaseModel):
     changes: List[str] = []
     performance_metrics: PerformanceMetrics = Field(default_factory=PerformanceMetrics)
     feature_columns: List[str] = []
+    training_summary: TrainingDataSummary = Field(default_factory=TrainingDataSummary)
 
 
 class ModelMetaData(BaseModel):
@@ -47,10 +71,20 @@ class ModelMetaData(BaseModel):
     """
 
     name: str
+    description: Optional[str] = ""
+    intended_use: Optional[str] = ""
+    limitations: Optional[str] = ""
     version: str
     trained_date: datetime
     previous_version: str = ""
     version_metadata: VersionMetaData = Field(default_factory=VersionMetaData)
+
+
+"""
+###############
+# API RESPONSE MODELS
+################
+"""
 
 
 class ModelMetaDataAPIResponse(ModelMetaData):
@@ -99,3 +133,7 @@ class MatchPrediction(SQLModel):
 
     predictor_version: str = Field(default="v1.0")
     prediction_date: datetime
+
+
+class PredictionInputPayload(BaseModel):
+    input_features: List[List[float]]

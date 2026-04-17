@@ -15,6 +15,24 @@ boto3 = "^1.38.36"
 boto3-stubs = {extras = ["s3"], version = "^1.38.36"}
 
 # IMPORTANT: Test dependencies are now here
+shap = "^0.48.0"
+matplotlib = "^3.10.6"
+gensim = "^4.3.3"
+tensorflow = "^2.20.0"
+sentence-transformers = "^5.1.0"
+torch = "^2.8.0"
+torchvision = "^0.23.0"
+torchaudio = "^2.8.0"
+seaborn = "^0.13.2"
+optuna = "^4.5.0"
+optuna-dashboard = "^0.19.0"
+lightgbm = "^4.6.0"
+plotly = "^6.3.1"
+nbformat = "^5"
+statsmodels = "^0.14.5"
+torch-geometric = "^2.6.1"
+mlxtend = "^0.23.4"
+chardet = "^5.2.0"
 [tool.poetry.group.dev.dependencies]
 # Common dev dependencies
 pytest = "*"
@@ -34,6 +52,8 @@ testcontainers = {extras = ["postgres", "redis"], version = "^4.10.0"}
 httpx = "*"
 requests = "*"
 polyfactory = "^2.21.0"
+python-logging-loki = "^0.3.1"
+respx = "^0.22.0"
 
 [tool.poetry.group.workspace]
 optional = false
@@ -42,6 +62,7 @@ optional = false
 # Local workspace packages (This is correct)
 dota-oracle-common = {path = "packages/dota_oracle_common", develop = true}
 dota-oracle-pipeline = {path = "packages/dota_oracle_pipeline", develop = true}
+dota-oracle-schedules = {path = "dota_oracle_schedules", develop = true}
 model-factory = {path = "model_factory", develop = true}
 prediction-service = {path = "services/inference_service", develop = true}
 live-orchestrator-app = {path = "live_orchestrator_app", develop = true}
@@ -50,6 +71,8 @@ api-service = {path = "services/api_service", develop = true}
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+extend-exclude = ["*.ipynb"]
+force-exclude = true
 
 [tool.black]
 line-length = 120

@@ -4,6 +4,7 @@ from .schema import (
     ModelPredictionAPIResponse,
     VersionMetaData,
     PerformanceMetrics,
+    PredictionInputPayload,
 )
 
 from .table import MatchPredictionTable
@@ -15,4 +16,5 @@ __all__ = [
     "VersionMetaData",
     "PerformanceMetrics",
     "MatchPredictionTable",
+    "PredictionInputPayload",
 ]

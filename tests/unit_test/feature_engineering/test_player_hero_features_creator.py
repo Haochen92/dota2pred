@@ -1,6 +1,7 @@
 import pytest
-from unittest.mock import ANY
 from datetime import datetime, timezone
+from types import SimpleNamespace
+
 from dota_oracle_common.models.features import PlayerHeroFeatureTable
 
 FUNCTION_FP = "dota_oracle_pipeline.feature_engineering.player_hero_features_creator"
@@ -13,31 +14,30 @@ async def test_create_player_hero_features_success(
     match_table_factory,
     mocker,
 ) -> None:
-    """
-    Tests the happy path where a feature row is successfully created for a valid match.
-    """
-    # Arrange
-
     match_instance = match_table_factory.build(match_id=1001)
 
-    # Mock the _calculate_win_rate method to return predictable results
-    mocker.patch.object(player_hero_features_creator, "_calculate_win_rate", return_value=0.6)
-
-    # Act
-    result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_async_session, match_instances=[match_instance]
+    mock_calculate_hero_prior = mocker.patch.object(
+        player_hero_features_creator, "_calculate_hero_prior", return_value=0.55
+    )
+    mock_calculate_decayed = mocker.patch.object(
+        player_hero_features_creator,
+        "_calculate_decayed_win_rate",
+        return_value=0.6,
     )
 
-    # Assert
+    result = await player_hero_features_creator.create_player_hero_features(
+        session=mock_async_session,
+        match_instances=[match_instance],
+    )
+
     assert len(result) == 1
     feature_row = result[0]
-
     assert isinstance(feature_row, PlayerHeroFeatureTable)
     assert feature_row.match_id == 1001
-
-    # Check if a sample feature was set correctly from the mocked result
     assert feature_row.player_hero_0_win_rate == 0.6
     assert feature_row.player_hero_128_win_rate == 0.6
+    assert mock_calculate_hero_prior.await_count == 10
+    assert mock_calculate_decayed.await_count == 10
 
 
 @pytest.mark.asyncio
@@ -50,100 +50,145 @@ async def test_create_player_hero_features_success(
     ],
 )
 async def test_create_features_skips_match_with_missing_data(
-    player_hero_features_creator, mock_async_session, match_table_factory, mocker, missing_data: dict
+    player_hero_features_creator,
+    mock_async_session,
+    match_table_factory,
+    mocker,
+    missing_data: dict,
 ) -> None:
-    """
-    Tests that a match is skipped if essential data like account_id is missing.
-    """
-    # Arrange - Factory called at test time, fresh instance each run
     match_instance = match_table_factory.build(**missing_data)
     mock_logger_error = mocker.patch(f"{FUNCTION_FP}.logger.error")
 
-    # Act
     result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_async_session, match_instances=[match_instance]
+        session=mock_async_session,
+        match_instances=[match_instance],
     )
 
-    # Assert
-    assert len(result) == 0, f"Expected 0 results, got {len(result)}"
+    assert result == []
     mock_logger_error.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_create_features_handles_task_failure_gracefully(
-    player_hero_features_creator, mock_async_session, match_table_factory, mocker
+async def test_create_features_raises_when_decayed_rate_calculation_fails(
+    player_hero_features_creator,
+    mock_async_session,
+    match_table_factory,
+    mocker,
 ) -> None:
-    """
-    Tests that if a single win-rate calculation fails, it defaults to 0.5
-    and the feature creation for the match still succeeds.
-    """
-    # Arrange
     match_instance = match_table_factory.build(match_id=789)
-
-    mock_calculate = mocker.patch.object(player_hero_features_creator, "_calculate_win_rate")
-
-    mock_counter = 0
-
-    def side_effect(*args, **kwargs):
-        nonlocal mock_counter
-        mock_counter += 1
-        # Use the mock's built-in call_count (starts at 1 for first call)
-        if mock_counter == 2:  # Second call
-            raise ValueError("Calculation failed!")
-        elif mock_counter == 1:  # First call
-            return 0.75
-        else:  # Subsequent calls
-            return 0.6
-
-    mock_calculate.side_effect = side_effect
-    mock_logger_warning = mocker.patch(f"{FUNCTION_FP}.logger.warning")
-
-    # Act
-    result = await player_hero_features_creator.create_player_hero_features(
-        session=mock_async_session, match_instances=[match_instance]
+    mocker.patch.object(player_hero_features_creator, "_calculate_hero_prior", return_value=0.5)
+    mocker.patch.object(
+        player_hero_features_creator,
+        "_calculate_decayed_win_rate",
+        side_effect=Exception("decayed-rate-failed"),
     )
 
-    # Assert
-    assert len(result) == 1
-    feature_row = result[0]
-    assert feature_row.match_id == 789
-
-    # The successful task's result is used
-    assert feature_row.player_hero_0_win_rate == 0.75
-    # The failed task's result is the default fallback value
-    assert feature_row.player_hero_1_win_rate == 0.5
-    # A logger warning was issued for the failed task
-    mock_logger_warning.assert_called_once()
+    with pytest.raises(Exception, match="decayed-rate-failed"):
+        await player_hero_features_creator.create_player_hero_features(
+            session=mock_async_session,
+            match_instances=[match_instance],
+        )
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "history, expected_win_rate",
-    [
-        pytest.param([], 0.5, id="no_history_defaults_to_half"),
-        pytest.param([True, True], 1.0, id="all_wins_perfect_rate"),
-        pytest.param([False, False, False], 0.0, id="all_losses_zero_rate"),
-        pytest.param([True, False, True], 2 / 3, id="mixed_results_calculated"),
-    ],
-)
-async def test_calculate_win_rate_logic(
-    player_hero_features_creator, mock_async_session, mocker, history, expected_win_rate
+async def test_calculate_decayed_win_rate_uses_hero_prior_when_no_history(
+    player_hero_features_creator,
+    mock_async_session,
+    mocker,
 ) -> None:
-    """
-    Tests the _calculate_win_rate helper method's logic directly.
-    """
-    # Arrange
-
     mock_repo_instance = mocker.AsyncMock()
-    mock_repo_instance.get_player_hero_win_history.return_value = history
-
+    mock_repo_instance.get_player_hero_state_before.return_value = None
     mocker.patch(f"{FUNCTION_FP}.HistoryRepository", return_value=mock_repo_instance)
 
-    # Act
-    win_rate = await player_hero_features_creator._calculate_win_rate(
-        session=mock_async_session, account_id=1, hero_id=2, before=datetime.now(timezone.utc)
+    win_rate = await player_hero_features_creator._calculate_decayed_win_rate(
+        session=mock_async_session,
+        account_id=1,
+        hero_id=2,
+        hero_prior=0.42,
+        before=datetime.now(timezone.utc),
     )
 
-    # Assert
-    assert win_rate == pytest.approx(expected_win_rate)
-    mock_repo_instance.get_player_hero_win_history.assert_awaited_once_with(1, 2, ANY)
+    assert win_rate == pytest.approx(0.42)
+    mock_repo_instance.get_player_hero_state_before.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_calculate_decayed_win_rate_applies_decay_and_prior(
+    player_hero_features_creator,
+    mock_async_session,
+    mocker,
+) -> None:
+    before = datetime(2025, 1, 10, tzinfo=timezone.utc)
+    state = SimpleNamespace(
+        decayed_wins=4.0,
+        decayed_games=10.0,
+        last_update_time=datetime(2025, 1, 5, tzinfo=timezone.utc),
+    )
+    mock_repo_instance = mocker.AsyncMock()
+    mock_repo_instance.get_player_hero_state_before.return_value = state
+    mocker.patch(f"{FUNCTION_FP}.HistoryRepository", return_value=mock_repo_instance)
+    mock_decay = mocker.patch(f"{FUNCTION_FP}.apply_decay_to_pair", return_value=(2.0, 5.0))
+
+    hero_prior = 0.3
+    win_rate = await player_hero_features_creator._calculate_decayed_win_rate(
+        session=mock_async_session,
+        account_id=1,
+        hero_id=2,
+        hero_prior=hero_prior,
+        before=before,
+    )
+
+    expected = (2.0 + player_hero_features_creator.player_prior_count * hero_prior) / (
+        5.0 + player_hero_features_creator.player_prior_count
+    )
+    assert win_rate == pytest.approx(expected)
+    mock_decay.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_calculate_hero_prior_uses_default_when_no_history(
+    player_hero_features_creator,
+    mock_async_session,
+    mocker,
+) -> None:
+    mock_repo_instance = mocker.AsyncMock()
+    mock_repo_instance.get_hero_state_before.return_value = None
+    mocker.patch(f"{FUNCTION_FP}.HistoryRepository", return_value=mock_repo_instance)
+
+    hero_prior = await player_hero_features_creator._calculate_hero_prior(
+        session=mock_async_session,
+        hero_id=2,
+        before=datetime.now(timezone.utc),
+    )
+
+    assert hero_prior == pytest.approx(player_hero_features_creator.hero_prior_mean)
+
+
+@pytest.mark.asyncio
+async def test_calculate_hero_prior_applies_decay_and_bayesian_smoothing(
+    player_hero_features_creator,
+    mock_async_session,
+    mocker,
+) -> None:
+    before = datetime(2025, 1, 10, tzinfo=timezone.utc)
+    state = SimpleNamespace(
+        decayed_wins=8.0,
+        decayed_games=16.0,
+        last_update_time=datetime(2025, 1, 5, tzinfo=timezone.utc),
+    )
+    mock_repo_instance = mocker.AsyncMock()
+    mock_repo_instance.get_hero_state_before.return_value = state
+    mocker.patch(f"{FUNCTION_FP}.HistoryRepository", return_value=mock_repo_instance)
+    mock_decay = mocker.patch(f"{FUNCTION_FP}.apply_decay_to_pair", return_value=(3.0, 6.0))
+
+    hero_prior = await player_hero_features_creator._calculate_hero_prior(
+        session=mock_async_session,
+        hero_id=2,
+        before=before,
+    )
+
+    expected = (3.0 + player_hero_features_creator.hero_prior_count * player_hero_features_creator.hero_prior_mean) / (
+        6.0 + player_hero_features_creator.hero_prior_count
+    )
+    assert hero_prior == pytest.approx(expected)
+    mock_decay.assert_called_once()

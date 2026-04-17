@@ -13,7 +13,7 @@ async def fetch_pro_match(max_match_id: int, min_match_id: int) -> List[ProMatch
 
     while max_match_id > min_match_id:
         try:
-            res = await fetch_opendota(endpoint="/proMatches", params={"less_than_match_id": max_match_id})
+            res = await fetch_opendota(endpoint="proMatches", params={"less_than_match_id": max_match_id})
             logger.info(f"fetching api endpoint for less_than_match_id: {max_match_id}")
 
             api_response = ProMatchAPIResponse.model_validate(res)

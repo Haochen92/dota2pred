@@ -1,3 +1,10 @@
-from .schema import MatchProcessingStatus, MatchStatusValue, FailureRecord, StreamMatchEventData
+from .schema import MatchProcessingStatus, MatchStatusValue, FailureRecord, ConsumedEvent, EventToPublish, StreamEvent
 
-__all__ = ["MatchProcessingStatus", "MatchStatusValue", "FailureRecord", "StreamMatchEventData"]
+__all__ = [
+    "MatchProcessingStatus",
+    "MatchStatusValue",
+    "FailureRecord",
+    "ConsumedEvent",
+    "EventToPublish",
+    "StreamEvent",
+]

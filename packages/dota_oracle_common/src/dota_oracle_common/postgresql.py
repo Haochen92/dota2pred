@@ -1,99 +1,98 @@
-import logging
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.engine.url import URL
-from dota_oracle_common.utils.env_loader import load_workspace_env
-from typing import Dict, Any
 import os
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+    AsyncSession,
+    AsyncEngine,
+)
+from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.utils.env_loader import load_workspace_env
 
 load_workspace_env()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
-class DatabaseEngineFactory:
+class DatabaseManager:
     """
-    Provides a singleton SQLAlchemy AsyncEngine instance per environment ('prod' or 'test')
-    using baked-in configuration settings. Access via class method get_engine().
+    Manages a singleton SQLAlchemy engine and provides a session factory.
+    This class is designed to be initialized once at application startup.
     """
 
-    _engine: AsyncEngine | None = None
+    _engine: Optional[AsyncEngine] = None
+    _session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
     @classmethod
-    def _get_config(cls) -> Dict[str, Any]:
-        """Get current database configuration from environment variables"""
-        return {
-            "drivername": "postgresql+asyncpg",
-            "username": os.getenv("DB_USER"),
-            "password": os.getenv("DB_PASSWORD"),
-            "host": os.getenv("DB_HOST", "localhost"),
-            "database": os.getenv("DB_NAME"),
-            "port": int(os.getenv("DB_PORT", "5432")),  # Convert to int
-            "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
-            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "2")),
-            "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
-        }
-
-    @classmethod
-    def _validate_config(cls, config: Dict[str, Any]) -> None:
-        """Validate that all required configuration is present"""
-        required_fields = ["username", "password", "database"]
-        missing = [field for field in required_fields if not config.get(field)]
-        if missing:
-            raise ValueError(f"Missing required database configuration: {missing}")
-
-    @classmethod
-    def get_engine(cls) -> AsyncEngine:
+    def _initialize(cls) -> None:
         """
-        Gets the singleton AsyncEngine instance for the specified environment.
-
-        Returns:
-            The singleton SQLAlchemy AsyncEngine for that environment.
-
-        Raises:
-            ValueError: If the provided env is invalid.
+        Internal method to create the engine and session factory.
+        This is called automatically by the public methods if needed.
         """
         if cls._engine is not None:
-            return cls._engine
+            return
+
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable not set. This is required.")
 
         try:
-            config = cls._get_config()
-            cls._validate_config(config)
+            pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
+            max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
 
-            # Create URL
-            url_object = URL.create(
-                drivername=config["drivername"],
-                username=config["username"],
-                password=config["password"],
-                host=config["host"],
-                port=config["port"],
-                database=config["database"],
-            )
+            logger.info(f"Creating database engine with pool_size={pool_size} and max_overflow={max_overflow}")
 
-            # Create engine
             cls._engine = create_async_engine(
-                url_object,
-                pool_size=config["pool_size"],
-                max_overflow=config["max_overflow"],
-                pool_recycle=config["pool_recycle"],
+                database_url,
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+                pool_pre_ping=True,
+                pool_recycle=3600,
             )
 
-            logger.info(
-                f"Successfully created engine for database '{config['database']}' "
-                f"at {config['host']}:{config['port']}"
+            # Create the session factory and bind it to the engine.
+            cls._session_factory = async_sessionmaker(
+                bind=cls._engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
             )
-            return cls._engine
+
+            db_name = cls._engine.url.database
+            host = cls._engine.url.host
+            logger.info(f"Successfully initialized database for '{db_name}' at {host}")
 
         except Exception as e:
-            logger.error(f"Failed to create engine: {e}", exc_info=True)
+            logger.error(f"Failed to initialize database from DATABASE_URL: {e}", exc_info=True)
             raise
 
     @classmethod
+    def get_session_factory(cls) -> async_sessionmaker[AsyncSession]:
+        """
+        Returns the singleton session factory.
+        Initializes the database engine on the first call.
+        """
+        cls._initialize()
+        if not cls._session_factory:
+            raise RuntimeError("Session factory could not be created.")
+        return cls._session_factory
+
+    @classmethod
+    async def get_session(cls) -> AsyncSession:
+        """
+        A convenience method to get a single session instance directly.
+        Useful for simple, one-off operations.
+        """
+        factory = cls.get_session_factory()
+        return factory()
+
+    @classmethod
     async def close_engine(cls) -> None:
-        """Closes and removes the engine instance for a specific environment."""
-        engine = cls._engine
-        if engine:
-            logger.info("Closing engine instance")
-            await engine.dispose()
+        """Closes the underlying engine's connection pool."""
+        if cls._engine:
+            logger.info("Closing database engine instance")
+            await cls._engine.dispose()
             cls._engine = None
-            logger.info("Successfully closed engine")
+            cls._session_factory = None  # Clear the factory as well
+            logger.info("Successfully closed database engine")
         else:
             logger.info("No active engine to close")

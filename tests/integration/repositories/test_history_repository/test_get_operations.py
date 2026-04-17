@@ -1,209 +1,293 @@
 """
-Tests for get operations: get_player_hero_win_history, get_team_history, get_team_matchup_history
+Tests for decayed-state history repository get operations.
 """
 
 import pytest
-from typing import List
 from datetime import datetime, timezone
 
 from dota_oracle_common.repositories.history_repository import HistoryRepository
-from .base_history_repo import BaseHistoryRepositoryTest
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
-class TestGetPlayerHeroWinHistory:
-    """Test retrieving player hero win history with various filters."""
-
+class TestGetTeamStateBefore:
     @pytest.mark.parametrize(
-        "test_scenario,account_id,hero_id,before,limit,expected_win_history",
+        "test_scenario,team_name,before_time,expected_match_id,expected_decayed_wins,expected_decayed_games",
         [
             (
-                "get_account1_hero10_limit4_no_filter",
-                1,
-                10,
-                None,
-                4,
-                [False, False, True, True],  # Most recent first
+                "get_latest_team_state_before_cutoff",
+                "team_secret",
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                1004,
+                1.6,
+                3.1,
             ),
             (
-                "get_account1_hero10_with_before_filter",
-                1,
-                10,
-                datetime(2023, 1, 4, tzinfo=timezone.utc),
-                10,
-                [True, True, True],  # Before 2023-1-4, so matches 1001-1003
+                "get_team_state_with_earlier_cutoff",
+                "team_secret",
+                datetime(2023, 1, 3, tzinfo=timezone.utc),
+                1002,
+                1.0,
+                1.8,
             ),
-            ("get_nonexistent_hero_returns_empty", 1, 35, None, 5, []),  # Hero that doesn't exist in seed data
-            ("get_nonexistent_account_returns_empty", 99, 10, None, 5, []),  # Account that doesn't exist in seed data
+            (
+                "get_nonexistent_team_returns_none",
+                "team_spirit",
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                None,
+                None,
+                None,
+            ),
         ],
     )
-    async def test_get_player_hero_win_history_scenarios(
+    async def test_get_team_state_before(
         self,
         history_repository_test_subject: HistoryRepository,
-        history_test_repository: BaseHistoryRepositoryTest,
+        seed_history_data,
+        test_scenario: str,
+        team_name: str,
+        before_time: datetime,
+        expected_match_id: int | None,
+        expected_decayed_wins: float | None,
+        expected_decayed_games: float | None,
+    ) -> None:
+        result = await history_repository_test_subject.get_team_state_before(
+            team_name=team_name, before_time=before_time
+        )
+
+        if expected_match_id is None:
+            assert result is None, test_scenario
+            return
+
+        assert result is not None, test_scenario
+        assert result.match_id == expected_match_id, test_scenario
+        assert result.decayed_wins == expected_decayed_wins, test_scenario
+        assert result.decayed_games == expected_decayed_games, test_scenario
+
+    async def test_get_team_state_before_by_id(
+        self, history_repository_test_subject: HistoryRepository, seed_history_data
+    ) -> None:
+        result = await history_repository_test_subject.get_team_state_before_by_id(
+            team_id=1,
+            before_time=datetime(2023, 1, 4, tzinfo=timezone.utc),
+        )
+
+        assert result is not None
+        assert result.team_name == "team_secret"
+        assert result.match_id == 1003
+
+
+class TestGetTeamMatchupStateBefore:
+    @pytest.mark.parametrize(
+        "test_scenario,team_one,team_two,before_time,expected_match_id,expected_decayed_t1_wins,expected_decayed_games",
+        [
+            (
+                "get_latest_matchup_state_before_cutoff",
+                "team_secret",
+                "PSG_LGD",
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                1004,
+                0.7,
+                3.0,
+            ),
+            (
+                "matchup_name_order_is_normalized",
+                "PSG_LGD",
+                "team_secret",
+                datetime(2023, 1, 4, tzinfo=timezone.utc),
+                1003,
+                0.7,
+                2.4,
+            ),
+            (
+                "nonexistent_matchup_returns_none",
+                "team_secret",
+                "team_spirit",
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                None,
+                None,
+                None,
+            ),
+        ],
+    )
+    async def test_get_team_matchup_state_before(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        seed_history_data,
+        test_scenario: str,
+        team_one: str,
+        team_two: str,
+        before_time: datetime,
+        expected_match_id: int | None,
+        expected_decayed_t1_wins: float | None,
+        expected_decayed_games: float | None,
+    ) -> None:
+        result = await history_repository_test_subject.get_team_matchup_state_before(
+            team_one=team_one,
+            team_two=team_two,
+            before_time=before_time,
+        )
+
+        if expected_match_id is None:
+            assert result is None, test_scenario
+            return
+
+        assert result is not None, test_scenario
+        assert result.match_id == expected_match_id, test_scenario
+        assert result.decayed_t1_wins == expected_decayed_t1_wins, test_scenario
+        assert result.decayed_games == expected_decayed_games, test_scenario
+
+    async def test_get_team_matchup_state_before_by_id(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        seed_history_data,
+    ) -> None:
+        by_forward_order = await history_repository_test_subject.get_team_matchup_state_before_by_id(
+            team1_id=1,
+            team2_id=2,
+            before_time=datetime(2023, 1, 4, tzinfo=timezone.utc),
+        )
+        by_reverse_order = await history_repository_test_subject.get_team_matchup_state_before_by_id(
+            team1_id=2,
+            team2_id=1,
+            before_time=datetime(2023, 1, 4, tzinfo=timezone.utc),
+        )
+
+        assert by_forward_order is not None
+        assert by_reverse_order is not None
+        assert by_forward_order.match_id == 1003
+        assert by_reverse_order.match_id == 1003
+
+
+class TestGetPlayerHeroStateBefore:
+    @pytest.mark.parametrize(
+        "test_scenario,account_id,hero_id,before_time,expected_match_id,expected_decayed_wins,expected_decayed_games",
+        [
+            (
+                "get_latest_player_hero_state_before_cutoff",
+                1,
+                10,
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                1004,
+                2.4,
+                3.7,
+            ),
+            (
+                "get_player_hero_state_with_earlier_cutoff",
+                1,
+                10,
+                datetime(2023, 1, 3, tzinfo=timezone.utc),
+                1002,
+                1.8,
+                2.1,
+            ),
+            (
+                "get_nonexistent_player_hero_returns_none",
+                99,
+                10,
+                datetime(2023, 1, 5, tzinfo=timezone.utc),
+                None,
+                None,
+                None,
+            ),
+        ],
+    )
+    async def test_get_player_hero_state_before(
+        self,
+        history_repository_test_subject: HistoryRepository,
         seed_history_data,
         test_scenario: str,
         account_id: int,
         hero_id: int,
-        before: datetime,
-        limit: int,
-        expected_win_history: List[bool],
+        before_time: datetime,
+        expected_match_id: int | None,
+        expected_decayed_wins: float | None,
+        expected_decayed_games: float | None,
     ) -> None:
-        """Test various scenarios for getting player hero win history."""
-        # Act
-        actual_win_history = await history_repository_test_subject.get_player_hero_win_history(
-            account_id=account_id, hero_id=hero_id, before=before, limit=limit
+        result = await history_repository_test_subject.get_player_hero_state_before(
+            account_id=account_id,
+            hero_id=hero_id,
+            before_time=before_time,
         )
 
-        # Assert
-        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        if expected_match_id is None:
+            assert result is None, test_scenario
+            return
+
+        assert result is not None, test_scenario
+        assert result.match_id == expected_match_id, test_scenario
+        assert result.decayed_wins == expected_decayed_wins, test_scenario
+        assert result.decayed_games == expected_decayed_games, test_scenario
 
 
-class TestGetTeamHistory:
-    """Test retrieving team history with various filters."""
-
+class TestGetHeroStateBefore:
     @pytest.mark.parametrize(
-        "test_scenario,team_name,before,limit,expected_win_history",
+        "test_scenario,hero_id,before_time,expected_match_id,expected_decayed_wins,expected_decayed_games",
         [
-            (
-                "get_team_secret_limit5_no_filter",
-                "team_secret",
-                None,
-                5,
-                [True, True, False, False, True],  # Most recent first: 1005,1004,1003,1002,1001
-            ),
-            (
-                "get_team_secret_with_before_filter",
-                "team_secret",
-                datetime(2023, 1, 3, tzinfo=timezone.utc),
-                5,
-                [False, True],  # Before 2023-1-3, so matches 1002,1001
-            ),
-            ("get_nonexistent_team_returns_empty", "team_spirit", None, 5, []),  # Team that doesn't exist in seed data
-            ("get_existing_team_psg_lgd", "PSG_LGD", None, 5, [True]),  # Only one match in seed data
+            ("get_latest_hero_state_before_cutoff", 10, datetime(2023, 1, 4, tzinfo=timezone.utc), 1003, 1.4, 2.4),
+            ("get_nonexistent_hero_returns_none", 999, datetime(2023, 1, 4, tzinfo=timezone.utc), None, None, None),
         ],
     )
-    async def test_get_team_history_scenarios(
+    async def test_get_hero_state_before(
         self,
         history_repository_test_subject: HistoryRepository,
-        history_test_repository: BaseHistoryRepositoryTest,
         seed_history_data,
         test_scenario: str,
-        team_name: str,
-        before: datetime,
-        limit: int,
-        expected_win_history: List[bool],
+        hero_id: int,
+        before_time: datetime,
+        expected_match_id: int | None,
+        expected_decayed_wins: float | None,
+        expected_decayed_games: float | None,
     ) -> None:
-        """Test various scenarios for getting team history."""
-        # Act
-        actual_win_history = await history_repository_test_subject.get_team_history(
-            team_name=team_name, before=before, limit=limit
-        )
+        result = await history_repository_test_subject.get_hero_state_before(hero_id=hero_id, before_time=before_time)
 
-        # Assert
-        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
+        if expected_match_id is None:
+            assert result is None, test_scenario
+            return
+
+        assert result is not None, test_scenario
+        assert result.match_id == expected_match_id, test_scenario
+        assert result.decayed_wins == expected_decayed_wins, test_scenario
+        assert result.decayed_games == expected_decayed_games, test_scenario
 
 
 class TestGetOperationsEmptyDatabase:
-    async def test_get_team_history_empty_database(
+    async def test_get_team_state_before_empty_database(
+        self, history_repository_test_subject: HistoryRepository
+    ) -> None:
+        result = await history_repository_test_subject.get_team_state_before(
+            team_name="team_secret",
+            before_time=datetime(2023, 1, 2, tzinfo=timezone.utc),
+        )
+        assert result is None
+
+    async def test_get_player_hero_state_before_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
     ) -> None:
-        """Test that empty database returns empty list."""
-        # Act
-        result = await history_repository_test_subject.get_team_history(team_name="team_secret", before=None, limit=5)
+        result = await history_repository_test_subject.get_player_hero_state_before(
+            account_id=1,
+            hero_id=10,
+            before_time=datetime(2023, 1, 2, tzinfo=timezone.utc),
+        )
+        assert result is None
 
-        # Assert
-        assert result == [], "Expected empty list for empty database"
-
-    async def test_get_player_hero_win_history_empty_database(
+    async def test_get_team_matchup_state_before_empty_database(
         self,
         history_repository_test_subject: HistoryRepository,
     ) -> None:
-        """Test that empty database returns empty list."""
-        # Act
-        result = await history_repository_test_subject.get_player_hero_win_history(
-            account_id=1, hero_id=10, before=None, limit=5
+        result = await history_repository_test_subject.get_team_matchup_state_before(
+            team_one="team_secret",
+            team_two="PSG_LGD",
+            before_time=datetime(2023, 1, 2, tzinfo=timezone.utc),
         )
+        assert result is None
 
-        # Assert
-        assert result == [], "Expected empty list for empty database"
-
-    async def test_get_team_matchup_history_empty_database(
-        self,
-        history_repository_test_subject: HistoryRepository,
+    async def test_get_hero_state_before_empty_database(
+        self, history_repository_test_subject: HistoryRepository
     ) -> None:
-        """Test that empty database returns empty list."""
-        # Act
-        result = await history_repository_test_subject.get_team_matchup_history(
-            team_one="team_secret", team_two="PSG_LGD", before=None, limit=5
+        result = await history_repository_test_subject.get_hero_state_before(
+            hero_id=10,
+            before_time=datetime(2023, 1, 2, tzinfo=timezone.utc),
         )
-
-        # Assert
-        assert result == [], "Expected empty list for empty database"
-
-
-class TestGetTeamMatchupHistory:
-    """Test retrieving team matchup history with various filters."""
-
-    @pytest.mark.parametrize(
-        "test_scenario,team1_name,team2_name,before,limit,expected_win_history",
-        [
-            ("get_team_secret_vs_psg_lgd_limit5", "team_secret", "PSG_LGD", None, 5, [False, True, False, True, True]),
-            (
-                "test_team_order_independence",
-                "PSG_LGD",
-                "team_secret",
-                None,
-                5,
-                [True, False, True, False, False],  # Same matchup, same results
-            ),
-            (
-                "get_matchup_with_before_filter",
-                "team_secret",
-                "PSG_LGD",
-                datetime(2023, 1, 3, tzinfo=timezone.utc),
-                5,
-                [True, True],  # Before 2023-1-3, so matches 1002,1001
-            ),
-            ("get_nonexistent_team_matchup_returns_empty", "team_spirit", "team_secret", None, 10, []),
-            ("get_nonexistent_team2_matchup_returns_empty", "team_secret", "team_spirit", None, 10, []),
-        ],
-    )
-    async def test_get_team_matchup_history_scenarios(
-        self,
-        history_repository_test_subject: HistoryRepository,
-        history_test_repository: BaseHistoryRepositoryTest,
-        seed_history_data,
-        test_scenario: str,
-        team1_name: str,
-        team2_name: str,
-        before: datetime,
-        limit: int,
-        expected_win_history: List[bool],
-    ) -> None:
-        """Test various scenarios for getting team matchup history."""
-        # Act
-        actual_win_history = await history_repository_test_subject.get_team_matchup_history(
-            team_one=team1_name, team_two=team2_name, before=before, limit=limit
-        )
-
-        # Assert
-        history_test_repository._assert_win_history_equals(expected_win_history, actual_win_history, test_scenario)
-
-    async def test_team_order_independence(
-        self,
-        history_repository_test_subject: HistoryRepository,
-    ) -> None:
-        """Test that team order doesn't matter for matchup history."""
-        # Act - Get matchup in both orders
-        result1 = await history_repository_test_subject.get_team_matchup_history(
-            team_one="team_secret", team_two="PSG_LGD", before=None, limit=5
-        )
-        result2 = await history_repository_test_subject.get_team_matchup_history(
-            team_one="PSG_LGD", team_two="team_secret", before=None, limit=5
-        )
-
-        # Assert - Results should be identical
-        assert result1 == result2, f"Team order should not matter: {result1} vs {result2}"
+        assert result is None

@@ -1,7 +1,8 @@
-from typing import TypeVar, Generic, Coroutine, Any, Optional
+from typing import TypeVar, Generic, Coroutine, Any, Union
 from pydantic import BaseModel, ConfigDict
 
 T_Key = TypeVar("T_Key")
+T_Input = TypeVar("T_Input")
 T_Result = TypeVar("T_Result")
 
 # ===============================
@@ -9,7 +10,7 @@ T_Result = TypeVar("T_Result")
 # ===============================
 
 
-class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
+class AsyncTask(BaseModel, Generic[T_Key, T_Input, T_Result]):
     """A uniform way to represent a keyed, awaitable task.
 
     This class encapsulates a coroutine that can be run concurrently,
@@ -17,38 +18,25 @@ class AsyncTask(BaseModel, Generic[T_Key, T_Result]):
 
     Attributes:
         key (T_Key): The unique identifier for this task.
+        inputs (T_Input): The inputs for this task
         coro (Coroutine): The awaitable coroutine function to be executed.
     """
 
     key: T_Key
+    inputs: T_Input
     coro: Coroutine[Any, Any, T_Result]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class TaskResult(BaseModel, Generic[T_Key, T_Result]):
-    """A uniform way to represent the outcome of a completed task.
-
-    This class holds either the successful result of a task or the
-    exception that was raised during its execution.
-
-    Attributes:
-        key (T_Key): The unique identifier of the task this result belongs to.
-        result (Optional[T_Result]): The return value of the coroutine if it
-            succeeded. Defaults to None.
-        exception (Optional[Exception]): The exception object if the coroutine
-            failed. Defaults to None.
+class TaskResult(BaseModel, Generic[T_Key, T_Input, T_Result]):
+    """
+    Represents the complete outcome of a task, including its inputs and outcome.
+    The `outcome` field holds either the successful result or the exception.
     """
 
     key: T_Key
-    result: Optional[T_Result] = None
-    exception: Optional[Exception] = None
-
-    def get_result(self) -> Optional[T_Result]:
-        """Returns the result, or raises the exception if the task failed."""
-        if self.exception is not None:
-            raise self.exception
-
-        return self.result
+    inputs: T_Input
+    outcome: Union[T_Result, BaseException]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

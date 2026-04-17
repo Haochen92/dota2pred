@@ -1,12 +1,14 @@
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, Relationship
-from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey
+from sqlalchemy import BigInteger, Column, TIMESTAMP, ForeignKey, Integer, Boolean, Index
 from datetime import datetime
 from .base import Match, MatchOutcome
+from sqlmodel import SQLModel
 
 if TYPE_CHECKING:
     from ..inference.table import MatchPredictionTable
     from ..features.table import TeamFeaturesTable, PlayerHeroFeatureTable, HeroFeaturesTable
+    from ..leagues.table import LeagueTable
 
 
 class MatchTable(Match, table=True):
@@ -26,11 +28,17 @@ class MatchTable(Match, table=True):
         team_features: Team-based features (Optional[TeamFeaturesTable])
         player_hero_features: Player-hero features (Optional[PlayerHeroFeatureTable])
         hero_features: Hero-based features (Optional[HeroFeaturesTable])
+        league_data: Associated League information(Optional[LeagueTable])
     """
 
     __tablename__ = "matches"
     # Primary Key
     match_id: int = Field(sa_column=Column("match_id", BigInteger, primary_key=True))
+
+    # Foreign Keys
+    leagueid: Optional[int] = Field(
+        default=None, sa_column=Column(Integer, ForeignKey("leaguetable.leagueid"), nullable=True)
+    )
 
     # Columns for account IDs:
     slot_0_account_id: int = Field(sa_column=Column(BigInteger, nullable=False))
@@ -67,6 +75,10 @@ class MatchTable(Match, table=True):
         back_populates="match", sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"}
     )
 
+    league_data: Optional["LeagueTable"] = Relationship(
+        back_populates="matches", sa_relationship_kwargs={"uselist": False}
+    )
+
 
 class MatchOutcomeTable(MatchOutcome, table=True):
     """Database table for match outcomes.
@@ -86,3 +98,37 @@ class MatchOutcomeTable(MatchOutcome, table=True):
 
     # Relationship
     match: "MatchTable" = Relationship(back_populates="outcome")
+
+
+class PublicMatchTable(SQLModel, table=True):
+    """Database table for high-MMR public matches (minimal fields).
+
+    Columns mirror the simplified `PublicMatch` schema and align hero slots
+    with the pro `MatchTable` convention (0-4 radiant, 128-132 dire).
+    """
+
+    __tablename__ = "public_matches"
+
+    # Primary Key
+    match_id: int = Field(sa_column=Column("match_id", BigInteger, primary_key=True))
+
+    # Metadata
+    start_time: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
+    duration: int = Field(sa_column=Column(Integer, nullable=False))
+    avg_rank_tier: int = Field(sa_column=Column(Integer, nullable=False))
+    num_rank_tier: int = Field(sa_column=Column(Integer, nullable=False))
+    radiant_win: bool = Field(sa_column=Column(Boolean, nullable=False))
+
+    # Hero IDs (Radiant 0..4, Dire 128..132)
+    slot_0_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_1_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_2_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_3_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_4_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_128_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_129_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_130_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_131_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+    slot_132_hero_id: int = Field(sa_column=Column(Integer, nullable=False))
+
+    __table_args__ = (Index("ix_public_matches_start_time", "start_time"),)

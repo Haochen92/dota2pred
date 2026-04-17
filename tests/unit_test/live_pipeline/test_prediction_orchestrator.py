@@ -10,12 +10,20 @@ F_PATH = "live_orchestrator_app.prediction.prediction_orchestrator"
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_successfully(
     prediction_orchestrator: PredictionOrchestrator,
-    prediction_work_item_factory: Any,
+    prediction_payload_factory: Any,
     task_result_factory: Any,
     mocker: Any,
 ) -> None:
     # ARRANGE
-    mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
+    from dota_oracle_common.models.redis.schema import ConsumedEvent
+
+    # Create mock ConsumedEvent[PredictionPayload] objects
+    payload1 = prediction_payload_factory.build()
+    payload2 = prediction_payload_factory.build()
+    mock_work_items = [
+        ConsumedEvent[type(payload1)](match_id=12345, event_id="event1", payload=payload1),
+        ConsumedEvent[type(payload2)](match_id=67890, event_id="event2", payload=payload2),
+    ]
 
     mock_get_work_items = mocker.patch.object(
         prediction_orchestrator.data_provider, "get_work_items", return_value=mock_work_items
@@ -25,12 +33,14 @@ async def test_run_prediction_cycle_successfully(
     async def mock_run_concurrently(tasks: List[AsyncTask]) -> List[TaskResult]:
         results = []
         for task in tasks:
-            result = task_result_factory.build(key=task.key, exception=None)
+            result = task_result_factory.build(
+                key=task.key, inputs=task.inputs, exception=None, outcome="mock_prediction_result"
+            )
             results.append(result)
         return results
 
     mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=mock_run_concurrently)
-    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "advance_match_to_pending_completion")
+    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "publish_prediction_to_completion")
 
     # ACT
     result = await prediction_orchestrator.run_prediction_cycle()
@@ -62,12 +72,19 @@ async def test_run_prediction_cycle_no_work_items(prediction_orchestrator: Predi
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_one_failure(
     prediction_orchestrator: PredictionOrchestrator,
-    prediction_work_item_factory: Any,
+    prediction_payload_factory: Any,
     task_result_factory: Any,
     mocker: Any,
 ) -> None:
     # ARRANGE
-    mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
+    from dota_oracle_common.models.redis.schema import ConsumedEvent
+
+    payload1 = prediction_payload_factory.build()
+    payload2 = prediction_payload_factory.build()
+    mock_work_items = [
+        ConsumedEvent[type(payload1)](match_id=12345, event_id="event1", payload=payload1),
+        ConsumedEvent[type(payload2)](match_id=67890, event_id="event2", payload=payload2),
+    ]
     mock_error = ValueError("Prediction failed")
 
     mock_get_work_items = mocker.patch.object(
@@ -79,14 +96,16 @@ async def test_run_prediction_cycle_one_failure(
         results = []
         for i, task in enumerate(tasks):
             if i == 0:  # First task succeeds
-                result = task_result_factory.build(key=task.key, exception=None)
+                result = task_result_factory.build(
+                    key=task.key, inputs=task.inputs, exception=None, outcome="mock_prediction_result"
+                )
             else:  # Second task fails
-                result = task_result_factory.build(key=task.key, exception=mock_error)
+                result = task_result_factory.build(key=task.key, inputs=task.inputs, outcome=mock_error)
             results.append(result)
         return results
 
     mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=mock_run_concurrently)
-    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "advance_match_to_pending_completion")
+    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "publish_prediction_to_completion")
     mock_handle_failure = mocker.patch.object(prediction_orchestrator.redis, "handle_processing_failure")
 
     # ACT
@@ -106,24 +125,31 @@ async def test_run_prediction_cycle_one_failure(
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_all_failures(
     prediction_orchestrator: PredictionOrchestrator,
-    prediction_work_item_factory: Any,
+    prediction_payload_factory: Any,
     task_result_factory: Any,
     mocker: Any,
 ) -> None:
     # ARRANGE
-    mock_work_items = [prediction_work_item_factory.build(), prediction_work_item_factory.build()]
+    from dota_oracle_common.models.redis.schema import ConsumedEvent
+
+    payload1 = prediction_payload_factory.build()
+    payload2 = prediction_payload_factory.build()
+    mock_work_items = [
+        ConsumedEvent[type(payload1)](match_id=12345, event_id="event1", payload=payload1),
+        ConsumedEvent[type(payload2)](match_id=67890, event_id="event2", payload=payload2),
+    ]
     mock_error1 = ValueError("First prediction failed")
     mock_error2 = RuntimeError("Second prediction failed")
     mock_task_results = [
-        task_result_factory.build(key=mock_work_items[0].event_id, exception=mock_error1),
-        task_result_factory.build(key=mock_work_items[1].event_id, exception=mock_error2),
+        task_result_factory.build(key=mock_work_items[0].event_id, inputs=mock_work_items[0], outcome=mock_error1),
+        task_result_factory.build(key=mock_work_items[1].event_id, inputs=mock_work_items[1], outcome=mock_error2),
     ]
 
     mock_get_work_items = mocker.patch.object(
         prediction_orchestrator.data_provider, "get_work_items", return_value=mock_work_items
     )
     mock_task_runner = mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", return_value=mock_task_results)
-    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "advance_match_to_pending_completion")
+    mock_advance_match = mocker.patch.object(prediction_orchestrator.redis, "publish_prediction_to_completion")
     mock_handle_failure = mocker.patch.object(prediction_orchestrator.redis, "handle_processing_failure")
 
     # ACT
@@ -139,14 +165,14 @@ async def test_run_prediction_cycle_all_failures(
     # Verify both failures were handled
     assert mock_handle_failure.await_count == 2
     mock_handle_failure.assert_any_await(
-        event_data=mock_work_items[0].event_data,
+        event_data=mock_work_items[0],
         event_id=mock_work_items[0].event_id,
         error=mock_error1,
         consumer_group=PREDICTION_GROUP,
         event_stream=STREAM_PENDING_PREDICTION,
     )
     mock_handle_failure.assert_any_await(
-        event_data=mock_work_items[1].event_data,
+        event_data=mock_work_items[1],
         event_id=mock_work_items[1].event_id,
         error=mock_error2,
         consumer_group=PREDICTION_GROUP,
@@ -157,12 +183,15 @@ async def test_run_prediction_cycle_all_failures(
 @pytest.mark.asyncio
 async def test_run_prediction_cycle_creates_correct_async_tasks(
     prediction_orchestrator: PredictionOrchestrator,
-    prediction_work_item_factory: Any,
+    prediction_payload_factory: Any,
     task_result_factory: Any,
     mocker: Any,
 ) -> None:
     # ARRANGE
-    mock_work_items = [prediction_work_item_factory.build()]
+    from dota_oracle_common.models.redis.schema import ConsumedEvent
+
+    payload = prediction_payload_factory.build()
+    mock_work_items = [ConsumedEvent[type(payload)](match_id=12345, event_id="event1", payload=payload)]
 
     mocker.patch.object(prediction_orchestrator.data_provider, "get_work_items", return_value=mock_work_items)
 
@@ -171,10 +200,17 @@ async def test_run_prediction_cycle_creates_correct_async_tasks(
 
     async def capture_tasks(tasks: List[AsyncTask]) -> List[TaskResult]:
         captured_tasks.extend(tasks)
-        return [task_result_factory.build(key=mock_work_items[0].event_id, exception=None)]
+        return [
+            task_result_factory.build(
+                key=mock_work_items[0].event_id,
+                inputs=mock_work_items[0],
+                exception=None,
+                outcome="mock_prediction_result",
+            )
+        ]
 
     mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", side_effect=capture_tasks)
-    mocker.patch.object(prediction_orchestrator.redis, "advance_match_to_pending_completion")
+    mocker.patch.object(prediction_orchestrator.redis, "publish_prediction_to_completion")
 
     # ACT
     await prediction_orchestrator.run_prediction_cycle()

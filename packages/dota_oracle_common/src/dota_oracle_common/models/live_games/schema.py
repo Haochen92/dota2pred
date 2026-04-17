@@ -1,6 +1,9 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Any
+from pydantic import BaseModel, Field
+from typing import List, Optional, TypeVar, Generic, Annotated
 from datetime import datetime as dt
+
+PlayerType = TypeVar("PlayerType", bound="Player")
+FactionType = TypeVar("FactionType", bound="Faction")
 
 
 class TeamData(BaseModel):
@@ -16,7 +19,7 @@ class TeamData(BaseModel):
 
 
 class Player(BaseModel):
-    """Player data in live games.
+    """Base PLayer Model for live games
 
     Attributes:
         player_slot: Player slot position (int)
@@ -31,17 +34,17 @@ class Player(BaseModel):
     hero_id: int
 
 
-class Faction(BaseModel):
+class Faction(BaseModel, Generic[PlayerType]):
     """Team faction with player list.
 
     Attributes:
         players: List of players in faction (List[Player])
     """
 
-    players: List[Player]
+    players: List[PlayerType]
 
 
-class ScoreBoard(BaseModel):
+class ScoreBoard(BaseModel, Generic[FactionType]):
     """Live game scoreboard data.
 
     Attributes:
@@ -51,8 +54,8 @@ class ScoreBoard(BaseModel):
     """
 
     duration: float = 0.0
-    radiant: Faction
-    dire: Faction
+    radiant: FactionType
+    dire: FactionType
 
 
 class LiveLeagueGame(BaseModel):
@@ -75,7 +78,20 @@ class LiveLeagueGame(BaseModel):
     start_time: float = Field(default_factory=lambda: dt.now().timestamp())
     radiant_team: Optional[TeamData] = None
     dire_team: Optional[TeamData] = None
-    scoreboard: Optional[ScoreBoard] = None
+    scoreboard: Optional[ScoreBoard[Faction[Player]]] = None
+
+
+class OngoingPlayer(Player):
+    """
+    Valid hero_id starting from 1 for ongoing matches
+    """
+
+    #
+    hero_id: int = Field(gt=0)
+
+
+class OngoingFaction(Faction[OngoingPlayer]):
+    players: Annotated[List[OngoingPlayer], Field(min_length=5, max_length=5)]
 
 
 class OngoingLeagueGame(LiveLeagueGame):
@@ -90,16 +106,9 @@ class OngoingLeagueGame(LiveLeagueGame):
         scoreboard: Current game scoreboard (ScoreBoard)
     """
 
-    radiant_team: TeamData = Field(...)
-    dire_team: TeamData = Field(...)
-    scoreboard: ScoreBoard = Field(...)
-
-    @field_validator("radiant_team", "dire_team", "scoreboard")
-    @classmethod
-    def validate_fields(cls, v: Any) -> Any:
-        if v is None:
-            raise ValueError(f"Fields {v} cannot be done")
-        return v
+    radiant_team: TeamData = Field(...)  # type: ignore
+    dire_team: TeamData = Field(...)  # type: ignore
+    scoreboard: ScoreBoard[OngoingFaction] = Field(...)  # type: ignore
 
 
 class ResultData(BaseModel):

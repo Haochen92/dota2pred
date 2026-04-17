@@ -1,107 +1,71 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
-
-import pandas as pd
 import numpy as np
-
-
-from dota_oracle_common.repositories.match_repository import MatchRepository
-
-
-from live_orchestrator_app.services.feature_preparation_service import FeaturePreparationService
+import pytest
 
 
 F_PATH = "live_orchestrator_app.services.feature_preparation_service"
 
 
 @pytest.mark.asyncio
-async def test_prepare_features_for_inference(
-    feature_preparation_service,
-    mock_async_session,
+async def test_prepare_features_for_inference_happy_path(
+    unit_test_feature_preparation_service,
     mocker,
-    team_features_table_factory,
-    hero_features_table_factory,
-    player_hero_feature_table_factory,
-) -> None:
+    prediction_payload_factory,
+):
+    unit_test_feature_preparation_service.model_feature_names = ["f1", "f2", "f3"]
+    prediction_payload = prediction_payload_factory.build()
 
-    # Arrange
+    final_feature = mocker.Mock()
+    final_feature.model_dump.return_value = {"f1": 10, "f2": 20, "f3": 30}
+    mock_create_final_features = mocker.patch(f"{F_PATH}.create_final_features", return_value=[final_feature])
 
-    # Mock variables
-    match_id = 123
-    mock_df = pd.DataFrame([{"match_id": "12345"}])
-    mock_np = np.array([1, 2, 3, 4])
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(prediction_payload)
 
-    # Mock database response
-    mock_db_response = (
-        team_features_table_factory.build(match_id=match_id),
-        hero_features_table_factory.build(match_id=match_id),
-        player_hero_feature_table_factory.build(match_id=match_id),
-    )
-
-    mock_get_features = mocker.patch.object(
-        FeaturePreparationService, "_get_features_from_db", return_value=mock_db_response
-    )
-
-    mock_encode_features = mocker.patch.object(FeaturePreparationService, "_encode_hero_feature", return_value=mock_df)
-
-    # FIX: Use patch.object for instance methods
-    mock_merge_and_filter = mocker.patch.object(
-        FeaturePreparationService, "_merge_and_filter_dataframe", return_value=mock_df
-    )
-
-    # FIX: Mock pandas DataFrame.to_numpy method instead
-    mock_to_numpy = mocker.patch.object(pd.DataFrame, "to_numpy", return_value=mock_np)
-
-    # Act
-    res = await feature_preparation_service.prepare_features_for_inference(
-        match_id=match_id, db_session=mock_async_session
-    )
-
-    assert res.tolist() == mock_np.tolist()  # compare arrays by converting to list
-
-    mock_get_features.assert_awaited_once()
-    mock_encode_features.assert_awaited_once()
-    mock_merge_and_filter.assert_called_once()
-    mock_to_numpy.assert_called_once()
+    assert result is not None
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (1, 3)
+    np.testing.assert_array_equal(result, np.array([[10, 20, 30]]))
+    mock_create_final_features.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_get_features_from_db(
-    feature_preparation_service,
+async def test_prepare_features_for_inference_returns_none_when_feature_set_missing(
+    unit_test_feature_preparation_service,
+    prediction_payload_factory,
+):
+    prediction_payload = prediction_payload_factory.build()
+    prediction_payload.team_features = None
+
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(prediction_payload)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_prepare_features_for_inference_returns_none_when_final_features_are_empty(
+    unit_test_feature_preparation_service,
     mocker,
-    team_features_table_factory,
-    hero_features_table_factory,
-    player_hero_feature_table_factory,
-) -> None:
-    # Arrange
-    match_id = 123
-    mock_team_features = team_features_table_factory.build(match_id=match_id)
-    mock_hero_features = hero_features_table_factory.build(match_id=match_id)
-    mock_player_hero_features = player_hero_feature_table_factory.build(match_id=match_id)
-    mock_match_repository = AsyncMock(spec=MatchRepository)
+    prediction_payload_factory,
+):
+    prediction_payload = prediction_payload_factory.build()
+    mocker.patch(f"{F_PATH}.create_final_features", return_value=[])
 
-    # Create a mock match instance with the required attributes
-    mock_match_instance = MagicMock()
-    mock_match_instance.team_features = mock_team_features
-    mock_match_instance.hero_features = mock_hero_features
-    mock_match_instance.player_hero_features = mock_player_hero_features
+    result = await unit_test_feature_preparation_service.prepare_features_for_inference(prediction_payload)
 
-    mock_get_match_details = mocker.patch.object(
-        mock_match_repository, "get_match_details", return_value=[mock_match_instance]
-    )
+    assert result is None
 
-    # Act
 
-    res = await feature_preparation_service._get_features_from_db(
-        match_id=match_id, match_repository=mock_match_repository
-    )
+@pytest.mark.asyncio
+async def test_prepare_features_for_inference_raises_when_required_columns_are_missing(
+    unit_test_feature_preparation_service,
+    mocker,
+    prediction_payload_factory,
+):
+    unit_test_feature_preparation_service.model_feature_names = ["required_feature"]
+    prediction_payload = prediction_payload_factory.build()
 
-    # Assert
+    final_feature = mocker.Mock()
+    final_feature.model_dump.return_value = {"different_feature": 10}
+    mocker.patch(f"{F_PATH}.create_final_features", return_value=[final_feature])
 
-    assert (mock_team_features, mock_hero_features, mock_player_hero_features) == res
-
-    mock_get_match_details.assert_awaited_once_with(
-        input_id_list=[match_id],
-        relationship_fields=["team_features", "player_hero_features", "hero_features"],
-        limit=1,
-    )
+    with pytest.raises(ValueError, match="Missing required feature columns"):
+        await unit_test_feature_preparation_service.prepare_features_for_inference(prediction_payload)

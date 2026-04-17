@@ -3,11 +3,12 @@ from mypy_boto3_s3 import S3Client
 from s3transfer import S3Transfer
 from botocore.exceptions import ClientError
 import os
-import logging
+from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils import load_workspace_env
+from pathlib import Path
 
 load_workspace_env()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class S3Wrapper:
@@ -75,10 +76,15 @@ class S3Wrapper:
             object_key: full path of object in s3 bucket to retrieve
         """
 
-        try:
-            self.transfer.download_file(filename=file_path, bucket=self.bucket_name, key=object_key)
+        dest = Path(file_path)
 
-        except ClientError as e:
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            logger.info("Starting download: s3://%s/%s -> %s", self.bucket_name, object_key, dest)
+
+            self.transfer.download_file(filename=str(dest), bucket=self.bucket_name, key=object_key)
+
+        except (ClientError, Exception) as e:
             logger.error(e)
             return False
 

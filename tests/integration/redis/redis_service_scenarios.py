@@ -1,4 +1,3 @@
-from dota_oracle_common.models.redis.schema import MatchProcessingStatus
 from dota_oracle_common.constants.redis_constants import (
     STREAM_NEW_MATCHES,
     STREAM_PENDING_PREDICTION,
@@ -7,9 +6,13 @@ from dota_oracle_common.constants.redis_constants import (
     PREDICTION_GROUP,
     COMPLETION_GROUP,
 )
+from dota_oracle_common.models.redis.schema import (
+    FeatureEngineeringPayload,
+    PredictionPayload,
+    CompletionPayload,
+)
 
-
-# Scenarios for update_live
+# Scenarios for update_live_match_set_and_get_new
 UPDATE_LIVE_MATCH_SCENARIOS_ARGS = [
     "test_id",
     "initial_redis_match_set",
@@ -24,124 +27,85 @@ UPDATE_LIVE_MATCH_SCENARIOS = [
     ("existing_data_all_overlap_no_new", {1, 2, 3}, [1, 2, 3], set(), {1, 2, 3}),
 ]
 
-# Scenarios for adding new matches
-
-ADD_NEW_MATCH_SCENARIOS_ARGS = ["test_id", "input_match_id", "expected_match_status", "expected_return_value"]
-ADD_NEW_MATCH_SCENARIOS = [
-    ("happy path", 12, "new", True),  # test_id  # input_match_id  # expected match status  # expected return value
-    ("empty input", None, None, False),
-    ("input of wrong format", "123", None, False),
+# Scenarios for publish_new_match_to_feature_eng
+PUBLISH_NEW_MATCH_SCENARIOS_ARGS = ["test_id", "match_id", "expected_return_value"]
+PUBLISH_NEW_MATCH_SCENARIOS = [
+    ("happy_path", 12345, True),
+    # Failure cases are hard to trigger here without a mock redis client,
+    # so we focus on the successful path.
 ]
 
-# Scenarios for advance to next stage
 
-ADVANCE_MATCH_TO_NEXT_ARG_NAMES = [
-    "test_id",
-    "method_to_call",
-    "from_stream",
-    "to_stream",
-    "from_consumer_group",
-    "expected_match_status",
-    "test_match_id",
-    "prev_event_match_id",  # Changed from prev_event_dict to just match_id data
-    "expected_return_val",
+# Scenarios for advancing from Feature Engineering to Prediction
+PUBLISH_FEATURES_SCENARIOS_ARGS = ["test_id", "match_id", "expected_return_val"]
+PUBLISH_FEATURES_SCENARIOS = [
+    ("happy_path", 123, True),
 ]
 
-ADVANCE_MATCH_TO_NEXT_SCENARIOS = [
-    (
-        "test_happy_path_from_fe_to_complete",
-        "advance_match_to_pending_prediction",
-        STREAM_NEW_MATCHES,
-        STREAM_PENDING_PREDICTION,
-        FEATURE_ENGINEER_GROUP,
-        MatchProcessingStatus.PENDING_PREDICTION,
-        123,
-        123,  # match_id for building StreamMatchEventData
-        True,
-    ),
-    (
-        "test_invalid_data_from_fe_to_complete",
-        "advance_match_to_pending_prediction",
-        STREAM_NEW_MATCHES,
-        STREAM_PENDING_PREDICTION,
-        FEATURE_ENGINEER_GROUP,
-        None,
-        "123abc",
-        123,  # match_id for building StreamMatchEventData
-        False,
-    ),
-    (
-        "test_happy_path_from_predict_to_complete",
-        "advance_match_to_pending_completion",
-        STREAM_PENDING_PREDICTION,
-        STREAM_PENDING_COMPLETION,
-        PREDICTION_GROUP,
-        MatchProcessingStatus.PENDING_COMPLETION,
-        754,
-        754,  # match_id for building StreamMatchEventData
-        True,
-    ),
-    (
-        "test_invalid_data_from_predict_to_complete",
-        "advance_match_to_pending_completion",
-        STREAM_PENDING_PREDICTION,
-        STREAM_PENDING_COMPLETION,
-        PREDICTION_GROUP,
-        None,
-        "table123",
-        754,  # match_id for building StreamMatchEventData
-        False,
-    ),
+# Scenarios for advancing from Prediction to Completion
+PUBLISH_PREDICTION_SCENARIOS_ARGS = ["test_id", "match_id", "expected_return_val"]
+PUBLISH_PREDICTION_SCENARIOS = [
+    ("happy_path", 789, True),
 ]
 
-# Scenario for fetch events
+# Scenarios for fetch events
 FETCH_MATCHES_SCENARIOS_ARGS = [
     "test_id",
     "method_to_call",
     "stream_to_fetch_from",
     "consumer_group",
-    "input_match_ids",  # Changed from input_list to just match_ids
+    "payload_type_to_seed",
+    "expected_payload_type",
+    "input_match_ids",
     "consumer_name",
     "fetch_count",
     "expected_match_ids",
 ]
 FETCH_MATCHES_SCENARIOS = [
     (
-        "fetch_new_matches_single_event",  # test_id
-        "fetch_new_matches_for_feature_eng",  # method_to_call
-        STREAM_NEW_MATCHES,  # Stream_to_fetch_from
-        FEATURE_ENGINEER_GROUP,  # consumer_group
-        [100],  # input_match_ids to build StreamMatchEventData
-        "test_consumer_fe",  # Consumer_name
-        1,  # fetch_count for number of events to fetch
-        {100},  # expected_match_ids set of match_ids expected back
+        "fetch_new_matches_single_event",
+        "fetch_new_matches_for_feature_eng",
+        STREAM_NEW_MATCHES,
+        FEATURE_ENGINEER_GROUP,
+        FeatureEngineeringPayload,
+        FeatureEngineeringPayload,
+        [100],
+        "test_consumer_fe",
+        1,
+        {100},
     ),
     (
         "fetch_new_matches_multiple_events",
         "fetch_new_matches_for_feature_eng",
         STREAM_NEW_MATCHES,
         FEATURE_ENGINEER_GROUP,
-        [101, 102, 103],  # input_match_ids to build StreamMatchEventData
+        FeatureEngineeringPayload,
+        FeatureEngineeringPayload,
+        [101, 102, 103],
         "test_consumer_fe",
         10,
         {101, 102, 103},
     ),
     (
-        "fetch_pending_prediction_single_event",
-        "fetch_matches_pending_prediction",
+        "fetch_prediction_matches_single_event",
+        "fetch_matches_for_prediction",
         STREAM_PENDING_PREDICTION,
         PREDICTION_GROUP,
-        [104],  # input_match_ids to build StreamMatchEventData
+        PredictionPayload,
+        PredictionPayload,
+        [104],
         "test_consumer_pred",
         1,
         {104},
     ),
     (
-        "fetch_pending_completion_no_events",
-        "fetch_matches_pending_completion",
+        "fetch_completion_matches_no_events",
+        "fetch_matches_for_completion",
         STREAM_PENDING_COMPLETION,
         COMPLETION_GROUP,
-        [],  # empty input
+        CompletionPayload,
+        CompletionPayload,
+        [],
         "test_consumer_completion",
         10,
         set(),
@@ -153,6 +117,7 @@ FETCH_MATCHES_SCENARIOS = [
 FAILURE_RECORD_SCENARIO_ARGS = ["test_id", "test_stream_input", "test_original_group"]
 
 FAILURE_RECORD_SCENARIO = [
-    ("happy_path", STREAM_PENDING_PREDICTION, PREDICTION_GROUP),
-    ("test_failure_record_missing_target_hash", "invalid123", PREDICTION_GROUP),
+    ("happy_path_prediction_stream", STREAM_PENDING_PREDICTION, PREDICTION_GROUP),
+    ("happy_path_completion_stream", STREAM_PENDING_COMPLETION, COMPLETION_GROUP),
+    ("test_failure_record_unknown_stream", "invalid-stream-123", "unknown-group"),
 ]

@@ -4,7 +4,6 @@ Data provider-related fixtures for tests.
 
 import pytest
 from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 # Data provider imports
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
@@ -13,7 +12,7 @@ from live_orchestrator_app.feature_engineering.feature_engineering_data_provider
 from live_orchestrator_app.prediction.prediction_data_provider import PredictionDataProvider
 
 # Service imports
-from live_orchestrator_app.services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService
 
 
 # ================================
@@ -52,10 +51,8 @@ def new_match_data_provider(mock_redis_service: RedisService) -> NewMatchDataPro
 
 
 @pytest.fixture
-def feature_engineering_data_provider(
-    mock_redis_service: RedisService, mock_async_engine: AsyncEngine
-) -> FeatureEngineeringDataProvider:
-    return FeatureEngineeringDataProvider(redis_service=mock_redis_service, db_engine=mock_async_engine)
+def feature_engineering_data_provider(mock_redis_service: RedisService) -> FeatureEngineeringDataProvider:
+    return FeatureEngineeringDataProvider(redis_service=mock_redis_service)
 
 
 @pytest.fixture
