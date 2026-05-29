@@ -74,6 +74,7 @@ frontend/node_modules/
 # Experiment outputs (ML)
 wandb/
 mlruns/
+*.pth
 
 # Private keys and certificates
 *.pem
