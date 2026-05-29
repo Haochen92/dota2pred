@@ -7,6 +7,7 @@ from .feature_engineering.feature_engineering_orchestrator import FeatureEnginee
 from .prediction.prediction_orchestrator import PredictionOrchestrator
 from .completion.completion_orchestrator import CompletionOrchestrator
 from .services.notifications_service import NotificationService
+from .services.dlq_retry_service import DlqRetryService
 
 
 logger = get_logger(__name__)
@@ -22,16 +23,21 @@ class MatchPipelineOrchestrator:
         prediction_orchestrator: PredictionOrchestrator,
         completion_orchestrator: CompletionOrchestrator,
         notification_service: NotificationService,
+        dlq_retry_service: DlqRetryService,
     ):
         self.new_match_orchestrator = new_match_orchestrator
         self.feature_engineering_orchestrator = feature_engineering_orchestrator
         self.prediction_orchestrator = prediction_orchestrator
         self.completion_orchestrator = completion_orchestrator
         self.notification_service = notification_service
+        self.dlq_retry_service = dlq_retry_service
 
     async def run_cycle(self) -> None:
         """Runs one cycle of the live match processing pipeline."""
         try:
+            # 0. Retry failed events from previous cycles
+            await self.dlq_retry_service.run_retry_sweep()
+
             # 1. Fetch current matches to identify and onboard new matches
             count_new_matches: int = await self.new_match_orchestrator.run_new_match_cycle()
 

@@ -118,6 +118,7 @@ class FailureRecord(BaseModel, Generic[PayloadModel]):
     error_type: str
     error_message: str
     failure_timestamp: datetime
+    retry_count: int = 0
 
     @field_serializer("failure_timestamp")
     def serialize_timestamp(self, dt: datetime, _info: Any) -> str:

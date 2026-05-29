@@ -69,7 +69,7 @@ async def test_create_features_skips_match_with_missing_data(
 
 
 @pytest.mark.asyncio
-async def test_create_features_raises_when_decayed_rate_calculation_fails(
+async def test_create_features_skips_match_when_decayed_rate_calculation_fails(
     player_hero_features_creator,
     mock_async_session,
     match_table_factory,
@@ -83,11 +83,11 @@ async def test_create_features_raises_when_decayed_rate_calculation_fails(
         side_effect=Exception("decayed-rate-failed"),
     )
 
-    with pytest.raises(Exception, match="decayed-rate-failed"):
-        await player_hero_features_creator.create_player_hero_features(
-            session=mock_async_session,
-            match_instances=[match_instance],
-        )
+    result = await player_hero_features_creator.create_player_hero_features(
+        session=mock_async_session,
+        match_instances=[match_instance],
+    )
+    assert result == []
 
 
 @pytest.mark.asyncio

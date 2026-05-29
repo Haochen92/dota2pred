@@ -57,7 +57,7 @@ Each stage follows the same pattern: **Data Provider** (reads from stream/API) �
 
 Key design decisions:
 - **Redis Streams with consumer groups** for exactly-once processing semantics via ACKs
-- **Dead Letter Queue** per stage — failed events are moved to DLQ hashes rather than blocking the pipeline
+- **Dead Letter Queue with automatic retry** — failed events are moved to per-stage DLQ hashes. A `DlqRetryService` sweeps all DLQ hashes at the start of each cycle, reinjecting events that haven't exhausted their retry limit (default 3). Retry counts are tracked in a separate Redis hash (`dlq:retry_counts`) to decouple retry logic from the failure-recording path. Events that exceed max retries remain in the DLQ for manual inspection via a CLI tool
 - **Concurrent event processing** within each stage using `TaskRunner` with semaphore-based concurrency
 - **Stale event recovery** — events stuck for >90 minutes are automatically reclaimed with exponential backoff (5 retries)
 - **DI container** (`dependency-injector`) wires all clients, services, and orchestrators — makes the dependency graph explicit and testable
