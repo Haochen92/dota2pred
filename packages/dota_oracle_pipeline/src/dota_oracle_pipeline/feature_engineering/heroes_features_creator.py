@@ -87,7 +87,11 @@ class HeroesFeatureCreator:
                     f"Error creating hero features for match {getattr(instance, 'match_id', 'unknown')}: {e}",
                     exc_info=True,
                 )
-                raise
+                continue
+
+        if len(hero_features) < len(match_instances):
+            failed = len(match_instances) - len(hero_features)
+            logger.warning(f"Hero feature engineering: {failed}/{len(match_instances)} matches failed")
 
         logger.info(f"Created {len(hero_features)} hero features")
         return hero_features

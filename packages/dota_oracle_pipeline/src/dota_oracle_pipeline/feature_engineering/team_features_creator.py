@@ -89,7 +89,11 @@ class TeamFeatureCreator:
                 logger.error(
                     f"Unexpected error processing match {getattr(instance, 'match_id', 'unknown')}: {e}", exc_info=True
                 )
-                raise e
+                continue
+
+        if len(all_match_features) < len(match_instances):
+            failed = len(match_instances) - len(all_match_features)
+            logger.warning(f"Team feature engineering: {failed}/{len(match_instances)} matches failed")
 
         logger.info(f"Created {len(all_match_features)} / {len(match_instances)} team features")
         return all_match_features
