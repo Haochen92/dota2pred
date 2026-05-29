@@ -312,6 +312,13 @@ poetry run pytest tests/end_to_end/
 
 This project represents a production-ready, enterprise-level application demonstrating mastery of modern software development practices, architectural patterns, and technological integration.
 
+## Known Issues
+
+### Prefect Server Memory Creep
+The `prefect-server` container gradually leaks memory over time, growing from ~200MB at startup to several GB over days. This is a known upstream issue with the Prefect scheduler.
+
+**Mitigation**: A `mem_limit: 512m` is set on the container in `docker-compose.yml`. When the container exceeds this limit, Docker OOM-kills it and `restart: always` brings it back up within ~10-15 seconds. This may cause one missed polling cycle (2-minute interval) in the worst case. The scheduling flows and workers in `live-orchestrator-app` are unaffected during the restart.
+
 ## 📄 License
 
 This project is for portfolio demonstration purposes.
