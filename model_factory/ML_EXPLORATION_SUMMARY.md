@@ -62,7 +62,6 @@ Optuna studies (165 trials simultaneous, 60 trials targeted) showed the landscap
 
 ### 5. Relational GCN (Graph Neural Network)
 
-- **Result**: ~52.97%, stuck at loss 0.6913 (= ln(2), coin flip)
 - **Approach**: Model draft as a graph with 10 nodes. Three edge types: synergy (same team), counter (opposite team), self-loop. Two layers of RGCNConv.
 - **Implementation**: `graph_network.ipynb`, cells `aacacbf4` (RelationalGCN) and `5bf9a594` (HybridGCN)
 
@@ -86,61 +85,87 @@ interaction  = radiant_pool * dire_pool
 combined     = cat([radiant_pool, dire_pool, diff, interaction])  # 4 * hidden_dim
 ```
 
-Output head changed from `Linear(hidden_dim, 1)` to `Linear(4*hidden_dim, hidden_dim) -> ReLU -> Dropout -> Linear(hidden_dim, 1)`.
+Output head changed from `Linear(hidden_dim, 1)` to `Linear(4*hidden_dim, hidden_dim) -> BatchNorm -> ReLU -> Dropout -> Linear(hidden_dim, 1)`.
 
-**The model was never given a fair test. It must be rerun.**
+#### RERUN RESULTS (2026-05-29)
+
+Additional fixes applied for rerun: BatchNorm after each RGCNConv layer, gradient clipping (max_norm=1.0), ReduceLROnPlateau scheduler, early stopping with patience=15. Hyperparameters made more aggressive (lr=1e-3, dropout=0.2, hidden_dim=128, emb_dim=64, weight_decay=0).
+
+**Bug in HybridGCN**: `create_hero_feature_matrix()` crashed with NaN because Undying (id=85) has `base_health_regen = None`. Fixed with `getattr(hero, col) or 0`.
+
+| Experiment | Model | Data | Val Acc | Test Acc | Notes |
+|---|---|---|---|---|---|
+| 1 | RelationalGCN (embeddings only) | Pro matches (32K) | 53.73% | **52.79%** | Data-starved; early stopped epoch 21 |
+| 2 | RelationalGCN (embeddings only) | Public matches (555K) | 56.47% | **55.52%** | More data = +2.7% test over pro |
+| 3 | HybridGCN (embeddings + 29-dim hero attrs) | Public matches (555K) | 56.66% | **55.82%** | Static features add +0.3% over embeddings alone |
+
+**Key findings**:
+- Team-aware pooling fix worked — all models broke past the old 52.97% plateau
+- Data volume matters significantly (32K → 555K = +2.7% test accuracy)
+- Static hero attributes (base stats, roles, attack type) add marginal value (+0.3%); learnable embeddings capture most of the signal
+- Draft-only GNN reaches ~55-56% on public matches, ~2-3% below production LightGBM (58.22%) which uses performance history features
+- The GNN learns orthogonal signal (hero synergies/counters from draft structure) vs production model (team/player temporal performance) — promising for stacking
+- Train/test splits are temporal (shuffle=False); train/val splits within training are random
+- Pro matches need more data (180K+ available in remote DB) or transfer learning (pre-train on public, fine-tune on pro)
 
 ### 6. Hero Attribute Transformer
 
 - **Approach**: Static hero attributes (base stats, roles, attack type) as team-level count features
 - **Implementation**: `lib/hero_features/hero_attributes_transformer.py`
-- **Status**: Implemented but not evaluated standalone. Used as part of the HybridGCN feature matrix (29 features).
+- **Status**: Evaluated as part of HybridGCN (experiment 3 above). Adds +0.3% over embeddings alone.
+
+### 7. GNN Stacking Experiment (2026-05-29)
+
+Tested whether GNN draft embeddings add value on top of Bayesian hero win rate features on public matches (555K). Extracted 512-dim `combined` vector from frozen HybridGCN, stacked with hero WR features in LightGBM.
+
+| Model | Features | Test Acc | vs Baseline |
+| --- | --- | --- | --- |
+| **Granular WRs + GNN raw-512** | 523 | **56.09%** | **+1.33%** |
+| GNN only (raw-512) | 512 | 55.89% | +1.13% |
+| Hero WR + GNN PCA-32 | 33 | 55.82% | +1.06% |
+| Granular WRs + GNN PCA-32 | 43 | 55.74% | +0.98% |
+| GNN only (PCA-32) | 32 | 55.70% | +0.95% |
+| Granular hero WRs (baseline) | 11 | 54.76% | — |
+| Hero WR diff only | 1 | 54.75% | -0.01% |
+
+**Key findings**:
+
+- GNN embeddings add **+1.33%** over hero WR features — draft synergy/counter signal is real and additive
+- GNN dominates feature importance: 14 of top 15 LightGBM features are GNN PCA components
+- Raw 512-dim slightly outperforms PCA-32 — LightGBM handles the dimensionality
+- Granular per-hero WRs (11 features) don't help over single diff — individual hero WRs lack pairwise interaction signal
+- **Caveat**: This is hero-only features on public matches. The production pro model (58.22%) also uses team WR, matchup, and player-hero features. Whether GNN adds value on top of the full 4-feature pro set remains untested (requires team/player IDs from remote DB)
+
+**Implementation**: `model_factory/notebook/run_stacking_experiment.py`
 
 ---
 
 ## What To Try Next (Priority Order)
 
-### 1. Rerun Fixed GNN (HIGH — architectural bug was blocking learning)
+### 1. Stack GNN with Full Pro Features (HIGH — the real production test)
 
-The GNN never had a fair test. With team-aware pooling, it should at minimum break out of the 52.97% plateau. Run both:
+The stacking experiment proved GNN adds +1.33% over hero-only features on public matches. The critical unanswered question: does it also add value on top of the full 4-feature production set (team WR, matchup, hero WR, player-hero WR) on pro matches?
 
-- **RelationalGCN** (embedding-only) on pro matches — already fixed in `graph_network.ipynb`
-- **HybridGCN** (static attributes + learnable embeddings) on public matches — already fixed
+This requires pro matches with team/player IDs from the remote DB. Approach:
 
-Use `shuffle=False` in `train_test_split` for temporal correctness (the public matches cell currently has `shuffle=True`).
+1. Export pro matches (ideally all 180K+) from remote DB
+2. Compute all 4 Bayesian features
+3. Extract GNN embeddings using the public-trained HybridGCN (transfer)
+4. Stack in LightGBM and compare to 58.22% baseline
+5. If it beats 58.5%+, integrate GNN into the production pipeline
 
-Suggested hyperparameters to try if the default still struggles:
+### 2. Pre-train on Public, Fine-tune on Pro (HIGH — addresses data scarcity)
 
-| Param | Current | Try |
-|---|---|---|
-| lr | 1e-4 / 3e-4 | 1e-3 |
-| dropout | 0.5 / 0.4 | 0.2 |
-| hidden_dim | 256 | 128 |
-| emb_dim | 128 | 64 |
-| weight_decay | 1e-5 | 0 |
+The pro match GNN (52.79%) was data-starved with only 32K matches. Transfer learning approach:
 
-The old config was too regularized (high dropout + weight decay + low lr) for a model that couldn't learn. Start aggressive, then regularize once it's training.
+1. Pre-train HybridGCN on 555K public matches (done)
+2. Freeze conv layers, replace output head
+3. Fine-tune output head + embeddings on pro matches (32K, or ideally 180K from remote DB)
+4. The model learns general hero synergies from public games, then adapts to pro-specific patterns
 
-### 2. Word2Vec Centroid + Existing Features (MEDIUM — cheap experiment, ~30 min)
+### 3. Export Full Pro Match Dataset (MEDIUM — enables #1 and #2)
 
-Test whether draft composition signal is complementary to existing performance-based features:
-
-1. Train Word2Vec on training data (already done, `vector_size=32`)
-2. Compute `radiant_centroid - dire_centroid` = 32 dims (instead of concatenating all 320)
-3. Append to existing 4 features -> 36 total
-4. Train LightGBM on combined feature set
-5. Compare to 58.22% baseline
-
-If the combined set beats 58.5%+, the draft composition signal is additive. If not, the existing decay features already capture what W2V learns.
-
-### 3. GNN as Feature Extractor (LOW — only if GNN trains well)
-
-If the fixed GNN reaches >55% standalone:
-
-1. Train the GNN, freeze it
-2. Extract the `combined` vector (4 * hidden_dim) before the output head
-3. Use as features alongside the existing 4 decay features in a LightGBM
-4. This lets GNN capture nonlinear draft interactions while decay features capture temporal performance
+Currently only 32K pro matches (patches 7.37-7.39) are exported locally. The remote DB has 180K+ matches. More data would significantly help both the stacking test and pro-specific GNN training. Could add patch features or time-decay weighting to handle meta shifts across patches.
 
 ### 4. NOT worth pursuing
 
@@ -148,6 +173,7 @@ If the fixed GNN reaches >55% standalone:
 - **Multi-hot encoding**: team-agnostic by design, correctly ruled out
 - **Further hyperparameter tuning on existing features**: landscape is flat, proven with McNemar's test
 - **More complex models on same 4 features**: accuracy ceiling is ~58% with these features; model complexity is not the bottleneck
+- **Word2Vec centroid features**: GNN stacking already proves draft composition is additive; W2V would be a weaker version of the same signal
 
 ---
 
@@ -160,6 +186,7 @@ If the fixed GNN reaches >55% standalone:
 | Feature engineering experiments | `model_factory/notebook/feature_engineering.ipynb` |
 | DL experiments (multi-hot, W2V) | `model_factory/notebook/nonlinear_models_experiment.ipynb` |
 | GNN experiments (FIXED) | `model_factory/notebook/graph_network.ipynb` |
+| GNN experiment 3 standalone script | `model_factory/notebook/run_hybrid_gcn.py` |
 | Tuning library (Optuna wrappers) | `model_factory/notebook/lib/hyperparams/` |
 | Hero feature creators | `model_factory/notebook/lib/hero_features/` |
 | Production feature hyperparams | `dota_oracle_schedules/src/dota_oracle_schedules/ml_pipelines/backfill_feature_engineering.py` |
