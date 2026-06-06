@@ -8,6 +8,7 @@ import { TextMdRegular, TextSmRegular, TextMdBold } from '@/components/typograph
 import type { TableRowDataProps } from '@/types/domain';
 import { LiveIndicator } from '@/components/motion/LiveIndicator';
 import PredictionDetailsModal from './PredictionDetailsModal';
+import brut from '@/styles/brutalist.module.css';
 
 export default function TableRowView({
     matchId,
@@ -24,7 +25,7 @@ export default function TableRowView({
     visibilityBreakpoint
 }: TableRowDataProps) {
     return (
-        <Group id='tableRow' w='100%' h={80} p={0} gap={0} wrap='nowrap' align="center" justify="flex-start" visibleFrom={visibilityBreakpoint} style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+        <Group id='tableRow' w='100%' h={80} p={0} gap={0} wrap='nowrap' align="center" justify="flex-start" visibleFrom={visibilityBreakpoint} className={brut.bodyRow}>
             {/* Column 1: Time & Date */}
             <Stack w={120} h='100%' gap={16} px={12} justify='center'>
                 <Stack gap={0}>

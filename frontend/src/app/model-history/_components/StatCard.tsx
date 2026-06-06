@@ -1,5 +1,6 @@
-import { Paper, Text, Group, Box, Stack, Title } from '@mantine/core';
-import { TextMdRegular, TextSmMedium, TextLgBold } from '@/components/typography/TextVariants';
+import { Group, Box, Stack, Title } from '@mantine/core';
+import { TextMdBold, TextSmMedium, TextLgBold } from '@/components/typography/TextVariants';
+import brut from '@/styles/brutalist.module.css';
 
 interface StatCardProps {
   metric: string;
@@ -14,30 +15,32 @@ const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
 export function StatCard({ metric, color, average, max, secondaryLabel = 'Peak' }: StatCardProps) {
   return (
-    <Paper radius="md" p="sm" bg="gray.8">
-      <Stack gap="xs">
-        <Group justify="space-between" align="center">
-          <Group gap="xs" align="center">
-            {/* Color indicator that matches the chart line */}
-            <Box w={12} h={20} bg={color} style={{ borderRadius: 8 }} />
-            <TextMdRegular c="white" tt="capitalize">{metric}</TextMdRegular>
-          </Group>
+    <Box className={brut.statCard} p="md">
+      <Stack gap="sm">
+        <Group gap="xs" align="center">
+          {/* Color swatch that matches the chart line */}
+          <Box className={brut.statSwatch} bg={color} />
+          <TextMdBold c="white" tt="uppercase" style={{ letterSpacing: 0.5 }}>
+            {metric}
+          </TextMdBold>
         </Group>
         <Group grow align="flex-end">
-            <Stack gap={0} align="center">
-                <Title order={6} c="white">
-                    {formatPercent(average)}
-                </Title>
-                <TextMdRegular c="gray.1" >Average</TextMdRegular>
-            </Stack>
-            <Stack gap={0} align="center">
-                <TextLgBold c="gray.1">
-                    {formatPercent(max)}
-                </TextLgBold>
-                <TextMdRegular c="gray.2" >{secondaryLabel}</TextMdRegular>
-            </Stack>
+          <Stack gap={0} align="center">
+            <Title order={4} c="white">
+              {formatPercent(average)}
+            </Title>
+            <TextSmMedium c="gray.3" tt="uppercase" style={{ letterSpacing: 0.5 }}>
+              Average
+            </TextSmMedium>
+          </Stack>
+          <Stack gap={0} align="center">
+            <TextLgBold c="blue.3">{formatPercent(max)}</TextLgBold>
+            <TextSmMedium c="gray.3" tt="uppercase" style={{ letterSpacing: 0.5 }}>
+              {secondaryLabel}
+            </TextSmMedium>
+          </Stack>
         </Group>
       </Stack>
-    </Paper>
+    </Box>
   );
 }

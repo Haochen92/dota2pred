@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import React from 'react';
 import { useMantineTheme } from '@mantine/core';
 import { TextSmBold } from '../typography/TextVariants';
+import brut from '@/styles/brutalist.module.css';
 
 // Create a motion-capable wrapper to avoid polymorphic component type conflicts.
 const BadgeBase = React.forwardRef<HTMLDivElement, BadgeProps>((props, ref) => (
@@ -10,7 +11,7 @@ const BadgeBase = React.forwardRef<HTMLDivElement, BadgeProps>((props, ref) => (
 ));
 BadgeBase.displayName = 'BadgeBase';
 
-const MotionBadge = motion(BadgeBase);
+const MotionBadge = motion.create(BadgeBase);
 
 export function LiveIndicator() {
   // 2. Get access to the Mantine theme to use theme colors.
@@ -19,6 +20,7 @@ export function LiveIndicator() {
   return (
     <MotionBadge
       variant="filled"
+      className={brut.livePill}
       // 3. Apply the 'animate' prop directly to our motion-aware Badge.
       // We are now animating the backgroundColor property.
       animate={{

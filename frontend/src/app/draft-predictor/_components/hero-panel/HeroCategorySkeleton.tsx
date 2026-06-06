@@ -14,30 +14,29 @@ export default function HeroCategorySkeleton({ attribute }: HeroCategoryTitlePro
         h='100%'
         align='flex-start'
         justify='flex-start'
-        gap={16}
+        gap={14}
         visibleFrom='sm'
       >
         {/* Desktop View, visibleFrom='sm' */}
         <HeroCategoryTitle attribute={attribute} />
         <SimpleGrid cols={7} spacing={8} h='auto'>
           {Array.from({ length: 35 }).map((_, i) => (
-            <Skeleton key={i} height={55} width={80} radius='md' />
+            <Skeleton key={i} height={55} width={80} radius={4} />
           ))}
         </SimpleGrid>
       </Stack>
       <Stack
         w='100%'
         h='100%'
-        align='flex-start'
-        justify='flex-start'
-        gap={16}
+        align='center'
+        justify='center'
+        gap={14}
         hiddenFrom='sm'
       >
         {/* Mobile View, hidden on breakpoint > sm */}
-        <HeroCategoryTitle attribute={attribute} />
-        <SimpleGrid cols={5} spacing={4} h='auto'>
+        <SimpleGrid cols={5} spacing={6} h='auto'>
           {Array.from({ length: 35 }).map((_, i) => (
-            <Skeleton key={i} height={45} width={70} radius='md' />
+            <Skeleton key={i} height={45} width={62} radius={4} />
           ))}
         </SimpleGrid>
       </Stack>

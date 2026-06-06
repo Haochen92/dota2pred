@@ -3,6 +3,7 @@
 import { SegmentedControl, Flex } from '@mantine/core';
 import type { MatchFilterOptions, MatchStatus } from '@/types/domain';
 import { TextMdBold, TextSmMedium } from '../typography/TextVariants';
+import brut from '@/styles/brutalist.module.css';
 
 type MatchStatusControlProps = {
   filters: MatchFilterOptions;
@@ -56,18 +57,13 @@ export function MatchStatusControl({ filters, onFilterChange }: MatchStatusContr
         value={value}
         onChange={handleStatusChange}
         data={dataProps}
-
         p={4}
-        bg='gray.7'
-        radius={10}
-        styles={(theme) => ({
-            indicator: {
-                backgroundColor: theme.colors.gray[9],
-            },
-            root: {
-                gap: theme.spacing.xs,
-            },
-        })}
+        radius={8}
+        classNames={{
+            root: brut.segRoot,
+            indicator: brut.segIndicator,
+            label: brut.segLabel,
+        }}
         withItemsBorders={false}
         transitionDuration={150}
         transitionTimingFunction='linear'

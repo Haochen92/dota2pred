@@ -55,6 +55,7 @@ services:
     container_name: prefect-server
     restart: always
     command: prefect server start --host 0.0.0.0
+    mem_limit: 512m
     env_file: ./.env.production
     depends_on:
       db:

@@ -1,19 +1,19 @@
 'use client';
 
 import { Paper, Stack, Group, Skeleton, SimpleGrid, Box } from '@mantine/core';
+import brut from '@/styles/brutalist.module.css';
 
 // Skeleton loader mirroring the layout of ModelHistoryClient while data is fetched via Suspense.
 export default function ModelHistorySkeleton() {
   return (
     <Paper
       p="xl"
-      shadow="sm"
       component={Stack}
       w="100%"
       h="auto"
-      bg="gray.7"
+      bg="gray.8"
       gap="xl"
-      style={{ borderRadius: '0 0 12px 12px' }}
+      className={brut.panel}
       aria-label="Model history loading"
     >
       {/* Top controls (SegmentedControl placeholder) */}
@@ -38,13 +38,13 @@ export default function ModelHistorySkeleton() {
       {/* Stat cards grid */}
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" px={8} w="100%">
         {[0, 1, 2].map((i) => (
-          <Paper key={i} p="md" radius="md" bg="gray.8" withBorder style={{ borderColor: 'var(--mantine-color-gray-6)' }}>
+          <Box key={i} p="md" className={brut.statCard}>
             <Stack gap={10}>
               <Skeleton height={14} width="40%" />
               <Skeleton height={34} width="70%" />
               <Skeleton height={10} width="55%" />
             </Stack>
-          </Paper>
+          </Box>
         ))}
       </SimpleGrid>
     </Paper>

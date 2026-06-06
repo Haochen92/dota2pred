@@ -23,6 +23,7 @@ export default function HeroIcon ({hero_id, hero_name, minHeight, minWidth } : H
     >
         <Image
             fill={true}
+            sizes="128px"
             src={`/images/heroes/portraits/${hero_id}.png`}
             alt={hero_name ? `${hero_name}.png` : `${hero_id}.png`}
             style={{objectFit:"cover"}}

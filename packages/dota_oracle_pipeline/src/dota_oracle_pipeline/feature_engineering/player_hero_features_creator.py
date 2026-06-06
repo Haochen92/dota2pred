@@ -63,7 +63,11 @@ class PlayerHeroFeaturesCreator:
                 continue
             except Exception as e:
                 logger.error(f"Error processing match {match_id}: {e}", exc_info=True)
-                raise e
+                continue
+
+        if len(player_hero_features_list) < len(match_instances):
+            failed = len(match_instances) - len(player_hero_features_list)
+            logger.warning(f"Player-hero feature engineering: {failed}/{len(match_instances)} matches failed")
 
         logger.info(f"Created {len(player_hero_features_list)} player-hero feature rows")
         return player_hero_features_list

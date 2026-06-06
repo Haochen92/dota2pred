@@ -1,32 +1,16 @@
 import asyncio
 import argparse
 import json
-from typing import Dict, List, Type
+from typing import List
 
 # NOTE: No changes needed in redis_service.py
 from live_orchestrator_app.redis_services.redis_service import RedisService
 from dota_oracle_common.constants.redis_constants import (
-    STREAM_NEW_MATCHES,
-    STREAM_PENDING_PREDICTION,
-    STREAM_PENDING_COMPLETION,
     FAILED_EVENTS_MAPPING,
 )
-from dota_oracle_common.models.redis.schema import (
-    FailureRecord,
-    FeatureEngineeringPayload,
-    PredictionPayload,
-    CompletionPayload,
-    PayloadModel,
-)
+from dota_oracle_common.models.redis.schema import FailureRecord
+from live_orchestrator_app.constants.payload_mappings import PAYLOAD_MODEL_MAPPING
 import redis.asyncio as redis
-
-# This mapping is crucial for the tool to know how to parse the payload
-# of a failed event before reinjecting it.
-PAYLOAD_MODEL_MAPPING: Dict[str, Type[PayloadModel]] = {
-    STREAM_NEW_MATCHES: FeatureEngineeringPayload,
-    STREAM_PENDING_PREDICTION: PredictionPayload,
-    STREAM_PENDING_COMPLETION: CompletionPayload,
-}
 
 
 class DlqTool:

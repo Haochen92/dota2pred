@@ -1,86 +1,95 @@
 'use client';
 
-import { Group, Stack, Title, Flex } from '@mantine/core';
+import { Box, Flex, Group, Stack } from '@mantine/core';
 
-import  useDraftContext  from '@/hooks/useDraftContext';
+import useDraftContext from '@/hooks/useDraftContext';
 import DraftSlot from './DraftSlot';
 import CompactDraftSlot from './CompactDraftSlot';
-import { TextLgBold } from '@/components/typography/TextVariants';
+import classes from '../../draft-predictor.module.css';
 
-interface TeamPanelProps {
-  team: 'RADIANT' | 'DIRE';
+type Team = 'RADIANT' | 'DIRE';
+
+const accentOf = (team: Team) =>
+  team === 'RADIANT' ? 'var(--mantine-color-green-4)' : 'var(--mantine-color-red-4)';
+const keyOf = (team: Team) => (team === 'RADIANT' ? 'radiantTeam' : 'direTeam');
+
+function TeamHeader({ team }: { team: Team }) {
+  const { form } = useDraftContext();
+  const count = form.values[keyOf(team)].filter((h) => h !== null).length;
+  return (
+    <Box className={classes.teamHeader} style={{ '--team-accent': accentOf(team) } as React.CSSProperties}>
+      {team}
+      <span className={classes.teamCount}>{count}/5</span>
+    </Box>
+  );
 }
 
-const TeamPanel = ({ team }: TeamPanelProps) => {
-
-  const draftTeam = team === 'RADIANT' ? 'radiantTeam' : 'direTeam';
+function TeamBoard({ team, compact, grow }: { team: Team; compact?: boolean; grow?: boolean }) {
+  const draftTeam = keyOf(team);
   const { form, handleRemoveHero } = useDraftContext();
   const { activeSlot } = form.values;
-  const pickedHeroes = form.values[draftTeam];
-
+  const picked = form.values[draftTeam];
+  const Slot = compact ? CompactDraftSlot : DraftSlot;
 
   return (
-    <>
-      <Stack flex={1} gap={8} visibleFrom='sm'>
-      {/* Desktop only view, hidden from breakpoint <= sm*/}
-        <Title order={3} c={team === 'RADIANT' ? 'green.2' : 'red.2'}>{team}</Title>
-        <Group h='100%' w='100%' wrap='nowrap' gap={8} p='12 8 12 8' bg='gray.7' justify='flex-start' style={{borderRadius: 12, overflow: 'hidden'}}>
-            {Array.from({ length: 5 }).map((_, index) => {
-                const heroId = pickedHeroes[index];
-                const isActive = activeSlot?.team === draftTeam && activeSlot?.index === index;
-                const handleClick = () => {
-                    if (heroId !== null) {
-                      handleRemoveHero({ team: draftTeam, index });
-                    }
-                    form.setFieldValue('activeSlot', { team: draftTeam, index });
-                }
+    <Box
+      className={classes.board}
+      flex={grow ? 1 : undefined}
+      miw={grow ? 0 : undefined}
+    >
+      {Array.from({ length: 5 }).map((_, index) => {
+        const heroId = picked[index];
+        const isActive = activeSlot?.team === draftTeam && activeSlot?.index === index;
+        const handleClick = () => {
+          if (heroId !== null) {
+            handleRemoveHero({ team: draftTeam, index });
+          }
+          form.setFieldValue('activeSlot', { team: draftTeam, index });
+        };
 
-                return (
-                    <DraftSlot
-                        key={`${draftTeam}-slot-${index}`}
-                        heroId={heroId}
-                        isActive={isActive}
-                        onClick={handleClick}
-                    />
-                );
-            })}
-        </Group>
-      </Stack>
-      <Stack flex={1} gap={8} hiddenFrom='sm' p={4}>
-      {/* Mobile view, hidden on breakpoint > sm*/}
-        <TextLgBold c={team === 'RADIANT' ? 'green.2' : 'red.2'}>{team}</TextLgBold>
-        <Group h='100%' w='100%' wrap='nowrap' gap={2} p='4 4 4 4' justify='flex-start' style={{borderRadius: 12, overflow: 'hidden'}}>
-            {Array.from({ length: 5 }).map((_, index) => {
-                const heroId = pickedHeroes[index];
-                const isActive = activeSlot?.team === draftTeam && activeSlot?.index === index;
-                const handleClick = () => {
-                    if (heroId !== null) {
-                      handleRemoveHero({ team: draftTeam, index });
-                    }
-                    form.setFieldValue('activeSlot', { team: draftTeam, index });
-                }
-
-                return (
-                    <CompactDraftSlot
-                        key={`${draftTeam}-slot-${index}`}
-                        heroId={heroId}
-                        isActive={isActive}
-                        onClick={handleClick}
-                    />
-                );
-            })}
-        </Group>
-      </Stack>
-    </>
-
-  )
+        return (
+          <Slot
+            key={`${draftTeam}-slot-${index}`}
+            heroId={heroId}
+            isActive={isActive}
+            onClick={handleClick}
+            index={index}
+            team={team}
+          />
+        );
+      })}
+    </Box>
+  );
 }
 
 export default function DraftingPanel() {
   return (
-    <Flex justify='space-around' align='center' gap='sm' w='100%' direction='row'>
-      <TeamPanel team='RADIANT' />
-      <TeamPanel team='DIRE' />
-    </Flex>
-  )
+    <>
+      {/* Desktop: headers in their own row, then the two boards with a
+          vertically-centred VS badge sitting between the slot rows. */}
+      <Stack visibleFrom="sm" gap={10} w="100%">
+        <Group justify="space-between" wrap="nowrap">
+          <TeamHeader team="RADIANT" />
+          <TeamHeader team="DIRE" />
+        </Group>
+        <Flex align="center" gap="md" w="100%">
+          <TeamBoard team="RADIANT" grow />
+          <Box className={classes.vsBadge}>VS</Box>
+          <TeamBoard team="DIRE" grow />
+        </Flex>
+      </Stack>
+
+      {/* Mobile: stacked compact boards */}
+      <Stack hiddenFrom="sm" gap={12} w="100%">
+        <Stack gap={8} align="flex-start">
+          <TeamHeader team="RADIANT" />
+          <TeamBoard team="RADIANT" compact />
+        </Stack>
+        <Stack gap={8} align="flex-start">
+          <TeamHeader team="DIRE" />
+          <TeamBoard team="DIRE" compact />
+        </Stack>
+      </Stack>
+    </>
+  );
 }

@@ -7,6 +7,7 @@ import { HeroImageData } from "@/types/contracts";
 import useDraftContext from '@/hooks/useDraftContext';
 import SelectableHero from '../shared/SelectableHero';
 import HeroCategorySkeleton from './HeroCategorySkeleton';
+import classes from '../../draft-predictor.module.css';
 
 const attributeMapping = {
     'strength': 'str',
@@ -54,13 +55,12 @@ export default function HerosContainer({attribute}: HeroCategoryTitleProps) {
         return <HeroCategorySkeleton attribute={attribute} />;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-        console.log(heroesData);
-    }
-
     return (
     <>
-    <Stack w='100%' h='100%' align='flex-start' justify='flex-start' gap={16} visibleFrom='sm'>
+    <Stack
+        w='100%' h='100%' align='flex-start' justify='flex-start' gap={14} visibleFrom='sm'
+        className={!canPick ? classes.poolLocked : undefined}
+    >
         {/* Desktop View, visibleFrom='sm' */}
         <HeroCategoryTitle attribute={attribute} />
         <SimpleGrid cols={7} spacing={8} h='auto'>
@@ -78,9 +78,12 @@ export default function HerosContainer({attribute}: HeroCategoryTitleProps) {
             ))}
         </SimpleGrid>
     </Stack>
-    <Stack w='100%' h='100%' align='center' justify='center' gap={16} hiddenFrom='sm'>
-        {/* mobile View, visibleFrom='sm' */}
-        <SimpleGrid cols={5} spacing={8} h='auto'>
+    <Stack
+        w='100%' h='100%' align='center' justify='center' gap={14} hiddenFrom='sm'
+        className={!canPick ? classes.poolLocked : undefined}
+    >
+        {/* mobile View, hiddenFrom='sm' */}
+        <SimpleGrid cols={5} spacing={6} h='auto'>
             {heroesData.map(hero => (
                 <SelectableHero
                     key={hero.hero_id}

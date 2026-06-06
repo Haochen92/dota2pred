@@ -6,6 +6,7 @@ import ModelAccuracyDisplay from './ModelAccuracyDisplay';
 import NavMenu from './NavMenu';
 import { TextMdBold, TextSmRegular } from '@/components/typography/TextVariants';
 import { StarMultiIcon } from '../icons/StarIcon';
+import brut from '@/styles/brutalist.module.css';
 
 // 1. Single source of truth for navigation links.
 // If you add a new page, you only need to add it here.
@@ -55,12 +56,14 @@ export default function Navbar() {
               <Badge
                 component={Link}
                 href='/model-history'
-                variant='light'
-                color="gray.9"
-                radius="sm" px={8} py={4}
+                variant='filled'
+                bg="gray.7"
+                c="white"
+                radius={8} px={10} py={6}
                 h='auto'
-                leftSection={ <StarMultiIcon size={24} /> }
-                style={{cursor: 'pointer'}}
+                className={brut.badge}
+                leftSection={ <StarMultiIcon size={22} /> }
+                style={{ cursor: 'pointer' }}
                 >
                 <ModelAccuracyDisplay/>
               </Badge>

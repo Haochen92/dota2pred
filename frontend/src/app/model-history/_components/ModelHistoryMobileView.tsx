@@ -5,6 +5,10 @@ import type { HistoryRange, CalibrationPlotPoint } from '@/types/contracts';
 import { dateFormatter } from '@/utils/date-formatter';
 import { TextMdBold } from '@/components/typography/TextVariants';
 import CalibrationPlot from './CalibrationPlot';
+import brut from '@/styles/brutalist.module.css';
+
+const segClassNames = { root: brut.segRoot, indicator: brut.segIndicator, label: brut.segLabel };
+const METRIC_LABELS: Record<string, string> = { accuracy: 'Accuracy', auc: 'AUC', root_brier: 'Root Brier' };
 
 interface ChartSeriesConfig { name: string; type: string; color: string; }
 
@@ -53,17 +57,12 @@ export function ModelHistoryMobileView({
   // Controls
   const DateRangeControl = () => (
     <SegmentedControl
-      bg='transparent'
       id='history-range-control-mobile'
       value={historyRange.toString()}
       data={historyRangeOptions}
       onChange={onHistoryRangeChange}
-      radius={10}
-      styles={(theme) => ({
-        indicator: { backgroundColor: theme.colors.gray[9] },
-        root: { gap: theme.spacing.xs },
-        label: { color: theme.colors.gray[0] }
-      })}
+      radius={8}
+      classNames={segClassNames}
       withItemsBorders={false}
       transitionDuration={150}
       transitionTimingFunction='linear'
@@ -74,7 +73,7 @@ export function ModelHistoryMobileView({
     <Chip.Group multiple value={selectedMetrics} onChange={onSelectedMetricsChange}>
       <Group gap={8} wrap='wrap'>
         {chartMetricsData.map(metric => (
-          <Chip key={metric.name} value={metric.name} color={metric.color} size='xs'>
+          <Chip key={metric.name} value={metric.name} color={metric.color} size='xs' classNames={{ label: brut.chipLabel }}>
             {metric.name}
           </Chip>
         ))}
@@ -84,7 +83,6 @@ export function ModelHistoryMobileView({
 
   const DataDisplayControl = () => (
     <SegmentedControl
-      bg='transparent'
       id='data-display-control-mobile'
       value={dataDisplayOption}
       data={[
@@ -92,12 +90,8 @@ export function ModelHistoryMobileView({
         { label: 'Calibration', value: 'calibration' },
       ]}
       onChange={handleDisplayOptionChange}
-      radius={10}
-      styles={(theme) => ({
-        indicator: { backgroundColor: theme.colors.gray[9] },
-        root: { gap: theme.spacing.xs },
-        label: { color: theme.colors.gray[0] }
-      })}
+      radius={8}
+      classNames={segClassNames}
       withItemsBorders={false}
       transitionDuration={150}
       transitionTimingFunction='linear'
@@ -111,14 +105,13 @@ export function ModelHistoryMobileView({
   return (
     <Paper
       hiddenFrom={visibilityBreakpoint}
-      p='xl'
-      shadow='sm'
+      p='lg'
       component={Stack}
       w='100%'
       h='auto'
-      bg='gray.7'
+      bg='gray.8'
       gap='lg'
-      style={{ borderRadius: 0 }}
+      className={brut.panel}
     >
       {/* Header controls */}
       <Group justify='space-between' align='center' px={4} wrap='wrap'>
@@ -174,12 +167,12 @@ export function ModelHistoryMobileView({
           {/* Minimal Stats Row */}
           {summaryStats && (
             <Group gap={8} wrap='wrap' justify='center'>
-              <Badge variant='light' color='blue.3' radius='sm'>Accu Avg: {formatPercent(summaryStats.averageAccuracy)}</Badge>
-              <Badge variant='light' color='blue.3' radius='sm'>Accu Max: {formatPercent(summaryStats.maxAccuracy)}</Badge>
-              <Badge variant='light' color='green.3' radius='sm'>AUC Avg: {formatPercent(summaryStats.averageAuc)}</Badge>
-              <Badge variant='light' color='green.3' radius='sm'>AUC Max: {formatPercent(summaryStats.maxAuc)}</Badge>
-              <Badge variant='light' color='red.3' radius='sm'>RootBrier Avg: {formatPercent(summaryStats.averageRootBrier)}</Badge>
-              <Badge variant='light' color='red.3' radius='sm'>RootBrier Min: {formatPercent(summaryStats.minRootBrier)}</Badge>
+              <Badge variant='light' color='blue.3' className={brut.badge}>Accu Avg: {formatPercent(summaryStats.averageAccuracy)}</Badge>
+              <Badge variant='light' color='blue.3' className={brut.badge}>Accu Max: {formatPercent(summaryStats.maxAccuracy)}</Badge>
+              <Badge variant='light' color='green.3' className={brut.badge}>AUC Avg: {formatPercent(summaryStats.averageAuc)}</Badge>
+              <Badge variant='light' color='green.3' className={brut.badge}>AUC Max: {formatPercent(summaryStats.maxAuc)}</Badge>
+              <Badge variant='light' color='red.3' className={brut.badge}>RootBrier Avg: {formatPercent(summaryStats.averageRootBrier)}</Badge>
+              <Badge variant='light' color='red.3' className={brut.badge}>RootBrier Min: {formatPercent(summaryStats.minRootBrier)}</Badge>
             </Group>
           )}
         </>

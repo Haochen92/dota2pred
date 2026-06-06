@@ -1,33 +1,29 @@
 import HeroIcon from "@/components/icons/HeroIcon";
 import type { DraftSlotProps } from "@/types/domain";
-import { UnstyledButton} from "@mantine/core";
+import { UnstyledButton } from "@mantine/core";
+import classes from "../../draft-predictor.module.css";
 
 /**
- * A component representing a draft slot for selecting a hero, for Desktop view
- * Uses HeroIcon to display the selected hero.
+ * A draft slot for selecting a hero (desktop view).
+ * Neo-brutalist box: neutral border, pulsing cyan border when active,
+ * ghost index number when empty.
  */
 export default function DraftSlot({
     heroId,
     onClick,
     isActive,
+    index,
 }: DraftSlotProps) {
     return (
         <UnstyledButton
             onClick={onClick}
-            style={ (theme) => ({
-                display: 'flex',
-                flexGrow: 1,
-                aspectRatio: '42.4/30',
-                borderRadius: '4px',
-                boxShadow: isActive ? `inset 0 0 0 2px ${theme.colors.blue[4]}` : 'none',
-                transition: 'box-shadow 0.2s ease',
-                backgroundColor: heroId ? 'transparent' : theme.colors.gray[9],
-            })}
-        >{ heroId && <HeroIcon
-            hero_id={heroId}
-            hero_name='hero_name_placeholder'
-            />
-        }
+            className={[classes.slot, heroId != null && classes.slotFilled, isActive && classes.slotActive].filter(Boolean).join(" ")}
+        >
+            {heroId != null ? (
+                <HeroIcon hero_id={heroId} hero_name="hero_name_placeholder" />
+            ) : (
+                <span className={classes.slotIndex}>{(index ?? 0) + 1}</span>
+            )}
         </UnstyledButton>
     );
 }
