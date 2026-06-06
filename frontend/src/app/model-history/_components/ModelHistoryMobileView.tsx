@@ -73,8 +73,8 @@ export function ModelHistoryMobileView({
     <Chip.Group multiple value={selectedMetrics} onChange={onSelectedMetricsChange}>
       <Group gap={8} wrap='wrap'>
         {chartMetricsData.map(metric => (
-          <Chip key={metric.name} value={metric.name} color={metric.color} size='xs' classNames={{ label: brut.chipLabel }}>
-            {metric.name}
+          <Chip key={metric.name} value={metric.name} color={metric.color} size='xs' classNames={{ label: brut.chipLabel, iconWrapper: brut.hideIcon }}>
+            {METRIC_LABELS[metric.name] ?? metric.name}
           </Chip>
         ))}
       </Group>
