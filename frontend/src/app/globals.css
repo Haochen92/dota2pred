@@ -1,3 +1,7 @@
+:root {
+  --brut-shadow: var(--mantine-color-blue-9);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

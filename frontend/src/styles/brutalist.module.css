@@ -1,0 +1,186 @@
+/* =======================================================================
+   Shared neo-brutalist primitives (used by Match Tracker; mirrors the
+   Draft Predictor look). Hard offset shadows, thick borders, bold
+   uppercase labels, tactile presses. Built on existing theme tokens.
+   ======================================================================= */
+
+/* ---- Surface ---------------------------------------------------------- */
+.panel {
+  background: var(--mantine-color-gray-8);
+  border: 2px solid var(--mantine-color-gray-5);
+  border-radius: 8px;
+  box-shadow: 6px 6px 0 0 var(--brut-shadow);
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+.btn {
+  border: 2px solid #000;
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 0 #000;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+}
+.btn:hover:not([data-disabled]):not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 0 #000;
+}
+.btn:active:not([data-disabled]):not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 #000;
+}
+.btn[data-disabled],
+.btn:disabled {
+  box-shadow: 2px 2px 0 0 rgba(0, 5, 32, 0.5);
+  opacity: 0.5;
+}
+.btnPrimary:hover:not([data-disabled]):not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* ---- Badge ------------------------------------------------------------ */
+.badge {
+  border: 2px solid #000;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 0 var(--brut-shadow);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* ---- LIVE pill (no border — the pulsing glow carries it) -------------- */
+.livePill {
+  border: none;
+  border-radius: 6px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* ---- Segmented control (All / Live / Past) ---------------------------- */
+.segRoot {
+  background: var(--mantine-color-gray-9);
+  border: 2px solid var(--mantine-color-gray-5);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 0 var(--brut-shadow);
+}
+.segIndicator {
+  background: var(--mantine-color-gray-6);
+  border-radius: 5px;
+  box-shadow: 1px 1px 0 0 var(--brut-shadow);
+}
+.segLabel {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Pagination ------------------------------------------------------- */
+.pageControl {
+  border: 2px solid var(--mantine-color-gray-5) !important;
+  border-radius: 6px !important;
+  font-weight: 700;
+  transition: transform 0.08s ease, background-color 0.08s ease;
+}
+.pageControl:hover:not([data-active]) {
+  background-color: var(--mantine-color-gray-7) !important;
+}
+.pageControl[data-active] {
+  background-color: var(--mantine-color-blue-4) !important;
+  border-color: #000 !important;
+  color: var(--mantine-color-gray-9) !important;
+  box-shadow: 2px 2px 0 0 #000;
+}
+
+/* ---- Nav tiles (mobile drawer) --------------------------------------- */
+.navTile {
+  border: 2px solid var(--mantine-color-gray-6) !important;
+  border-radius: 8px !important;
+  box-shadow: 3px 3px 0 0 var(--brut-shadow);
+  font-weight: 700;
+  transition: transform 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+.navTile:hover {
+  transform: translate(-1px, -1px);
+  border-color: var(--mantine-color-gray-3) !important;
+}
+.navTile[data-active] {
+  border-color: var(--mantine-color-blue-4) !important;
+  background-color: var(--mantine-color-gray-7) !important;
+}
+
+/* ---- Chips (metric toggles) ------------------------------------------ */
+.chipLabel {
+  border: 2px solid #000 !important;
+  border-radius: 6px !important;
+  box-shadow: 2px 2px 0 0 var(--brut-shadow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: transform 0.1s ease;
+}
+.chipLabel:hover {
+  transform: translate(-1px, -1px);
+}
+
+/* ---- Chip tick removal ------------------------------------------------ */
+.hideIcon {
+  display: none !important;
+}
+
+/* ---- Diverging "advantage" bars (prediction details) ----------------- */
+.factorTrack {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  background: var(--mantine-color-gray-9);
+  border: 2px solid var(--mantine-color-gray-6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.factorCenter {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--mantine-color-gray-4);
+  z-index: 2;
+}
+.factorFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+
+/* ---- Stat card -------------------------------------------------------- */
+.statCard {
+  background: var(--mantine-color-gray-9);
+  border: 2px solid var(--mantine-color-gray-5);
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 0 var(--brut-shadow);
+}
+.statSwatch {
+  width: 14px;
+  height: 22px;
+  border: 2px solid #000;
+  border-radius: 3px;
+}
+
+/* ---- Table ------------------------------------------------------------ */
+.headerRow {
+  border-bottom: 3px solid var(--mantine-color-gray-5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.bodyRow {
+  border-bottom: 2px solid var(--mantine-color-gray-7);
+  transition: background-color 0.12s ease;
+}
+.bodyRow:hover {
+  background-color: var(--mantine-color-gray-8);
+}

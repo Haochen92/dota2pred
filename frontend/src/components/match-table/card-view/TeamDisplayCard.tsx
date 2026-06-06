@@ -1,7 +1,6 @@
-import { Group } from '@mantine/core';
+import { Group, Stack } from '@mantine/core';
 import HeroIcon from '@/components/icons/HeroIcon';
-import { TextMdRegular, TextLgBold } from '@/components/typography/TextVariants';
-
+import { TextMdBold, TextSmRegular } from '@/components/typography/TextVariants';
 
 type TeamDisplayProps = {
     teamName: string;
@@ -13,41 +12,34 @@ export default function TeamDisplayCard({ teamName, heroPicks, faction }: TeamDi
     const isRadiant = faction === 'Radiant';
 
     return (
-        <Group
-            align="flex-start"
-            justify="center"
-            gap={4}
-            flex={2.5}
-            h='100%'
-        >
+        <Stack gap={6} w="100%">
+            <Group justify="space-between" align="center" wrap="nowrap">
+                <TextMdBold c={isRadiant ? 'green.2' : 'red.2'} tt="uppercase" style={{ letterSpacing: 1 }}>
+                    {faction}
+                </TextMdBold>
+                <TextSmRegular c="gray.2" lineClamp={1} ta="right">
+                    {teamName}
+                </TextSmRegular>
+            </Group>
 
             <Group
-                w='80vw'
-                h={40}
+                w="100%"
+                h={36}
                 gap={1}
                 p={0}
                 wrap="nowrap"
-                style={{borderRadius: 8, overflow: 'clip'}}
                 align="start"
                 justify="start"
+                style={{
+                    borderRadius: 6,
+                    overflow: 'clip',
+                    border: '2px solid var(--mantine-color-gray-6)',
+                }}
             >
                 {heroPicks.map((heroId, idx) => (
                     <HeroIcon key={`${heroId}-${idx}`} hero_id={heroId} />
                 ))}
             </Group>
-
-            <Group wrap='nowrap' justify='space-between' w='100%'>
-                <Group >
-                    <TextLgBold c={isRadiant ? 'green.2' : 'red.2'}>
-                        {faction}
-                    </TextLgBold>
-                </Group>
-                <Group  justify='flex-end'>
-                    <TextMdRegular ta="left" h='auto' lineClamp={1} tt='uppercase' >
-                        {teamName}
-                    </TextMdRegular>
-                </Group>
-            </Group>
-        </Group>
+        </Stack>
     );
 }

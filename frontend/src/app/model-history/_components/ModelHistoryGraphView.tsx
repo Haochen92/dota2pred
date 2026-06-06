@@ -6,8 +6,13 @@ import CustomToolTip from '@/components/charts/CustomToolTip';
 import { dateFormatter } from '@/utils/date-formatter';
 import { StatCard } from './StatCard';
 import type { AggregateBy, HistoryRange, CalibrationPlotPoint } from '@/types/contracts';
-import { TextSmRegular } from '@/components/typography/TextVariants';
 import CalibrationPlot from './CalibrationPlot';
+import brut from '@/styles/brutalist.module.css';
+
+const segClassNames = { root: brut.segRoot, indicator: brut.segIndicator, label: brut.segLabel };
+
+// Display names for metric toggles (values stay as the raw metric keys).
+const METRIC_LABELS: Record<string, string> = { accuracy: 'Accuracy', auc: 'AUC', root_brier: 'Root Brier' };
 
 interface ChartSeriesConfig { name: string; type: string; color: string; }
 
@@ -47,19 +52,12 @@ export function ModelHistoryGraphView({
 }: ModelHistoryGraphViewProps) {
   const DateRangeControl = () => (
     <SegmentedControl
-      bg='transparent'
       id='history-range-control'
       value={historyRange.toString()}
       data={historyRangeOptions}
       onChange={onHistoryRangeChange}
-      radius={10}
-      styles={(theme) => ({
-        indicator:{
-          backgroundColor: theme.colors.gray[9],
-        },
-        root:{ gap: theme.spacing.xs },
-        label: {color: theme.colors.gray[0]},
-      })}
+      radius={8}
+      classNames={segClassNames}
       withItemsBorders={false}
       transitionDuration={150}
       transitionTimingFunction='linear'
@@ -68,7 +66,6 @@ export function ModelHistoryGraphView({
 
   const DisplayControl = () => (
     <SegmentedControl
-      bg='transparent'
       id='data-display-option-control'
       value={dataDisplayOption}
       data={[
@@ -76,14 +73,8 @@ export function ModelHistoryGraphView({
         { label: 'Calibration', value: 'calibration' },
       ]}
       onChange={(value) => onDataDisplayOptionChange(value as 'history' | 'calibration')}
-      radius={10}
-      styles={(theme) => ({
-        indicator:{
-          backgroundColor: theme.colors.gray[9],
-        },
-        root:{ gap: theme.spacing.xs },
-        label: {color: theme.colors.gray[0]},
-      })}
+      radius={8}
+      classNames={segClassNames}
       withItemsBorders={false}
       transitionDuration={150}
       transitionTimingFunction='linear'
@@ -96,11 +87,10 @@ export function ModelHistoryGraphView({
         {chartMetricsData.map((metric) => (
           <Chip
             key={metric.name} value={metric.name} color={metric.color} size='sm'
-            styles={{ label : {width: '100px'} }}
+            classNames={{ label: brut.chipLabel, iconWrapper: brut.hideIcon }}
+            styles={{ label: { width: 130, justifyContent: 'center' } }}
           >
-            <TextSmRegular>
-              {metric.name}
-            </TextSmRegular>
+            {METRIC_LABELS[metric.name] ?? metric.name}
           </Chip>
         ))}
       </Stack>
@@ -140,13 +130,12 @@ export function ModelHistoryGraphView({
     <Paper
       visibleFrom={visibilityBreakpoint}
       p='xl'
-      shadow='sm'
       gap='xl'
       component={Stack}
       w='100%'
       h='auto'
-      bg='gray.7'
-      style={{ borderRadius: '0' }}
+      bg='gray.8'
+      className={brut.panel}
     >
       <Group justify='space-between' align='center' px={8}>
         <DateRangeControl/>

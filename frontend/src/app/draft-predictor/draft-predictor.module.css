@@ -5,13 +5,6 @@
    bold uppercase labels, tactile press interactions.
    ======================================================================= */
 
-:root {
-  /* Single source of truth for the hard offset-shadow colour, tied to the
-     theme's darkest navy (blue.9 = #000520). This extends the same hard
-     offset-shadow style the theme already defines in theme.shadows.sm/lg. */
-  --brut-shadow: var(--mantine-color-blue-9);
-}
-
 /* ---- Surfaces --------------------------------------------------------- */
 .panel {
   background: var(--mantine-color-gray-9);

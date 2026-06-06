@@ -21,6 +21,7 @@ import { useDisclosure } from "@mantine/hooks";
 
 import { TextMdMedium } from "@/components/typography/TextVariants";
 import { MatchStatusControl } from "./MatchStatusControl";
+import brut from "@/styles/brutalist.module.css";
 
 
 // Keep in sync with completed page Filters type
@@ -129,14 +130,7 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
   };
 
   return (
-    <Paper
-      p="md"
-      radius="md"
-      withBorder
-      style={(theme) => ({
-        background: `linear-gradient(180deg, ${theme.colors.gray[8]} 0%, ${theme.colors.gray[9]} 100%)`,
-      })}
-    >
+    <Paper p="md" className={brut.panel}>
       {/* Header with integrated MatchStatusControl */}
       <Group justify="space-between" align="center">
         {/* Left */}
@@ -151,7 +145,17 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
 
         {/* Right */}
         <Group gap="xs" align="center">
-          <Badge color={activeCount > 0 ? "teal.5" : "gray.4"} variant="filled" size="sm">
+          <Badge
+            variant="filled"
+            size="sm"
+            className={brut.badge}
+            styles={{
+              root: {
+                backgroundColor: activeCount > 0 ? "var(--mantine-color-blue-4)" : "var(--mantine-color-gray-6)",
+                color: activeCount > 0 ? "var(--mantine-color-gray-9)" : "var(--mantine-color-gray-1)",
+              },
+            }}
+          >
             {activeCount} active
           </Badge>
           <ActionIcon variant="subtle" onClick={toggleExpanded} aria-label="Toggle filters">
@@ -234,14 +238,23 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
 
         <Group justify="flex-end" mt="xl">
           <Button
-            variant="subtle"
+            className={brut.btn}
+            bg="gray.7"
+            c="gray.1"
+            radius={8}
             onClick={handleClear}
             disabled={activeCount === 0}
             leftSection={<IconX size={16} />}
           >
             Clear
           </Button>
-          <Button color="teal.5" onClick={handleApply}>
+          <Button
+            className={`${brut.btn} ${brut.btnPrimary}`}
+            bg="blue.4"
+            c="gray.9"
+            radius={8}
+            onClick={handleApply}
+          >
             Apply Filters
           </Button>
         </Group>

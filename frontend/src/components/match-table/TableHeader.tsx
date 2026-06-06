@@ -1,5 +1,6 @@
 import { Group, Flex } from "@mantine/core"
 import { TextSmBold } from "@/components/typography/TextVariants";
+import brut from "@/styles/brutalist.module.css";
 
 export default function TableHeader() {
     return (
@@ -7,7 +8,7 @@ export default function TableHeader() {
             w='100%'
             align="center" justify="flex-start"
             p={0} gap={0} wrap='nowrap'
-            style={{ borderBottom: '3px solid var(--mantine-color-default-border)'}}
+            className={brut.headerRow}
             visibleFrom="sm"
         >
             {/* Column 1: Time & Date */}
