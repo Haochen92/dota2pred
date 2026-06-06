@@ -58,6 +58,10 @@ export interface DraftSlotProps {
     heroId: number | null;
     isActive: boolean;
     onClick: () => void;
+    /** 0-based slot position, rendered as a ghost number when empty */
+    index?: number;
+    /** Owning team, drives the accent colour of the slot */
+    team?: 'RADIANT' | 'DIRE';
     visibilityBreakpoint?: string;
 }
 

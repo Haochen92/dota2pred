@@ -1,28 +1,22 @@
 'use client';
 
-import { SimpleGrid } from '@mantine/core';
+import { Box, SimpleGrid } from '@mantine/core';
 import HeroCategorySkeleton from './HeroCategorySkeleton';
+import classes from '../../draft-predictor.module.css';
 
 /**
  * Skeleton placeholder for the full heroes panel.
- * Renders loading placeholders for all hero attribute categories.
+ * Mirrors the brutalist HeroesPanel layout.
  */
 export default function HeroesPanelSkeleton() {
   return (
-    <SimpleGrid
-      cols={{ base: 2, sm: 1, lg: 2 }}
-      spacing='24'
-      w='100%'
-      h='auto'
-      p={20}
-      bg='gray.9'
-      style={{ borderRadius: '24px' }}
-      aria-label='Hero panel loading'
-    >
-  <HeroCategorySkeleton attribute='strength' />
-  <HeroCategorySkeleton attribute='intelligence' />
-  <HeroCategorySkeleton attribute='agility' />
-  <HeroCategorySkeleton attribute='universal' />
-    </SimpleGrid>
+    <Box className={classes.panel} p={20} aria-label="Hero panel loading">
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing={28} w="100%">
+        <HeroCategorySkeleton attribute="strength" />
+        <HeroCategorySkeleton attribute="intelligence" />
+        <HeroCategorySkeleton attribute="agility" />
+        <HeroCategorySkeleton attribute="universal" />
+      </SimpleGrid>
+    </Box>
   );
 }
