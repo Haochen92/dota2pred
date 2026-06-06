@@ -57,8 +57,7 @@ htmlcov/
 # Testing Notebooks
 test.ipynb
 
-# Frontend public folder
-frontend/public/
+# Frontend build output (public/ is now committed so CI builds are self-contained)
 frontend/node_modules/
 
 # Python virtual environment
