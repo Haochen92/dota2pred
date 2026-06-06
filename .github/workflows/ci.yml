@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     env:
       STEAM_API: ${{secrets.STEAM_API}}
@@ -32,7 +32,7 @@ jobs:
 
     - name: Load cached venv
       id: cached-poetry-dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -41,18 +41,27 @@ jobs:
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root
 
-    - name: Install workspace dependencies
-      run: poetry install --no-interaction
+    - name: Install project
+      run: poetry install --no-interaction --only-root
 
     - name: Run linting
       run: |
         poetry run ruff check .
-        git ls-files -z '*.py' ':!model_factory/notebook/**' | xargs -0 -r -n1 .venv/bin/black --check --quiet
+        git ls-files -z '*.py' ':!model_factory/notebook/**' | xargs -0 -r .venv/bin/black --check --quiet
+
+    - name: Cache mypy results
+      uses: actions/cache@v4
+      with:
+        path: .mypy_cache
+        key: mypy-${{ runner.os }}-${{ hashFiles('**/*.py') }}
+        restore-keys: mypy-${{ runner.os }}-
 
     - name: Run type checking
+      timeout-minutes: 5
+      continue-on-error: true
       run: |
         # Non blocking checks for typing
-        poetry run mypy . --show-error-codes --ignore-missing-imports || true
+        poetry run mypy . --show-error-codes --ignore-missing-imports
 
     - name: Run unit tests
       run: |
@@ -69,6 +78,12 @@ jobs:
     - name: Run E2E tests
       run: |
         poetry run pytest tests/end_to_end/ -v --tb=short -m "e2e"
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -89,7 +104,7 @@ jobs:
         npm run build
 
   deploy:
-    needs: test
+    needs: [backend, frontend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:

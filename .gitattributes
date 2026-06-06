@@ -1,2 +1,6 @@
+# Research/experiment notebooks: exclude from GitHub language stats and
+# collapse their noisy JSON diffs (they're generated artifacts, not app code).
+*.ipynb linguist-generated=true
+
 *.joblib filter=lfs diff=lfs merge=lfs -text
 services/prediction_service/models/random_forest_model.joblib filter=lfs diff=lfs merge=lfs -text
