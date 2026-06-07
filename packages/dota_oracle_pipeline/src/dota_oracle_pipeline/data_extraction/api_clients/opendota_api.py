@@ -27,6 +27,24 @@ def _get_session() -> aiohttp.ClientSession:
     return _session
 
 
+def retry_if_not_404(task, task_run, state) -> bool:
+    """Prefect retry gate: retry transient errors but NOT a 404.
+
+    A 404 ("not found") won't become found by retrying — e.g. a match OpenDota hasn't
+    ingested yet — so retrying just burns retries x retry_delay for nothing (and risks the
+    caller's time budget). It still *fails* (so it is not cached), and the caller decides
+    what to do (return None / leave the item pending for a later cycle). Any other error is
+    treated as transient and retried.
+    """
+    try:
+        state.result(raise_on_failure=True)
+    except aiohttp.ClientResponseError as exc:
+        return exc.status != 404
+    except Exception:
+        return True
+    return False
+
+
 async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
     endpoint = endpoint.lstrip("/")
     url = f"{BASE_URL}{BASE_PATH}{endpoint}"
@@ -46,6 +64,7 @@ async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None)
 @task(
     retries=3,
     retry_delay_seconds=5,
+    retry_condition_fn=retry_if_not_404,
     cache_policy=TASK_SOURCE + INPUTS,
     cache_expiration=timedelta(days=1),
     # Explicit persist so the API-cost cache keeps working even with
@@ -79,6 +98,7 @@ async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = N
 @task(
     retries=4,
     retry_delay_seconds=15,
+    retry_condition_fn=retry_if_not_404,
 )
 async def fetch_opendota_api_uncached(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
     """Paid OpenDota API call without Prefect task caching."""
