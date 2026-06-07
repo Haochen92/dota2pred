@@ -1,4 +1,4 @@
-from .api_clients.opendota_api import fetch_opendota
+from .api_clients.opendota_api import fetch_opendota_free_then_paid
 from dota_oracle_common.models.heroes import HeroesAPIResponse, HeroData
 import asyncio
 from dota_oracle_common.utils.set_logging import get_logger
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 async def fetch_hero_data() -> Dict[str, HeroData]:
     try:
         # fetch hero constants from OpenDota's API
-        res = await fetch_opendota(endpoint="constants/heroes")
+        res = await fetch_opendota_free_then_paid(endpoint="constants/heroes")
         if not res:
             logger.info("No data found")
             return {}

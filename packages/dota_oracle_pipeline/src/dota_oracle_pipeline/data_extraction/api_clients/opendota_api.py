@@ -147,3 +147,22 @@ async def fetch_opendota_api_uncached(endpoint: str, params: Optional[Dict[str, 
         error_message = f"{type(e).__name__}: {str(e)}"
         logger.error(error_message)
         raise
+
+
+async def fetch_opendota_free_then_paid(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
+    """Free-first OpenDota fetch with automatic paid fallback on rate-limit.
+
+    Tries the free tier; if the free quota is spent (HTTP 429) it retries the same request on the
+    paid key (much higher limit). Keeps traffic on free by default and only spends paid when free
+    is exhausted -- so a day that blows the free daily cap degrades to paid instead of failing.
+
+    Deliberately NOT used by the public-matches collector (kept free-only on purpose for cost) or
+    the explorer (already paid-first).
+    """
+    try:
+        return await fetch_opendota(endpoint, params)
+    except aiohttp.ClientResponseError as cre:
+        if cre.status == 429:
+            logger.warning(f"OpenDota free tier exhausted (429) for '{endpoint}'; retrying on the paid key.")
+            return await fetch_opendota_api(endpoint, params)
+        raise

@@ -1,7 +1,7 @@
 from dota_oracle_common.postgresql import DatabaseManager
 from dota_oracle_common.utils import get_logger
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
-from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota
+from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota_free_then_paid
 from dota_oracle_pipeline.data_transformation.completed_match_parser import parse_completed_matches
 from dota_oracle_common.models.match import ProMatchAPIResponse, MatchTable, MatchWithOutcome, MatchOutcomeTable
 from dota_oracle_common.models.utils import AsyncTask, TaskResult
@@ -61,7 +61,7 @@ async def fetch_pro_matches() -> List[int]:
     List[int]: a list of match_ids last 200 professional matches
     """
     try:
-        res = await fetch_opendota(endpoint="proMatches")
+        res = await fetch_opendota_free_then_paid(endpoint="proMatches")
         logger.info("Fetching list of pro_matches...")
 
         api_response = ProMatchAPIResponse.model_validate(res)

@@ -1,4 +1,4 @@
-from .api_clients.opendota_api import fetch_opendota
+from .api_clients.opendota_api import fetch_opendota_free_then_paid
 from dota_oracle_common.models.patches import DotaPatchAPIResponse, DotaPatch
 from dota_oracle_common.utils.set_logging import get_logger
 from typing import List
@@ -22,7 +22,7 @@ async def fetch_patch_data() -> List[DotaPatch]:
     """
     try:
         logger.info("Fetching patch data from OpenDota API")
-        res = await fetch_opendota(endpoint="constants/patch")
+        res = await fetch_opendota_free_then_paid(endpoint="constants/patch")
 
         api_response = DotaPatchAPIResponse.model_validate(res)
         patch_list = api_response.root

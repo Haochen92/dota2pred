@@ -7,9 +7,10 @@ from dota_oracle_pipeline.data_extraction.fetch_pro_match import fetch_pro_match
 
 pytestmark = pytest.mark.asyncio
 
-# Patch the free client where fetch_pro_match looks it up (string path resolves the
-# real submodule, avoiding the package re-export name collision with the function).
-FETCH_OPENDOTA = "dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_opendota"
+# Patch the free-then-paid fetch where fetch_pro_match looks it up. Mocking it directly
+# exercises fetch_pro_match's pagination/429 handling; the wrapper's own free->paid fallback
+# is covered in test_opendota_free_then_paid.py.
+FETCH_OPENDOTA = "dota_oracle_pipeline.data_extraction.fetch_pro_match.fetch_opendota_free_then_paid"
 
 
 def _page(less_than: int, n: int = 100):

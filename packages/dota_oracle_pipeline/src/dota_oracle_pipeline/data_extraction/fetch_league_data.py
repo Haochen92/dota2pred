@@ -1,4 +1,4 @@
-from .api_clients.opendota_api import fetch_opendota
+from .api_clients.opendota_api import fetch_opendota_free_then_paid
 from dota_oracle_common.models.leagues.schema import LeaguesAPIResponse, LeagueItem
 import asyncio
 from typing import List
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 async def fetch_league_data() -> List[LeagueItem]:
 
     try:
-        res = await fetch_opendota(endpoint="leagues")
+        res = await fetch_opendota_free_then_paid(endpoint="leagues")
         if not res:
             return []
         validated_data = LeaguesAPIResponse.model_validate(res)
