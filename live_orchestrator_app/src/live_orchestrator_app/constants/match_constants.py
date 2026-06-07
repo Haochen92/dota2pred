@@ -26,3 +26,9 @@ TEAM_COL = ["radiant_name", "dire_name"]
 LABEL_COL = "radiant_win"
 TIME_COL = "start_time"
 UUID_COL = "match_id"
+
+# The completion pipeline resolves a finished match via the FREE /proMatches feed for this
+# long; after it, the match is handed to the paid per-match StaleMatchService. Both the fresh
+# (free) lookup cutoff and the stale takeover point use this single value so they can't drift
+# apart and leave a coverage gap.
+COMPLETION_FREE_FEED_WINDOW_SECONDS = 7200  # 2h

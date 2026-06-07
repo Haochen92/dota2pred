@@ -1,10 +1,8 @@
-from datetime import timedelta
-
 from ..redis_services.redis_service import RedisService
 from ..constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
+from ..constants.match_constants import COMPLETION_FREE_FEED_WINDOW_SECONDS
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
-from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp, convert_redis_timestamp
 from dota_oracle_common.models.redis.schema import CompletionPayload, ConsumedEvent, CompletedMatchPayload
 from dota_oracle_common.models.utils.schema import AsyncTask
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
@@ -29,14 +27,15 @@ class StaleMatchService:
         self.redis = redis_service
         self.stream = STREAM_PENDING_COMPLETION
         self.group = COMPLETION_GROUP
-        self.expiry_duration = 5400
+        # How long to let the FREE /proMatches feed try to resolve a match before we spend a
+        # single billed per-match lookup. The fresh path retries the free feed for this whole
+        # window, so anything reaching the stale sweep is genuinely slow or has scrolled off the
+        # feed. OpenDota bills EVERY request -- 404s included -- so the stale sweep makes exactly
+        # ONE paid /matches/{id} call (at the end of this window) and then gives up, instead of
+        # re-billing the same match every 2-minute cycle. Shared with the completion fresh-path
+        # cutoff so the two never drift and leave a coverage gap.
+        self.expiry_duration = COMPLETION_FREE_FEED_WINDOW_SECONDS
         self.batch_size = 50
-        # A match still unavailable on OpenDota after this long is treated as never coming
-        # (abandoned/private/not a tracked pro match) and terminally discarded. Pro matches are
-        # parsed by OpenDota within minutes-to-an-hour, so a 404 past this window is almost
-        # certainly never resolving; if it ever is real, the proMatches -> DB batch backfill
-        # still captures it independently of this live stream.
-        self.max_pending_age = timedelta(hours=2)
 
     async def run_stream_cleaning_cycle(
         self, consumer_name: str = "stale_match_consumer"
@@ -115,21 +114,20 @@ class StaleMatchService:
                     raise match_outcome
 
                 if match_outcome is None:
-                    # Not available on OpenDota yet (404). Normally leave it pending to retry on
-                    # a later cycle, but if it has been pending longer than max_pending_age it is
-                    # almost certainly never coming (abandoned/private) -> dead-letter it.
-                    pending_age = get_current_utc_iso_timestamp() - convert_redis_timestamp(event_id)
-                    if pending_age > self.max_pending_age:
-                        logger.warning(f"Match {match_id} still unavailable after {pending_age}; discarding.")
-                        # Terminal discard (XACK + XDEL), NOT the retryable DLQ -- otherwise the
-                        # DLQ sweep re-injects it and the same unresolvable match churns forever.
-                        await self.redis.discard_unresolvable_event(
-                            match_id=match_id,
-                            event_id=event_id,
-                            consumer_group=self.group,
-                            event_stream=self.stream,
-                            reason=f"not on OpenDota after {pending_age}",
-                        )
+                    # The single billed lookup at the end of the wait window came back 404: the
+                    # match never landed on OpenDota in time, so give up for good rather than
+                    # re-billing it every cycle (each re-check is a charged request, even on 404).
+                    # Terminal discard (XACK + XDEL), NOT the retryable DLQ -- the DLQ sweep would
+                    # re-inject it and churn the same unresolvable match forever. If the outcome is
+                    # ever real, the proMatches -> DB batch backfill still captures it independently.
+                    logger.warning(f"Match {match_id} not on OpenDota by end of wait window; discarding.")
+                    await self.redis.discard_unresolvable_event(
+                        match_id=match_id,
+                        event_id=event_id,
+                        consumer_group=self.group,
+                        event_stream=self.stream,
+                        reason="not on OpenDota by end of wait window",
+                    )
                     continue
 
                 completed_match_msg = ConsumedEvent(

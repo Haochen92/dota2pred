@@ -1,20 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
-from datetime import datetime, timedelta, timezone
 from tenacity import RetryError
 
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletionPayload
 from dota_oracle_common.models.utils.schema import TaskResult
 from live_orchestrator_app.services.stale_match_service import StaleMatchService
 from live_orchestrator_app.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
-
-_NOW = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
-
-
-def _event_id_at(dt: datetime) -> str:
-    """Build a Redis stream id (<ms>-<seq>) whose timestamp is `dt`."""
-    return f"{int(dt.timestamp() * 1000)}-0"
 
 
 # Use pytest-asyncio for async tests
@@ -388,7 +380,7 @@ class TestStaleMatchService:
 
         # ASSERT
         assert service.redis == mock_redis
-        assert service.expiry_duration == 5400  # Default value
+        assert service.expiry_duration == 7200  # Default value
         assert service.batch_size == 50
         assert service.stream == STREAM_PENDING_COMPLETION
         assert service.group == COMPLETION_GROUP
@@ -412,49 +404,28 @@ class TestStaleMatchService:
         assert len(claimed) == service.batch_size
         assert claimed == too_many[: service.batch_size]
 
-    @patch("live_orchestrator_app.services.stale_match_service.get_current_utc_iso_timestamp", return_value=_NOW)
-    async def test_404_recent_event_left_pending_not_dlqd(
-        self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
+    async def test_404_is_discarded(
+        self, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
     ):
-        """A recently-pending 404 (not on OpenDota yet) is left pending, not discarded."""
-        # ARRANGE — 1h old, within the 2h age-out window.
-        recent_id = _event_id_at(_NOW - timedelta(hours=1))
-        event = consumed_event_factory(match_id=556, event_id=recent_id)
-        mock_redis_service.fetch_expired_events.return_value = [recent_id]
-        mock_redis_service.claim_expired_events.return_value = [event]
-        mock_task_runner.return_value = [TaskResult(key=recent_id, inputs=event, outcome=None)]
-        service = StaleMatchService(redis_service=mock_redis_service)
-
-        # ACT
-        result = await service.run_stream_cleaning_cycle()
-
-        # ASSERT
-        assert result == []
-        mock_redis_service.handle_processing_failure.assert_not_awaited()
-        mock_redis_service.discard_unresolvable_event.assert_not_awaited()
-
-    @patch("live_orchestrator_app.services.stale_match_service.get_current_utc_iso_timestamp", return_value=_NOW)
-    async def test_404_old_event_is_discarded(
-        self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
-    ):
-        """A 404 pending past max_pending_age (2h) is terminally discarded, not DLQ'd.
+        """A 404 at the stale sweep is the single billed lookup at the end of the wait window,
+        so it is terminally discarded -- never re-billed on a later cycle.
 
         Discard (XACK+XDEL) instead of the retryable DLQ -- otherwise the DLQ sweep would
-        re-inject the same unresolvable match and it would churn forever.
+        re-inject the same unresolvable match and it would churn (and re-charge) forever. If the
+        outcome is ever real it still arrives via the proMatches -> DB batch backfill.
         """
-        # ARRANGE — 3h old, past the 2h age-out window.
-        old_id = _event_id_at(_NOW - timedelta(hours=3))
-        event = consumed_event_factory(match_id=557, event_id=old_id)
-        mock_redis_service.fetch_expired_events.return_value = [old_id]
+        # ARRANGE — by the time it reaches the stale sweep the match is past expiry_duration.
+        event = consumed_event_factory(match_id=557, event_id="557-0")
+        mock_redis_service.fetch_expired_events.return_value = ["557-0"]
         mock_redis_service.claim_expired_events.return_value = [event]
-        mock_task_runner.return_value = [TaskResult(key=old_id, inputs=event, outcome=None)]
+        mock_task_runner.return_value = [TaskResult(key="557-0", inputs=event, outcome=None)]
         service = StaleMatchService(redis_service=mock_redis_service)
 
         # ACT
         result = await service.run_stream_cleaning_cycle()
 
-        # ASSERT — not returned as completed, terminally discarded (never re-injected).
+        # ASSERT — not returned as completed, terminally discarded (never re-injected, never DLQ'd).
         assert result == []
         mock_redis_service.handle_processing_failure.assert_not_awaited()
         mock_redis_service.discard_unresolvable_event.assert_awaited_once()
-        assert mock_redis_service.discard_unresolvable_event.call_args.kwargs["event_id"] == old_id
+        assert mock_redis_service.discard_unresolvable_event.call_args.kwargs["event_id"] == "557-0"
