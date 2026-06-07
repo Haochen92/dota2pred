@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .config import api_settings
+
 # --- Import applications from common folder ---
 from dota_oracle_common.constants.endpoint_configs import service_url
 from dota_oracle_common.http_client import http_client_provider
@@ -125,7 +127,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=api_settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

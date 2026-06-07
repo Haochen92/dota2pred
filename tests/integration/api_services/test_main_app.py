@@ -34,6 +34,47 @@ def test_cors_middleware_applied(api_layer_client):
     assert response.status_code in [200, 405]  # OPTIONS might not be implemented but middleware should handle
 
 
+def test_cors_echoes_allowed_origin_not_wildcard():
+    """An allowed origin must be echoed back (not '*'), so credentialed requests work.
+
+    Browsers reject allow-origin='*' together with allow-credentials=true, which is why
+    the wildcard was replaced with an explicit origin list. Built from create_app() (the
+    api_layer_client fixture builds its own app without the CORS middleware). A CORS
+    preflight is answered by the middleware before routing, so no DB/lifespan is needed.
+    """
+    from fastapi.testclient import TestClient
+
+    from api_service.config import api_settings
+    from api_service.main import create_app
+
+    allowed = api_settings.cors_allowed_origins[0]
+    client = TestClient(create_app())  # no context manager -> lifespan/DB not triggered
+    response = client.options(
+        "/matches/",
+        headers={"Origin": allowed, "Access-Control-Request-Method": "GET"},
+    )
+
+    allow_origin = response.headers.get("access-control-allow-origin")
+    assert allow_origin == allowed, f"expected echoed origin {allowed}, got {allow_origin!r}"
+    assert allow_origin != "*"
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_rejects_disallowed_origin():
+    """An origin not on the allow-list must not receive an allow-origin header."""
+    from fastapi.testclient import TestClient
+
+    from api_service.main import create_app
+
+    client = TestClient(create_app())
+    response = client.options(
+        "/matches/",
+        headers={"Origin": "https://evil.example.com", "Access-Control-Request-Method": "GET"},
+    )
+    assert response.headers.get("access-control-allow-origin") != "https://evil.example.com"
+    assert response.headers.get("access-control-allow-origin") != "*"
+
+
 @patch("api_service.main.DatabaseManager")
 @patch("api_service.main.RedisClientFactory")
 def test_lifespan_startup_and_shutdown(mock_redis_factory, mock_db_manager):
