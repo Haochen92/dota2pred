@@ -48,6 +48,9 @@ async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None)
     retry_delay_seconds=5,
     cache_policy=TASK_SOURCE + INPUTS,
     cache_expiration=timedelta(days=1),
+    # Explicit persist so the API-cost cache keeps working even with
+    # PREFECT_RESULTS_PERSIST_BY_DEFAULT disabled globally.
+    persist_result=True,
 )
 async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = None) -> dict[Any, Any]:
     """Fetch data from OpenDota API using paid API key. Cached for 1 day."""

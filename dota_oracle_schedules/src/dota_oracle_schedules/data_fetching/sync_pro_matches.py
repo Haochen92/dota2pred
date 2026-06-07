@@ -185,6 +185,9 @@ async def fetch_completed_matches_concurrently(
     retry_delay_seconds=10,
     cache_policy=INPUTS,
     cache_expiration=timedelta(days=1),
+    # Explicit persist so the API-cost cache keeps working even with
+    # PREFECT_RESULTS_PERSIST_BY_DEFAULT disabled globally.
+    persist_result=True,
 )
 async def fetch_and_parse_match(match_id: int) -> Optional[MatchWithOutcome]:
     """Fetches details for a single match and parses it."""
