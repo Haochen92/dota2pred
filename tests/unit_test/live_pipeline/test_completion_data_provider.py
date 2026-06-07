@@ -1,5 +1,5 @@
 import pytest
-from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletionPayload
+from dota_oracle_common.models.redis.schema import CompletedMatchPayload, ConsumedEvent, CompletionPayload
 
 from live_orchestrator_app.completion.completion_data_provider import CompletionDataProvider
 
@@ -54,6 +54,7 @@ async def test_get_work_items_successfully(mock_redis_service, mock_stale_match_
 async def test_get_work_items_no_events(mock_redis_service, mock_stale_match_service, mocker) -> None:
     # ARRANGE
     mock_fetch_matches = mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", return_value=[])
+    mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
     provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
 
@@ -63,6 +64,8 @@ async def test_get_work_items_no_events(mock_redis_service, mock_stale_match_ser
     # ASSERT
     assert len(result) == 0
     mock_fetch_matches.assert_awaited_once()
+    # Recovery path is independent: it still runs even with no new events.
+    mock_stale.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -81,6 +84,7 @@ async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_s
 
     # Mock FetchOutcomeService to return empty outcomes
     mock_fetch_outcome = mocker.patch(f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={})
+    mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
     provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
 
@@ -91,6 +95,27 @@ async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_s
     assert len(result) == 0  # Should return empty when no outcomes available
     mock_fetch_matches.assert_awaited_once()
     mock_fetch_outcome.assert_awaited_once()
+    # No fresh outcomes must NOT short-circuit the recovery path.
+    mock_stale.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_stale_sweep_runs_when_fresh_fetch_fails(mock_redis_service, mock_stale_match_service, mocker) -> None:
+    """A failure in the fresh path must not stop the independent stale recovery path."""
+    # ARRANGE
+    recovered = ConsumedEvent(match_id=999, event_id="stale_1", payload=CompletedMatchPayload(match_outcome=False))
+
+    mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", side_effect=RuntimeError("redis blip"))
+    mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[recovered])
+
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+
+    # ACT
+    result = await provider.get_work_items()
+
+    # ASSERT — fresh path swallowed its error, stale path still ran and contributed.
+    mock_stale.assert_awaited_once()
+    assert result == [recovered]
 
 
 """
