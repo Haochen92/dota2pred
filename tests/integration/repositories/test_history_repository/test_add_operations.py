@@ -273,3 +273,44 @@ class TestUpsertHeroDecayedStates:
             expected_last_update_time,
             test_scenario,
         )
+
+    async def test_upsert_hero_decayed_states_dedupes_duplicate_keys_in_batch(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        history_test_repository: BaseHistoryRepositoryTest,
+        seed_history_data,
+    ) -> None:
+        """A match where the same hero appears on both teams yields two rows with the same
+        (hero_id, match_id) in one batch. Postgres would raise CardinalityViolationError on
+        ON CONFLICT DO UPDATE; the repository must dedupe and keep the last occurrence."""
+        last_update_time = datetime(2025, 1, 3, tzinfo=timezone.utc)
+        duplicate_batch = [
+            HeroDecayedStateTable(
+                hero_id=35,
+                match_id=4001,
+                decayed_wins=1.0,
+                decayed_games=2.0,
+                last_update_time=last_update_time,
+            ),
+            HeroDecayedStateTable(
+                hero_id=35,
+                match_id=4001,
+                decayed_wins=2.0,
+                decayed_games=2.0,
+                last_update_time=last_update_time,
+            ),
+        ]
+
+        await history_repository_test_subject.upsert_hero_decayed_states(duplicate_batch)
+
+        records = await history_test_repository._get_hero_records(35, 4001)
+        history_test_repository._assert_record_count_equals(1, records, "dedupe_duplicate_keys_in_batch")
+        history_test_repository._assert_hero_state_equals(
+            records[0],
+            35,
+            4001,
+            2.0,  # last occurrence wins
+            2.0,
+            last_update_time,
+            "dedupe_duplicate_keys_in_batch",
+        )

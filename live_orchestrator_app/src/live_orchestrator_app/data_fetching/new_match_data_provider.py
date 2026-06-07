@@ -55,8 +55,10 @@ class NewMatchDataProvider:
             try:
                 ongoing_game = OngoingLeagueGame.model_validate(game.model_dump())
                 ongoing_games_list.append(ongoing_game)
-            except ValidationError:
-                logger.debug(f"match {game.match_id} is live but game has not started")
+            except ValidationError as e:
+                logger.debug(
+                    f"Skipping match {game.match_id}: draft not started or invalid (e.g. duplicate heroes). {e}"
+                )
                 continue
             except Exception:
                 raise

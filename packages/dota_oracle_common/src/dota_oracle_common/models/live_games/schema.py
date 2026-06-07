@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, TypeVar, Generic, Annotated
 from datetime import datetime as dt
 
@@ -109,6 +109,20 @@ class OngoingLeagueGame(LiveLeagueGame):
     radiant_team: TeamData = Field(...)  # type: ignore
     dire_team: TeamData = Field(...)  # type: ignore
     scoreboard: ScoreBoard[OngoingFaction] = Field(...)  # type: ignore
+
+    @model_validator(mode="after")
+    def _heroes_must_be_unique(self) -> "OngoingLeagueGame":
+        """Reject drafts where a hero appears more than once across both teams.
+
+        A valid pro draft has 10 distinct heroes. Duplicates indicate a glitched/unparsed
+        live-API payload (e.g. the same hero on both teams, or several copies on one team),
+        which would otherwise be persisted and later crash the (hero_id, match_id) upsert in
+        the completion stage.
+        """
+        hero_ids = [p.hero_id for p in self.scoreboard.radiant.players + self.scoreboard.dire.players]
+        if len(set(hero_ids)) != len(hero_ids):
+            raise ValueError(f"Duplicate hero_ids in draft for match {self.match_id}: {sorted(hero_ids)}")
+        return self
 
 
 class ResultData(BaseModel):

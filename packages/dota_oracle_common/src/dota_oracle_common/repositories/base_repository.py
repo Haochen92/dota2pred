@@ -73,6 +73,11 @@ class BaseRepository:
 
             update_dict = self._get_update_excluded_dict(model_class)
 
+            # Postgres rejects ON CONFLICT DO UPDATE when the same conflict key appears
+            # twice in a single statement (CardinalityViolationError). Dedupe by primary
+            # key, keeping the last occurrence, to match "last write wins" semantics.
+            input_values = self._dedupe_by_keys(input_values, on_conflict_keys)
+
             for i in range(0, len(input_values), batch_size):
                 batch = input_values[i : i + batch_size]
                 if not batch:
@@ -161,6 +166,25 @@ class BaseRepository:
         pk_columns = mapper.primary_key
 
         return [col.name for col in pk_columns]
+
+    def _dedupe_by_keys(self, values: List[Dict[str, Any]], keys: List[str]) -> List[Dict[str, Any]]:
+        """Dedupe rows by the given key columns, keeping the last occurrence of each key.
+
+        Preserves the original ordering of first appearance. Used to avoid Postgres
+        CardinalityViolationError on ON CONFLICT DO UPDATE batches that contain the same
+        primary key more than once (e.g. a match where the same hero appears on both teams).
+        """
+        if not keys:
+            return values
+
+        deduped: Dict[tuple[Any, ...], Dict[str, Any]] = {}
+        for row in values:
+            deduped[tuple(row[k] for k in keys)] = row
+
+        if len(deduped) != len(values):
+            logger.warning(f"Dropped {len(values) - len(deduped)} duplicate row(s) on keys {keys} before upsert.")
+
+        return list(deduped.values())
 
     def _get_update_excluded_dict(self, model_class: Type[T]) -> Dict[str, Any]:
 
