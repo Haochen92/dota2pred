@@ -101,6 +101,8 @@ services:
     ports:
       - "8000:8000"
     env_file: ./.env.production
+    environment:
+      - SERVICE_NAME=api-service
     depends_on:
       db:
         condition: service_healthy
@@ -127,6 +129,8 @@ services:
       dockerfile: ./live_orchestrator_app/Dockerfile
     container_name: live-orchestrator-app
     env_file: ./.env.production
+    environment:
+      - SERVICE_NAME=live-orchestrator
     depends_on:
       prefect-server:
         condition: service_started
@@ -145,6 +149,8 @@ services:
       dockerfile: ./dota_oracle_schedules/Dockerfile
     container_name: dota-oracle-schedules
     env_file: ./.env.production
+    environment:
+      - SERVICE_NAME=dota-oracle-schedules
     depends_on:
       prefect-server:
         condition: service_started
@@ -190,10 +196,17 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    # Admin creds come from .env.production (GF_SECURITY_ADMIN_USER/PASSWORD). Without a
+    # persistent volume Grafana resets its password, datasource and dashboards on every
+    # recreate -- the volume + file provisioning below make the setup reproducible.
+    env_file: ./.env.production
     ports:
       - "3001:3000"
     depends_on:
       - loki
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - dota-pred
       - shared-caddy-network
@@ -214,4 +227,5 @@ volumes:
   psql:
   redis:
   pgadmin-data:
+  grafana-data:
   backend:    # Unused for now, but can be used later

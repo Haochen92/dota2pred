@@ -1,0 +1,14 @@
+# Loads any dashboard JSON under the mounted dashboards folder on startup.
+apiVersion: 1
+
+providers:
+  - name: dota2pred
+    orgId: 1
+    folder: dota2pred
+    type: file
+    disableDeletion: false
+    editable: true
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
