@@ -95,6 +95,60 @@ class PublicMatchCollector:
         logger.info("No progress made in the last pass. Stopping collection.")
         return {"stop": True, "next_cursor": current_cursor}
 
+    async def collect_incremental(
+        self,
+        *,
+        start_match_id: int,
+        frontier_match_id: int,
+        max_pages: int,
+        per_page_sleep: float = 0.0,
+        use_paid: bool = False,
+    ) -> Dict[str, Any]:
+        """Single descending pass topping up from the newest matches down to the DB frontier.
+
+        Pages /publicMatches from `start_match_id` downward and inserts only net-new rows
+        (match_id > `frontier_match_id`), stopping at the frontier, an empty page (the
+        sample's retention edge), or the `max_pages` safety cap. No multi-pass top-reset and
+        no empty-region hopping -- those re-pay for unfetchable history. A run is cheap
+        whether or not OpenDota's periodically-sampled page changed since the last run.
+        """
+        total_new = 0
+        batch: List[PublicMatchTable] = []
+
+        async with self._session_factory() as session:
+            self.session = session
+            repo = PublicMatchRepository(session)
+
+            async for match in stream_public_matches(
+                start_less_than_match_id=start_match_id,
+                min_rank=self._min_rank,
+                max_rank=self._max_rank,
+                stop_at_match_id=frontier_match_id,
+                max_pages=max_pages,
+                per_page_sleep=per_page_sleep,
+                use_paid=use_paid,
+                stop_on_empty=True,
+            ):
+                if match.match_id <= frontier_match_id:
+                    logger.info(f"Reached frontier {frontier_match_id} at match {match.match_id}. Stopping.")
+                    break
+
+                try:
+                    batch.append(to_public_match_table(match))
+                except Exception as e:
+                    logger.warning(f"Skipping malformed match {match.match_id}: {e}")
+                    continue
+
+                if len(batch) >= self._insert_batch_size:
+                    total_new += await self._process_batch(repo, batch, 1, total_new, total_new)
+                    batch.clear()
+
+            # Final partial batch
+            total_new += await self._process_batch(repo, batch, 1, total_new, total_new)
+
+        logger.info(f"Incremental collection finished. Net-new inserted: {total_new} (frontier {frontier_match_id}).")
+        return {"total_new": total_new}
+
     async def collect_range(
         self,
         *,

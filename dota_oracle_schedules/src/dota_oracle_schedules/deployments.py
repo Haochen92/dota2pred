@@ -37,9 +37,9 @@ sync_pro_matches = flow.from_source(
     entrypoint="dota_oracle_schedules/data_fetching/sync_pro_matches.py:sync_pro_matches_flow",
 )
 
-collect_public_matches_for_latest_patch = flow.from_source(
+collect_public_matches_incremental = flow.from_source(
     source="./",
-    entrypoint="dota_oracle_schedules/data_fetching/fetch_public_matches.py:collect_public_matches_for_latest_patch_flow",
+    entrypoint="dota_oracle_schedules/data_fetching/fetch_public_matches.py:collect_public_matches_incremental_flow",
 )
 
 backfill_public_matches_by_patches = flow.from_source(
@@ -94,14 +94,15 @@ async def create_deployment():
         concurrency_limit=1,
     )
 
-    await collect_public_matches_for_latest_patch.deploy(
-        name="collect_public_matches_for_latest_patch",
+    await collect_public_matches_incremental.deploy(
+        name="collect_public_matches_incremental",
         work_pool_name="dota_oracle_scheduler",
-        # Run every week on Friday at midnight
-        cron="0 0 * * FRI",
+        # Daily top-up from the live frontier. Frontier-bounded + free endpoint + page cap,
+        # so each run is cheap regardless of how often OpenDota refreshes the sample.
+        cron="0 5 * * *",
         concurrency_limit=1,
     )
-    logger.info("Deployment 'collect_public_matches_for_latest_patch' applied successfully.")
+    logger.info("Deployment 'collect_public_matches_incremental' applied successfully.")
 
     # Optional: Light weekly DB backfill (adjust window in code or trigger ad-hoc)
     # Example uses same flow; provide parameters via Prefect UI when creating runs.

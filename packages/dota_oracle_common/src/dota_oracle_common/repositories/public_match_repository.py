@@ -1,4 +1,5 @@
 from typing import List, Optional
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from dota_oracle_common.utils.set_logging import get_logger
 from .base_repository import BaseRepository
@@ -27,6 +28,53 @@ class PublicMatchRepository(BaseRepository):
             logger.debug("No PublicMatchTable instances provided for upsert_public_matches.")
             return
         await self._upsert_data(model_class=PublicMatchTable, instances=instances)
+
+    async def trim_to_max_rows(self, max_rows: int, batch_size: int = 20000) -> int:
+        """Cap the table at `max_rows`, deleting the oldest rows (lowest match_id) in batches.
+
+        match_id is monotonic with time and is the primary key, so trimming by it is both
+        index-efficient and equivalent to "drop the oldest matches". The cutoff is the
+        highest match_id we must delete (the (max_rows + 1)-th newest); everything at or
+        below it is removed in `batch_size` chunks, each its own transaction, to avoid a
+        single huge lock / WAL spike. No-op when the table is within the cap. Returns the
+        number of rows deleted.
+        """
+        cutoff = (
+            await self.session.execute(
+                select(PublicMatchTable.match_id).order_by(PublicMatchTable.match_id.desc()).offset(max_rows).limit(1)
+            )
+        ).scalar_one_or_none()
+
+        if cutoff is None:
+            return 0  # fewer than max_rows rows -- nothing to trim
+
+        total_deleted = 0
+        while True:
+            oldest_batch = (
+                select(PublicMatchTable.match_id)
+                .where(PublicMatchTable.match_id <= cutoff)
+                .order_by(PublicMatchTable.match_id.asc())
+                .limit(batch_size)
+            )
+            result = await self.session.execute(
+                delete(PublicMatchTable).where(PublicMatchTable.match_id.in_(oldest_batch))
+            )
+            await self.session.commit()
+            deleted = result.rowcount or 0
+            total_deleted += deleted
+            if deleted < batch_size:
+                break
+
+        logger.info(f"Trimmed public_matches by {total_deleted} rows (kept newest {max_rows}, cutoff <= {cutoff}).")
+        return total_deleted
+
+    async def get_max_match_id(self) -> Optional[int]:
+        """Return the highest match_id currently stored, or None if the table is empty.
+
+        Used as the incremental collector's frontier: page /publicMatches down only to here.
+        """
+        result = await self.session.execute(select(func.max(PublicMatchTable.match_id)))
+        return result.scalar_one_or_none()
 
     async def insert_public_matches_returning_ids(self, instances: List[PublicMatchTable]) -> List[int]:
         """
