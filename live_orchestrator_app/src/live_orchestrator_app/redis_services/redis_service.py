@@ -2,11 +2,13 @@ import redis.asyncio as redis
 from redis.asyncio.client import Pipeline
 import asyncio
 import json
+import logging
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp, convert_redis_timestamp
-from typing import List, Set, Type, Tuple, Dict
+from typing import Awaitable, Callable, List, Set, Type, Tuple, Dict
 from pydantic import ValidationError, BaseModel
 from datetime import timedelta
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, after_log
 
 from dota_oracle_common.models.redis.schema import (
     MatchProcessingStatus,
@@ -82,6 +84,25 @@ class RedisService:
     """
     Generic Helper Functions
     """
+
+    @retry(
+        retry=retry_if_exception_type((redis.ConnectionError, redis.TimeoutError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        after=after_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def _run_transaction_with_retry(self, build: Callable[[Pipeline], Awaitable[None]]) -> None:
+        """Run a transactional pipeline, retrying on transient Redis connection errors.
+
+        ``build`` populates the pipeline (status hset, xadd, xack, ...). The whole
+        transaction is rebuilt and re-executed on each attempt so a dropped connection
+        can't leave a half-built pipeline. After the retries are exhausted the last
+        error propagates to the caller, which decides how to surface it.
+        """
+        async with self.redis.pipeline(transaction=True) as pipe:
+            await build(pipe)
+            await pipe.execute()
 
     async def _publish_event(self, pipe: Pipeline, stream_name: str, match_id: int, payload: BaseModel) -> None:
         """
@@ -216,7 +237,7 @@ class RedisService:
         try:
             payload = FeatureEngineeringPayload(match_details=match_details)
 
-            async with self.redis.pipeline(transaction=True) as pipe:
+            async def _build(pipe: Pipeline) -> None:
                 # Set initial status
                 status_model = MatchStatusValue(status=MatchProcessingStatus.NEW)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
@@ -224,8 +245,7 @@ class RedisService:
                 # Publish event message to stream
                 await self._publish_event(pipe, STREAM_NEW_MATCHES, match_id, payload)
 
-                # Execute Transaction
-                await pipe.execute()
+            await self._run_transaction_with_retry(_build)
 
             logger.info(f"Published match {match_id} to stream '{STREAM_NEW_MATCHES}'")
             return True
@@ -250,7 +270,8 @@ class RedisService:
         """
 
         try:
-            async with self.redis.pipeline(transaction=True) as pipe:
+
+            async def _build(pipe: Pipeline) -> None:
                 # 1. Set the status for this specific stage
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_PREDICTION)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
@@ -261,8 +282,7 @@ class RedisService:
                 # 3. Add the ACK command for this specific stage transition
                 pipe.xack(STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP, event_id_to_ack)
 
-                # 4. Execute the transaction
-                await pipe.execute()
+            await self._run_transaction_with_retry(_build)
 
             logger.info(f"Advanced match {match_id} to stream '{STREAM_PENDING_PREDICTION}'")
             return True
@@ -285,7 +305,8 @@ class RedisService:
         message from the prediction stream.
         """
         try:
-            async with self.redis.pipeline(transaction=True) as pipe:
+
+            async def _build(pipe: Pipeline) -> None:
                 # 1. Set the status for this stage
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_COMPLETION)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
@@ -296,8 +317,7 @@ class RedisService:
                 # 3. ACK the message from the previous (prediction) stream
                 pipe.xack(STREAM_PENDING_PREDICTION, PREDICTION_GROUP, event_id_to_ack)
 
-                # 4. Execute the transaction
-                await pipe.execute()
+            await self._run_transaction_with_retry(_build)
 
             logger.info(f"Advanced match {match_id} to stream '{STREAM_PENDING_COMPLETION}'")
             return True
