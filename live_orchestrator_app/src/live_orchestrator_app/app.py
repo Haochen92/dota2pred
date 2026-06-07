@@ -1,5 +1,7 @@
 # import logging
-from typing import Any, Awaitable, List, Tuple
+from typing import Any, Awaitable, List, Optional, Tuple
+
+from prefect.logging import get_run_logger
 
 from dota_oracle_common.utils.set_logging import get_logger
 
@@ -44,12 +46,24 @@ class MatchPipelineOrchestrator:
         """
         stage_errors: List[Tuple[str, Exception]] = []
 
+        # The Prefect run logger ships records (incl. tracebacks) to the flow-run view, so the
+        # real per-stage failure is visible there -- not just the aggregated RuntimeError raised
+        # below. None when run outside a flow-run context (e.g. unit tests); we still log to the
+        # app logger -> Loki in that case.
+        prefect_logger: Optional[Any]
+        try:
+            prefect_logger = get_run_logger()
+        except Exception:
+            prefect_logger = None
+
         async def _run_stage(name: str, coro: Awaitable[Any]) -> Any:
             """Runs a single pipeline stage in isolation, recording any failure."""
             try:
                 return await coro
             except Exception as e:
                 logger.error(f"Pipeline stage '{name}' failed: {e}", exc_info=True)
+                if prefect_logger is not None:
+                    prefect_logger.error(f"Pipeline stage '{name}' failed: {e}", exc_info=True)
                 stage_errors.append((name, e))
                 return 0
 
@@ -87,4 +101,9 @@ class MatchPipelineOrchestrator:
 
         if stage_errors:
             failed_stages = ", ".join(name for name, _ in stage_errors)
-            raise RuntimeError(f"{len(stage_errors)} pipeline stage(s) failed this cycle: {failed_stages}")
+            details = "; ".join(f"{name}: {type(e).__name__}: {e}" for name, e in stage_errors)
+            # Chain from the first stage error so the original traceback is preserved on the
+            # raised exception (Prefect renders the __cause__ chain in the flow-run trace).
+            raise RuntimeError(
+                f"{len(stage_errors)} pipeline stage(s) failed this cycle: {failed_stages} ({details})"
+            ) from stage_errors[0][1]
