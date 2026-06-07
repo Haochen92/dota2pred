@@ -3,11 +3,29 @@ Tests for decayed-state history repository get operations.
 """
 
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from dota_oracle_common.repositories.history_repository import HistoryRepository
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+async def _seed_completed_match(
+    db_session,
+    match_table_factory,
+    match_outcome_table_factory,
+    *,
+    match_id: int,
+    start_time: datetime,
+    with_decayed_state: bool = False,
+    hero_decayed_state_table_factory=None,
+) -> None:
+    """Seed a completed match (details + outcome), optionally with its hero decayed-state rows."""
+    db_session.add(match_table_factory.build(match_id=match_id, start_time=start_time))
+    db_session.add(match_outcome_table_factory.build(match_id=match_id))
+    if with_decayed_state:
+        db_session.add(hero_decayed_state_table_factory.build(match_id=match_id, last_update_time=start_time))
+    await db_session.flush()
 
 
 class TestGetTeamStateBefore:
@@ -291,3 +309,87 @@ class TestGetOperationsEmptyDatabase:
             before_time=datetime(2023, 1, 2, tzinfo=timezone.utc),
         )
         assert result is None
+
+
+class TestGetEarliestMissingDecayedStateTime:
+    async def test_returns_earliest_completed_match_missing_states(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        db_session,
+        match_table_factory,
+        match_outcome_table_factory,
+        hero_decayed_state_table_factory,
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        # Two matches missing states (3d and 1d ago) + one that already has states (2d ago).
+        await _seed_completed_match(
+            db_session,
+            match_table_factory,
+            match_outcome_table_factory,
+            match_id=7001,
+            start_time=now - timedelta(days=3),
+        )
+        await _seed_completed_match(
+            db_session,
+            match_table_factory,
+            match_outcome_table_factory,
+            match_id=7002,
+            start_time=now - timedelta(days=1),
+        )
+        await _seed_completed_match(
+            db_session,
+            match_table_factory,
+            match_outcome_table_factory,
+            match_id=7003,
+            start_time=now - timedelta(days=2),
+            with_decayed_state=True,
+            hero_decayed_state_table_factory=hero_decayed_state_table_factory,
+        )
+
+        result = await history_repository_test_subject.get_earliest_missing_decayed_state_time()
+
+        assert result is not None
+        # Earliest match missing states is 7001 (3 days ago), not the state-complete 7003.
+        assert abs((result - (now - timedelta(days=3))).total_seconds()) < 5
+
+    async def test_within_days_bound_ignores_old_gaps(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        db_session,
+        match_table_factory,
+        match_outcome_table_factory,
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        # Only an old (200d) match is missing states.
+        await _seed_completed_match(
+            db_session,
+            match_table_factory,
+            match_outcome_table_factory,
+            match_id=7101,
+            start_time=now - timedelta(days=200),
+        )
+
+        # Bounded search ignores it; unbounded search finds it.
+        assert await history_repository_test_subject.get_earliest_missing_decayed_state_time(within_days=120) is None
+        assert await history_repository_test_subject.get_earliest_missing_decayed_state_time() is not None
+
+    async def test_returns_none_when_all_completed_matches_have_states(
+        self,
+        history_repository_test_subject: HistoryRepository,
+        db_session,
+        match_table_factory,
+        match_outcome_table_factory,
+        hero_decayed_state_table_factory,
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        await _seed_completed_match(
+            db_session,
+            match_table_factory,
+            match_outcome_table_factory,
+            match_id=7201,
+            start_time=now - timedelta(days=1),
+            with_decayed_state=True,
+            hero_decayed_state_table_factory=hero_decayed_state_table_factory,
+        )
+
+        assert await history_repository_test_subject.get_earliest_missing_decayed_state_time() is None

@@ -1,12 +1,15 @@
+from datetime import timedelta
+
 from ..redis_services.redis_service import RedisService
 from ..constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
+from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp, convert_redis_timestamp
 from dota_oracle_common.models.redis.schema import CompletionPayload, ConsumedEvent, CompletedMatchPayload
 from dota_oracle_common.models.utils.schema import AsyncTask
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
 from tenacity import retry, stop_after_attempt, wait_exponential
-from typing import List
+from typing import List, Optional
 
 
 logger = get_logger(__name__)
@@ -28,6 +31,9 @@ class StaleMatchService:
         self.group = COMPLETION_GROUP
         self.expiry_duration = 5400
         self.batch_size = 50
+        # A match still unavailable on OpenDota after this long is treated as never coming
+        # (abandoned/private) and dead-lettered instead of retried forever.
+        self.max_pending_age = timedelta(days=1)
 
     async def run_stream_cleaning_cycle(
         self, consumer_name: str = "stale_match_consumer"
@@ -48,6 +54,16 @@ class StaleMatchService:
 
         if not expired_pending_messages:
             return []
+
+        # Bound per-cycle work. StaleMatchService is the small real-time tail handler, not a
+        # bulk backfiller (that is sync_pro_matches / scheduled_backfill). Capping keeps a
+        # large backlog draining as a trickle so it can't dominate the live cycle's timeout.
+        if len(expired_pending_messages) > self.batch_size:
+            logger.info(
+                f"Capping stale sweep from {len(expired_pending_messages)} to {self.batch_size} this cycle; "
+                "remainder drains over subsequent cycles (bulk recovery is the scheduled backfill's job)."
+            )
+            expired_pending_messages = expired_pending_messages[: self.batch_size]
 
         try:
             claimed_expired_events = await self.redis.claim_expired_events(
@@ -95,6 +111,22 @@ class StaleMatchService:
                 if isinstance(match_outcome, BaseException):
                     raise match_outcome
 
+                if match_outcome is None:
+                    # Not available on OpenDota yet (404). Normally leave it pending to retry on
+                    # a later cycle, but if it has been pending longer than max_pending_age it is
+                    # almost certainly never coming (abandoned/private) -> dead-letter it.
+                    pending_age = get_current_utc_iso_timestamp() - convert_redis_timestamp(event_id)
+                    if pending_age > self.max_pending_age:
+                        logger.warning(f"Match {match_id} still unavailable after {pending_age}; moving to DLQ.")
+                        await self.redis.handle_processing_failure(
+                            event_data=original_event,
+                            event_id=event_id,
+                            error=TimeoutError(f"Match {match_id} not on OpenDota after {pending_age}"),
+                            consumer_group=self.group,
+                            event_stream=self.stream,
+                        )
+                    continue
+
                 completed_match_msg = ConsumedEvent(
                     match_id=match_id, event_id=event_id, payload=CompletedMatchPayload(match_outcome=match_outcome)
                 )
@@ -112,13 +144,15 @@ class StaleMatchService:
 
         return completed_matches_events
 
-    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=1, max=180))
-    async def _fetch_single_completed_match(self, event: ConsumedEvent[CompletionPayload]):
+    # Retry only genuinely transient errors (fetch_match_details raises on those). A 404
+    # returns None and must NOT be retried -- it just means "not ingested yet", which would
+    # otherwise block for ~30s/match and risk the live cycle timeout. Kept short and bounded.
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
+    async def _fetch_single_completed_match(self, event: ConsumedEvent[CompletionPayload]) -> Optional[bool]:
         match_id = event.payload.match_id
         match_details = await fetch_match_details(match_id)
-        if match_details:
-            match_outcome = match_details.radiant_win
-        else:
-            raise ValueError(f"match_outcome is unavailable for match {match_id}")
-
-        return match_outcome
+        if match_details is None:
+            # Not available on OpenDota yet (404): leave pending, no retry, no DLQ.
+            logger.info(f"Match {match_id} not available on OpenDota yet; leaving pending for a later cycle.")
+            return None
+        return bool(match_details.radiant_win)

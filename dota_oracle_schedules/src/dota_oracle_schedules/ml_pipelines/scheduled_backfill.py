@@ -53,6 +53,9 @@ logger = get_logger(__name__)
 HALF_LIFE_DAYS = 60
 STATE_WARMUP_MULTIPLIER = 5  # Generates state history for 5x half-life days before the gap
 INFERENCE_BATCH_SIZE = 2000
+# Only recover decayed states missing within this recent window. Older missing states have
+# negligible decay weight (~2x the half-life), so ignoring them keeps the backfill window bounded.
+DECAYED_STATE_RECOVERY_LOOKBACK_DAYS = 2 * HALF_LIFE_DAYS
 
 
 # --- Data Structures for Clarity ---
@@ -100,11 +103,18 @@ async def determine_backfill_window(predictor_name: str, max_lookback_days: Opti
     async with session_factory() as session:
         feat_repo = FeaturesRepository(session)
         pred_repo = PredictionRepository(session)
+        history_repo = HistoryRepository(session)
 
         earliest_feat_time = await feat_repo.get_earliest_missing_features_time()
         earliest_pred_time = await pred_repo.get_earliest_missing_prediction_time(predictor_name)
+        # Decayed states are otherwise only written by the live completion path; include them
+        # as a gap source so the backfill independently guarantees decayed-state completeness
+        # (and recomputes, ordered, any matches the live path missed).
+        earliest_state_time = await history_repo.get_earliest_missing_decayed_state_time(
+            within_days=DECAYED_STATE_RECOVERY_LOOKBACK_DAYS
+        )
 
-    candidates = [dt for dt in [earliest_feat_time, earliest_pred_time] if dt is not None]
+    candidates = [dt for dt in [earliest_feat_time, earliest_pred_time, earliest_state_time] if dt is not None]
     if not candidates:
         logger.info("No missing features or predictions found. Backfill not required.")
         return None

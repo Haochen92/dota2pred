@@ -1,5 +1,5 @@
 from typing import List, Optional, Coroutine
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,6 +11,7 @@ from ..models.histories.table import (
     PlayerHeroDecayedStateTable,
     HeroDecayedStateTable,
 )
+from ..models.match import MatchTable, MatchOutcomeTable
 from ..utils.set_logging import get_logger
 from .base_repository import BaseRepository
 
@@ -58,6 +59,42 @@ class HistoryRepository(BaseRepository):
             return
         coro = self._upsert_data(model_class=HeroDecayedStateTable, instances=instances)
         await self._run_and_handle_errors(coro, "upserting HeroDecayedStateTable instances")
+
+    # --- GAP DETECTION ---
+
+    async def get_earliest_missing_decayed_state_time(self, within_days: Optional[int] = None) -> Optional[datetime]:
+        """Find the earliest completed match (has outcome) missing its hero decayed-state rows.
+
+        Decayed states are written only by the live completion path. If completion never
+        ran for a match (e.g. it was stuck/poisoned), the match can still have features and
+        predictions yet be missing decayed states -- a blind spot for the feature/prediction
+        gap detectors. This lets the scheduled backfill independently guarantee decayed-state
+        completeness and recompute (ordered) any matches the live path missed.
+
+        A match either has all 10 hero_decayed_states rows (written atomically on completion)
+        or none, so absence of any row by match_id is a reliable "missing" signal.
+
+        ``within_days`` bounds the search to recent matches. Decayed states age out on a
+        45-60 day half-life, so a months-old missing state contributes ~nothing to current
+        features; ignoring it keeps the backfill window from ballooning to recover
+        decayed-irrelevant history.
+        """
+        stmt = (
+            select(MatchTable.start_time)
+            .select_from(MatchTable)
+            .join(MatchOutcomeTable, MatchOutcomeTable.match_id == MatchTable.match_id)
+            .outerjoin(HeroDecayedStateTable, HeroDecayedStateTable.match_id == MatchTable.match_id)
+            .where(HeroDecayedStateTable.match_id.is_(None))
+        )
+        if within_days is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=within_days)
+            stmt = stmt.where(MatchTable.start_time >= cutoff)
+
+        stmt = stmt.order_by(MatchTable.start_time.asc()).limit(1)
+
+        res = await self._execute_and_handle_errors(stmt, "fetching earliest match missing decayed states")
+        row = res.first()
+        return row[0] if row else None
 
     # --- GETTERS
 

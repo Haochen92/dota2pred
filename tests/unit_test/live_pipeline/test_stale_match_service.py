@@ -1,12 +1,21 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
+from datetime import datetime, timedelta, timezone
 from tenacity import RetryError
 
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletionPayload
 from dota_oracle_common.models.utils.schema import TaskResult
 from live_orchestrator_app.services.stale_match_service import StaleMatchService
 from live_orchestrator_app.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
+
+_NOW = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
+
+
+def _event_id_at(dt: datetime) -> str:
+    """Build a Redis stream id (<ms>-<seq>) whose timestamp is `dt`."""
+    return f"{int(dt.timestamp() * 1000)}-0"
+
 
 # Use pytest-asyncio for async tests
 pytestmark = pytest.mark.asyncio
@@ -248,7 +257,7 @@ class TestStaleMatchService:
         Tests the @retry decorator when all retry attempts are exhausted.
         """
         # ARRANGE
-        # Simulate persistent failures that exhaust all retry attempts
+        # Simulate persistent transient failures that exhaust all retry attempts
         mock_fetch_details.side_effect = asyncio.TimeoutError("API always times out")
 
         service = StaleMatchService(redis_service=mock_redis_service)
@@ -260,8 +269,8 @@ class TestStaleMatchService:
         with pytest.raises(RetryError):
             await service._fetch_single_completed_match(fake_event)
 
-        # Should have tried 5 times (stop_after_attempt(5))
-        assert mock_fetch_details.call_count == 5
+        # Should have tried 3 times (stop_after_attempt(3))
+        assert mock_fetch_details.call_count == 3
 
     @patch("live_orchestrator_app.services.stale_match_service.fetch_match_details", new_callable=AsyncMock)
     async def test_fetch_single_match_no_match_details(
@@ -270,7 +279,9 @@ class TestStaleMatchService:
         mock_redis_service: AsyncMock,
     ):
         """
-        Tests handling when fetch_match_details returns None/empty.
+        A 404 (fetch_match_details returns None) means "not ingested yet", not a failure:
+        it must return None (leave pending) WITHOUT retrying -- retrying a 404 was the
+        latency bomb that risked the live cycle timeout.
         """
         # ARRANGE
         mock_fetch_details.return_value = None
@@ -280,12 +291,12 @@ class TestStaleMatchService:
             match_id=999, event_id="999-0", payload=CompletionPayload(match_id=999, radiant_win=False)
         )
 
-        # ACT & ASSERT
-        with pytest.raises(RetryError):
-            await service._fetch_single_completed_match(fake_event)
+        # ACT
+        result = await service._fetch_single_completed_match(fake_event)
 
-        # Should have tried 5 times due to retry decorator
-        assert mock_fetch_details.call_count == 5
+        # ASSERT — returned None, not raised, and NOT retried.
+        assert result is None
+        assert mock_fetch_details.call_count == 1
 
     async def test_fetch_completed_work_items_direct(
         self,
@@ -381,3 +392,63 @@ class TestStaleMatchService:
         assert service.batch_size == 50
         assert service.stream == STREAM_PENDING_COMPLETION
         assert service.group == COMPLETION_GROUP
+
+    async def test_sweep_capped_to_batch_size(
+        self, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
+    ):
+        """A large backlog must be capped to batch_size per cycle so it can't dominate the live cycle."""
+        # ARRANGE
+        service = StaleMatchService(redis_service=mock_redis_service)
+        too_many = [f"{i}-0" for i in range(1, service.batch_size + 11)]  # batch_size + 10
+        mock_redis_service.fetch_expired_events.return_value = too_many
+        mock_redis_service.claim_expired_events.return_value = []
+        mock_task_runner.return_value = []
+
+        # ACT
+        await service.run_stream_cleaning_cycle()
+
+        # ASSERT — only the first batch_size ids were claimed this cycle.
+        claimed = mock_redis_service.claim_expired_events.call_args.kwargs["events_id_list"]
+        assert len(claimed) == service.batch_size
+        assert claimed == too_many[: service.batch_size]
+
+    @patch("live_orchestrator_app.services.stale_match_service.get_current_utc_iso_timestamp", return_value=_NOW)
+    async def test_404_recent_event_left_pending_not_dlqd(
+        self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
+    ):
+        """A recently-pending 404 (not on OpenDota yet) is left pending, not dead-lettered."""
+        # ARRANGE
+        recent_id = _event_id_at(_NOW - timedelta(hours=1))
+        event = consumed_event_factory(match_id=556, event_id=recent_id)
+        mock_redis_service.fetch_expired_events.return_value = [recent_id]
+        mock_redis_service.claim_expired_events.return_value = [event]
+        mock_task_runner.return_value = [TaskResult(key=recent_id, inputs=event, outcome=None)]
+        service = StaleMatchService(redis_service=mock_redis_service)
+
+        # ACT
+        result = await service.run_stream_cleaning_cycle()
+
+        # ASSERT
+        assert result == []
+        mock_redis_service.handle_processing_failure.assert_not_awaited()
+
+    @patch("live_orchestrator_app.services.stale_match_service.get_current_utc_iso_timestamp", return_value=_NOW)
+    async def test_404_old_event_is_dlqd(
+        self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
+    ):
+        """A 404 that has been pending past max_pending_age is dead-lettered (never coming)."""
+        # ARRANGE
+        old_id = _event_id_at(_NOW - timedelta(days=2))
+        event = consumed_event_factory(match_id=557, event_id=old_id)
+        mock_redis_service.fetch_expired_events.return_value = [old_id]
+        mock_redis_service.claim_expired_events.return_value = [event]
+        mock_task_runner.return_value = [TaskResult(key=old_id, inputs=event, outcome=None)]
+        service = StaleMatchService(redis_service=mock_redis_service)
+
+        # ACT
+        result = await service.run_stream_cleaning_cycle()
+
+        # ASSERT — not returned as completed, and routed to DLQ.
+        assert result == []
+        mock_redis_service.handle_processing_failure.assert_awaited_once()
+        assert mock_redis_service.handle_processing_failure.call_args.kwargs["event_id"] == old_id
