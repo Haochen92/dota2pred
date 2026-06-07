@@ -45,6 +45,13 @@ logger = get_logger(__name__)
 # trimming (~) is cheap; with XDEL-on-complete the stream normally stays far below this.
 STREAM_MAXLEN = int(os.getenv("REDIS_STREAM_MAXLEN", "50000"))
 
+# match_status:{id} hashes are deleted on completion/discard, but paths without an explicit
+# delete (earlier-stage failures, completion DLQ) would leak them (they had no TTL -> ~2,888
+# accumulated). A TTL refreshed on every stage transition is a self-cleaning safety net: an
+# in-flight match (<=2h lifecycle) always refreshes it long before expiry, while an abandoned
+# one disappears on its own. Set above the 2h completion age-out with margin.
+MATCH_STATUS_TTL_SECONDS = int(os.getenv("MATCH_STATUS_TTL_SECONDS", str(6 * 3600)))
+
 DecodedStreamResponse = List[Tuple[str, List[Tuple[str, Dict[str, str]]]]]
 
 
@@ -244,9 +251,10 @@ class RedisService:
             payload = FeatureEngineeringPayload(match_details=match_details)
 
             async def _build(pipe: Pipeline) -> None:
-                # Set initial status
+                # Set initial status (with a refreshed TTL so an abandoned status self-cleans)
                 status_model = MatchStatusValue(status=MatchProcessingStatus.NEW)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
+                pipe.expire(f"{MATCH_STATUS}:{match_id}", MATCH_STATUS_TTL_SECONDS)
 
                 # Publish event message to stream
                 await self._publish_event(pipe, STREAM_NEW_MATCHES, match_id, payload)
@@ -278,9 +286,10 @@ class RedisService:
         try:
 
             async def _build(pipe: Pipeline) -> None:
-                # 1. Set the status for this specific stage
+                # 1. Set the status for this specific stage (refresh the TTL)
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_PREDICTION)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
+                pipe.expire(f"{MATCH_STATUS}:{match_id}", MATCH_STATUS_TTL_SECONDS)
 
                 # 2. Call the generic helper
                 await self._publish_event(pipe, STREAM_PENDING_PREDICTION, match_id, features)
@@ -313,9 +322,10 @@ class RedisService:
         try:
 
             async def _build(pipe: Pipeline) -> None:
-                # 1. Set the status for this stage
+                # 1. Set the status for this stage (refresh the TTL)
                 status_model = MatchStatusValue(status=MatchProcessingStatus.PENDING_COMPLETION)
                 pipe.hset(f"{MATCH_STATUS}:{match_id}", mapping=status_model.model_dump())
+                pipe.expire(f"{MATCH_STATUS}:{match_id}", MATCH_STATUS_TTL_SECONDS)
 
                 # 2. Call the generic helper to publish the event
                 await self._publish_event(pipe, STREAM_PENDING_COMPLETION, match_id, prediction)
@@ -375,6 +385,8 @@ class RedisService:
             async with self.redis.pipeline(transaction=True) as pipe:
                 pipe.xack(event_stream, consumer_group, event_id)
                 pipe.xdel(event_stream, event_id)
+                # Don't leak the status hash for a match we're giving up on.
+                pipe.delete(f"{MATCH_STATUS}:{match_id}")
                 await pipe.execute()
             logger.warning(
                 f"Discarded unresolvable match {match_id} (event {event_id}) from '{event_stream}': {reason}"

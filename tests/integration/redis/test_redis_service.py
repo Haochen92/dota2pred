@@ -29,7 +29,7 @@ from dota_oracle_common.constants.redis_constants import (
     FAILED_EVENTS_MAPPING,
 )
 
-from live_orchestrator_app.redis_services.redis_service import RedisService
+from live_orchestrator_app.redis_services.redis_service import RedisService, MATCH_STATUS_TTL_SECONDS
 
 # Import factory fixtures
 from ...factories.redis_models_factory import (
@@ -239,6 +239,10 @@ async def test_publish_prediction_to_completion(
     actual_match_status = await test_redis_client.hget(match_status_key, "status")  # type: ignore
     assert actual_match_status == MatchProcessingStatus.PENDING_COMPLETION.value
 
+    # The status hash carries a refreshed TTL so it self-cleans if no path deletes it.
+    status_ttl = await test_redis_client.ttl(match_status_key)
+    assert 0 < status_ttl <= MATCH_STATUS_TTL_SECONDS
+
     stream_entries = await test_redis_client.xrevrange(STREAM_PENDING_COMPLETION, count=1)
     assert len(stream_entries) == 1
     _, event_data_dict = stream_entries[0]
@@ -255,6 +259,61 @@ async def test_publish_prediction_to_completion(
         STREAM_PENDING_PREDICTION, PREDICTION_GROUP, min="-", max="+", count=10
     )
     assert not any(p["message_id"] == event_id_to_ack for p in pending), "Message was not ACKed."
+
+
+async def test_mark_match_as_completed_xdels_entry_and_status(
+    integration_test_redis_service: RedisService,
+    test_redis_client: AIORedis,
+    completion_payload_factory: CompletionPayloadFactory,
+) -> None:
+    """On success the entry is XACKed AND XDELed (not left in the stream) and status removed."""
+    match_id = 990011
+    status_key = f"{MATCH_STATUS}:{match_id}"
+    await test_redis_client.xtrim(STREAM_PENDING_COMPLETION, maxlen=0)
+    await test_redis_client.delete(status_key)
+
+    payload = completion_payload_factory.build(match_id=match_id)
+    event_id = await _seed_stream_with_event(test_redis_client, STREAM_PENDING_COMPLETION, match_id, payload)
+    await test_redis_client.xreadgroup(COMPLETION_GROUP, "test-consumer", {STREAM_PENDING_COMPLETION: event_id})
+    await test_redis_client.hset(status_key, mapping={"status": MatchProcessingStatus.PENDING_COMPLETION.value})
+
+    ok = await integration_test_redis_service.mark_match_as_completed(match_id=match_id, event_id_to_ack=event_id)
+
+    assert ok is True
+    assert await test_redis_client.xrange(STREAM_PENDING_COMPLETION, min=event_id, max=event_id) == []  # XDELed
+    assert await test_redis_client.exists(status_key) == 0  # status removed
+
+
+async def test_discard_unresolvable_event_removes_entry_and_status(
+    integration_test_redis_service: RedisService,
+    test_redis_client: AIORedis,
+    completion_payload_factory: CompletionPayloadFactory,
+) -> None:
+    """Terminal discard ACK+XDELs the entry and deletes the status hash (no leak, no DLQ)."""
+    match_id = 990022
+    status_key = f"{MATCH_STATUS}:{match_id}"
+    await test_redis_client.xtrim(STREAM_PENDING_COMPLETION, maxlen=0)
+    await test_redis_client.delete(status_key)
+
+    payload = completion_payload_factory.build(match_id=match_id)
+    event_id = await _seed_stream_with_event(test_redis_client, STREAM_PENDING_COMPLETION, match_id, payload)
+    await test_redis_client.xreadgroup(COMPLETION_GROUP, "test-consumer", {STREAM_PENDING_COMPLETION: event_id})
+    await test_redis_client.hset(status_key, mapping={"status": MatchProcessingStatus.PENDING_COMPLETION.value})
+
+    await integration_test_redis_service.discard_unresolvable_event(
+        match_id=match_id,
+        event_id=event_id,
+        consumer_group=COMPLETION_GROUP,
+        event_stream=STREAM_PENDING_COMPLETION,
+        reason="not on OpenDota after 2h",
+    )
+
+    assert await test_redis_client.xrange(STREAM_PENDING_COMPLETION, min=event_id, max=event_id) == []  # XDELed
+    assert await test_redis_client.exists(status_key) == 0  # status removed
+    pending = await test_redis_client.xpending_range(
+        STREAM_PENDING_COMPLETION, COMPLETION_GROUP, min="-", max="+", count=10
+    )
+    assert not any(p["message_id"] == event_id for p in pending)  # not left pending -> DLQ can't re-inject
 
 
 @pytest.mark.parametrize(FETCH_MATCHES_SCENARIOS_ARGS, FETCH_MATCHES_SCENARIOS)

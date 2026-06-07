@@ -20,6 +20,12 @@ services:
   redis:
     image: redis:latest
     container_name: my-redis
+    # Cap memory as a backstop (peak was ~148M). Keep noeviction: this is a work queue, so
+    # evicting stream/PEL/status keys would corrupt pipeline state -- a full Redis should
+    # reject writes (loud, recoverable), not silently drop data. Data is bounded by stream
+    # MAXLEN + match_status TTLs, so we shouldn't reach the cap. RDB persistence (default)
+    # keeps using the /data volume.
+    command: redis-server --maxmemory 384mb --maxmemory-policy noeviction
     ports:
       - "6380:6379"
     volumes:
