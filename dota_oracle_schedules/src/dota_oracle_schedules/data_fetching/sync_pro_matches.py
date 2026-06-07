@@ -14,6 +14,7 @@ from dota_oracle_common.utils import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota_api
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
+from .fetch_matches_batch import find_existing_Ids
 from dota_oracle_pipeline.data_transformation.completed_match_parser import parse_completed_matches
 from prefect import flow, task
 from prefect.cache_policies import INPUTS
@@ -143,9 +144,23 @@ async def process_match_batch(match_ids: List[int], concurrency_limit: int, sess
     """Fetches details for a batch of matches and upserts them into the DB."""
     prefect_logger = get_run_logger()
 
-    prefect_logger.info(f"Processing batch of {len(match_ids)} matches " f"(from {match_ids[0]} to {match_ids[-1]})")
+    # Skip matches we already have complete (present in the DB *with* an outcome) so a deep
+    # backfill only pays for genuinely-missing matches. find_existing_Ids filters on
+    # MatchTable + an outcome row, so present-but-outcomeless matches are still re-fetched.
+    async with session_factory() as session:
+        existing_ids = await find_existing_Ids(session, match_ids)
+    missing_ids = [mid for mid in match_ids if mid not in existing_ids]
 
-    completed_matches = await fetch_completed_matches_concurrently(set(match_ids), concurrency_limit)
+    if not missing_ids:
+        prefect_logger.info(f"All {len(match_ids)} matches in this batch already stored; skipping.")
+        return 0
+
+    prefect_logger.info(
+        f"Processing {len(missing_ids)}/{len(match_ids)} missing matches "
+        f"(from {missing_ids[0]} to {missing_ids[-1]})"
+    )
+
+    completed_matches = await fetch_completed_matches_concurrently(set(missing_ids), concurrency_limit)
 
     if not completed_matches:
         prefect_logger.warning("No matches in this batch were successfully fetched/parsed.")
