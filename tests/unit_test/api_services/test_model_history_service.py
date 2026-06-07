@@ -33,14 +33,19 @@ def test_time_series_grouping_fixed_day_buckets(mock_async_session) -> None:
     daily = svc._calculate_time_series_metrics(df, AggregateBy.day)
     assert len(daily) == 10
     assert all(entry.date.tzinfo is not None for entry in daily)
+    # One row per day, and bucket match counts must cover every row exactly once
+    assert all(entry.match_count == 1 for entry in daily)
+    assert sum(entry.match_count for entry in daily) == 10
 
     # Weekly (7D) should yield 2 buckets (1-7, 8-10)
     weekly = svc._calculate_time_series_metrics(df, AggregateBy.week)
     assert len(weekly) == 2
+    assert [entry.match_count for entry in weekly] == [7, 3]
 
     # Monthly (30D) should yield 1 bucket for 10 days of data
     monthly = svc._calculate_time_series_metrics(df, AggregateBy.month)
     assert len(monthly) == 1
+    assert monthly[0].match_count == 10
 
 
 def test_calibration_plot_bins(mock_async_session) -> None:

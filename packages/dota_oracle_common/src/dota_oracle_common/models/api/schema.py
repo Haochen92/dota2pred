@@ -101,6 +101,7 @@ class ModelPerformanceEntry(BaseModel):
     accuracy: float
     auc: float
     root_brier: float
+    match_count: int
 
 
 class ModelHistoryResponse(BaseModel):

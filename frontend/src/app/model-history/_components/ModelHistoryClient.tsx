@@ -3,6 +3,7 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import useSWR from "swr";
 import fetchModelHistory from "@/api-client/fetch-model-history";
+import { weightedMean } from "@/utils/weighted-mean";
 import type { ModelHistoryRequest, AggregateBy, HistoryRange, ModelHistoryResponse } from "@/types/contracts/index";
 import ModelHistorySkeleton from './ModelHistorySkeleton';
 import ModelHistoryGraphView from './ModelHistoryGraphView';
@@ -82,10 +83,14 @@ function ModelHistoryContent() {
                 maxAccuracy: 0, maxAuc: 0, minRootBrier: 0,
             };
         }
-        const count = historyData.length;
-        const averageAccuracy = historyData.reduce((sum, entry) => sum + (entry.accuracy ?? 0), 0) / count;
-        const averageAuc = historyData.reduce((sum, entry) => sum + (entry.auc ?? 0), 0) / count;
-        const averageRootBrier = historyData.reduce((sum, entry) => sum + (entry.root_brier ?? 0), 0) / count;
+        // Averages are weighted by each bucket's match_count so a low-volume day
+        // can't swing the headline number — they reflect performance per match,
+        // not per bucket. Root brier is squared back to the (mean-of-squares)
+        // brier score before weighting, then re-rooted, since averaging roots is
+        // not valid.
+        const averageAccuracy = weightedMean(historyData, e => e.accuracy ?? 0);
+        const averageAuc = weightedMean(historyData, e => e.auc ?? 0);
+        const averageRootBrier = Math.sqrt(weightedMean(historyData, e => (e.root_brier ?? 0) ** 2));
         const maxAccuracy = Math.max(...historyData.map(e => e.accuracy ?? 0));
         const maxAuc = Math.max(...historyData.map(e => e.auc ?? 0));
         const minRootBrier = Math.min(...historyData.map(e => e.root_brier ?? 1));

@@ -139,12 +139,13 @@ export function ModelHistoryMobileView({
                   {visibleMetrics.map(metric => (
                     <Table.Th key={metric.name} style={{ textTransform: 'capitalize' }}>{metric.name}</Table.Th>
                   ))}
+                  <Table.Th>Matches</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {historyData.length === 0 && (
                   <Table.Tr>
-                    <Table.Td colSpan={visibleMetrics.length + 1} style={{ textAlign: 'center', opacity: 0.6 }}>
+                    <Table.Td colSpan={visibleMetrics.length + 2} style={{ textAlign: 'center', opacity: 0.6 }}>
                       No history data
                     </Table.Td>
                   </Table.Tr>
@@ -155,6 +156,7 @@ export function ModelHistoryMobileView({
                     {visibleMetrics.map(metric => (
                       <Table.Td key={metric.name}>{formatPercent(row[metric.name])}</Table.Td>
                     ))}
+                    <Table.Td>{row.match_count}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

@@ -20,12 +20,14 @@ def test_model_history_success(api_layer_client, mock_model_history_service):
             accuracy=0.8,
             auc=0.75,
             root_brier=0.4,
+            match_count=10,
         ),
         ModelPerformanceEntry(
             date=datetime(2024, 1, 2, tzinfo=timezone.utc),
             accuracy=0.7,
             auc=0.72,
             root_brier=0.45,
+            match_count=20,
         ),
     ]
     mock_model_history_service.get_model_performance_history.return_value = ModelHistoryResponse(

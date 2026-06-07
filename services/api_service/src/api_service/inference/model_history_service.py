@@ -247,6 +247,7 @@ class ModelHistoryService:
                     accuracy=accuracy,
                     auc=auc,
                     root_brier=root_brier,
+                    match_count=int(len(group)),
                 )
             )
 

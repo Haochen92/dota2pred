@@ -3,10 +3,13 @@
 
 import useSWR from 'swr';
 import fetchModelHistory from '@/api-client/fetch-model-history';
-import { Suspense } from 'react';
+import { weightedMean } from '@/utils/weighted-mean';
 import { Title, NumberFormatter, Center, Loader } from '@mantine/core';
 
-const fetcher = () => fetchModelHistory({ history_range: 7, aggregate_by: 7 });
+// Same params as the Model History 7D card so the two figures are obviously the
+// same request. The weighted mean below is bucketing-invariant, so the daily
+// aggregation here produces an identical number to any other aggregate_by.
+const fetcher = () => fetchModelHistory({ history_range: 7, aggregate_by: 1 });
 
 function AccuracyTitle() {
     const { data, error, isLoading } = useSWR(
@@ -18,8 +21,12 @@ function AccuracyTitle() {
         }
     );
 
-    const latestAccuracy = data?.history?.[0]?.accuracy ?? 0;
-    const displayAccuracyPercent = latestAccuracy * 100;
+    // Match-weighted accuracy across the whole 7-day window — the same figure the
+    // Model History 7D card shows. Weighting is invariant to bucketing, so this
+    // matches regardless of aggregate_by; reading history[0] alone would only
+    // reflect a single (often partial) bucket.
+    const accuracy = weightedMean(data?.history ?? [], e => e.accuracy ?? 0);
+    const displayAccuracyPercent = accuracy * 100;
 
     if (isLoading) {
         return <Loader size="xl" type='dots' color="dark" />;
@@ -47,5 +54,5 @@ export default function ModelAccuracyDisplay() {
         <Center h="100%" w="100%">
                 <AccuracyTitle />
         </Center>
-    );``
+    );
 }

@@ -1,9 +1,39 @@
 "use client";
 
 import { Paper, Stack, Group, Text, Table, ScrollArea, Skeleton } from "@mantine/core";
-import { BarChart } from "@mantine/charts";
+import { BarChart, getFilteredChartTooltipPayload } from "@mantine/charts";
 import type { CalibrationPlotPoint } from "@/types/contracts";
 import { pctFormatter } from "@/utils/features-formatter";
+
+interface CalibrationTooltipProps {
+  label?: string;
+  payload?: Record<string, any>[];
+}
+
+// Desktop tooltip for the calibration bars: shows each bar's value plus the
+// bin's match count (which can't be a bar of its own — it lives off the 0-1 axis).
+function CalibrationTooltip({ label, payload }: CalibrationTooltipProps) {
+  if (!payload || payload.length === 0) return null;
+  const matchCount = payload[0]?.payload?.match_count;
+
+  return (
+    <Paper px="md" py="sm" withBorder shadow="md" radius="md">
+      <Text fw={600} size="sm">{label}</Text>
+      {getFilteredChartTooltipPayload(payload).map((item: any) => (
+        <Group key={item.name} justify="space-between" gap="md">
+          <Text size="sm" c={item.color}>{item.name}</Text>
+          <Text size="sm">{pctFormatter(item.value as number | null)}</Text>
+        </Group>
+      ))}
+      {matchCount != null && (
+        <Group justify="space-between" gap="md">
+          <Text size="sm" c="dimmed">Matches</Text>
+          <Text size="sm">{matchCount}</Text>
+        </Group>
+      )}
+    </Paper>
+  );
+}
 
 export interface CalibrationPlotProps {
   calibrationData: CalibrationPlotPoint;
@@ -85,6 +115,7 @@ export default function CalibrationPlot({
             withLegend={true}
             minBarSize={10}
             barProps={{ radius: 8 }}
+            tooltipProps={{ content: ({ label, payload }) => <CalibrationTooltip label={label} payload={payload} /> }}
           />
 
           {/* Mobile simple table */}

@@ -482,6 +482,8 @@ export interface components {
             auc: number;
             /** Root Brier */
             root_brier: number;
+            /** Match Count */
+            match_count: number;
         };
         /**
          * PaginatedMatchResponse
