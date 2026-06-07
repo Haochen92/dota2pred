@@ -64,7 +64,13 @@ async def create_deployment():
     """
 
     await fetch_completed_matches.deploy(
-        name="fetch_completed_matches", work_pool_name="dota_oracle_scheduler", cron="0 0,12 * * *", concurrency_limit=1
+        # Every 3h: at ~200-400 pro matches/day a 3h window (~25-50 matches) stays well under one
+        # /proMatches page (~100), so the single un-paginated fetch covers each window with no gap.
+        # (Skips matches already stored with an outcome; falls back to the paid key on a free 429.)
+        name="fetch_completed_matches",
+        work_pool_name="dota_oracle_scheduler",
+        cron="0 */3 * * *",
+        concurrency_limit=1,
     )
     logger.info("Deployment 'fetch_completed_matches' applied successfully.")
 
