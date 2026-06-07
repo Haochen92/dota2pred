@@ -117,6 +117,16 @@ async def fetch_opendota_api_uncached(endpoint: str, params: Optional[Dict[str, 
             res.raise_for_status()
             json_data: dict[Any, Any] = await res.json()
             return json_data
+    except aiohttp.ClientResponseError as cre:
+        if cre.status == 404:
+            # Expected for not-yet-ingested / non-tracked matches. Return empty so the task
+            # COMPLETES (no Failed-run pollution) and the caller treats it as "no data".
+            # Uncached on purpose: the next stale cycle re-checks, which is what lets the
+            # 90min-2h window catch slow/long matches when they finally appear on OpenDota.
+            logger.info(f"OpenDota 404 for '{endpoint}'; returning empty (will re-check next cycle).")
+            return {}
+        logger.error(f"{type(cre).__name__}: {str(cre)}")
+        raise
     except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:
         error_message = f"{type(e).__name__}: {str(e)}"
         logger.error(error_message)
