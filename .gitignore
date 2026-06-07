@@ -81,3 +81,6 @@ mlruns/
 *.crt
 id_rsa
 id_rsa.pub
+
+# Local debugging / design notes — kept out of the repo
+docs/
