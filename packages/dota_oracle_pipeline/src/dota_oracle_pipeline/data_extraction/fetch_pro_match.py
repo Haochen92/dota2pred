@@ -7,13 +7,14 @@ import aiohttp
 
 logger = get_logger(__name__)
 
-# A finished pro match is normally near the top of the /proMatches feed, so a small
-# number of pages covers all fresh matches. Bounding the pagination keeps the FREE
-# endpoint from being walked back through months of history (which trips the 60/min
-# rate limit -> HTTP 429) whenever a single stale match widens the id-range. Matches
-# not found within this window are left for the paid per-match StaleMatchService
-# fallback, preserving the "free-first, paid only for the stale tail" design.
-DEFAULT_MAX_PAGES = 10
+# A finished pro match is normally on the first page or two of the /proMatches feed, so a
+# tiny page budget covers all fresh matches. Bounding the pagination keeps the FREE endpoint
+# from being walked back through history (which exhausts the free tier's daily/per-minute
+# quota -> HTTP 429) whenever a stale match widens the id-range. At 2 pages * one call/page
+# every 2 min that is at most ~1.4k calls/day, well under the free cap. Matches not found in
+# this window are left for the paid per-match StaleMatchService fallback, preserving the
+# "free-first, paid only for the stale tail" design.
+DEFAULT_MAX_PAGES = 2
 
 
 async def fetch_pro_match(

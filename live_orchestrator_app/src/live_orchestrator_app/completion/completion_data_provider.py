@@ -1,8 +1,11 @@
+from datetime import timedelta
 from dota_oracle_common.utils.set_logging import get_logger
+from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp, convert_redis_timestamp
 from typing import List
 from ..redis_services.redis_service import RedisService
 from ..services.fetch_outcome_service import FetchOutcomeService
 from ..services.stale_match_service import StaleMatchService
+from ..constants.match_constants import COMPLETION_FREE_FEED_WINDOW_SECONDS
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletedMatchPayload
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION
 
@@ -30,12 +33,19 @@ class CompletionDataProvider:
         # --- Fresh path: best-effort resolution of newly-pending matches via the free feed ---
         try:
             events = await self.redis.fetch_matches_for_completion(consumer_name)
-            if events:
-                matches_pending_completion = [event.match_id for event in events]
-                logger.info(f"Found {len(matches_pending_completion)} events pending completion")
+            # Only hit the free /proMatches feed for matches young enough to still be near its
+            # top. Aged matches can't be found within the small page budget and would only drag
+            # the id-range back through history (burning the free quota for nothing) -- they
+            # belong to the paid per-match stale path, which claims them once they cross this same
+            # window. So skip them here and let the stale sweep handle them.
+            cutoff = get_current_utc_iso_timestamp() - timedelta(seconds=COMPLETION_FREE_FEED_WINDOW_SECONDS)
+            fresh_events = [event for event in events if convert_redis_timestamp(event.event_id) >= cutoff]
+            if fresh_events:
+                matches_pending_completion = [event.match_id for event in fresh_events]
+                logger.info(f"Found {len(matches_pending_completion)} fresh events pending completion")
 
                 outcome_map = await FetchOutcomeService.fetch_outcomes_batch(matches_pending_completion)
-                for event in events:
+                for event in fresh_events:
                     match_outcome = outcome_map.get(event.match_id)
                     if match_outcome is not None:
                         completed_match_list.append(
@@ -46,7 +56,7 @@ class CompletionDataProvider:
                             )
                         )
             else:
-                logger.info(f"No new events in {STREAM_PENDING_COMPLETION}")
+                logger.info(f"No fresh events in {STREAM_PENDING_COMPLETION}")
         except Exception as e:
             logger.error(f"Fresh completion fetch failed; continuing to stale sweep. {e}", exc_info=True)
 

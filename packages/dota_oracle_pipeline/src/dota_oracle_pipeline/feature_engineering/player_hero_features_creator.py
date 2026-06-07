@@ -45,14 +45,23 @@ class PlayerHeroFeaturesCreator:
                     feature_key = f"player_hero_{i}_win_rate"
                     start_time = instance.start_time
 
-                    if not account_id or not hero_id or not start_time:
+                    # hero_id and start_time are structural -- without them no prior can be
+                    # computed, so the match is genuinely unusable.
+                    if not hero_id or not start_time:
                         raise ValueError(f"Match {match_id}, Slot {i}: Missing required data.")
 
                     hero_prior = await self._calculate_hero_prior(session, hero_id, start_time)
 
-                    win_rate = await self._calculate_decayed_win_rate(
-                        session, account_id, hero_id, hero_prior, start_time
-                    )
+                    if not account_id:
+                        # Anonymous / private player: there is no per-player history to draw on,
+                        # so fall back to the hero's decayed prior -- exactly what
+                        # _calculate_decayed_win_rate returns for a player with no history. This
+                        # keeps the match predictable instead of dropping the whole match.
+                        win_rate = hero_prior
+                    else:
+                        win_rate = await self._calculate_decayed_win_rate(
+                            session, account_id, hero_id, hero_prior, start_time
+                        )
 
                     outcome_dict[feature_key] = win_rate
                 feature_row = PlayerHeroFeatureTable(match_id=instance.match_id, **outcome_dict)

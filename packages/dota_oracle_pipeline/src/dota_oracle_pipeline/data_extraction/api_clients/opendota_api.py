@@ -55,6 +55,13 @@ async def fetch_opendota(endpoint: str, params: Optional[Dict[str, Any]] = None)
             json_data: dict[Any, Any] = await res.json()
             return json_data
 
+    except aiohttp.ClientResponseError as cre:
+        # A 429 on the free tier is expected once the daily/per-minute quota is spent, and
+        # callers handle it (degrade to partial + paid per-match fallback). Logging it at ERROR
+        # floods Grafana with non-actionable noise, so re-raise quietly and let the caller log.
+        if cre.status != 429:
+            logger.error(f"{type(cre).__name__}: {str(cre)}")
+        raise
     except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:
         error_message = f"{type(e).__name__}: {str(e)}"
         logger.error(error_message)
@@ -89,6 +96,12 @@ async def fetch_opendota_api(endpoint: str, params: Optional[Dict[str, Any]] = N
             json_data: dict[Any, Any] = await res.json()
             return json_data
 
+    except aiohttp.ClientResponseError as cre:
+        # 429s are expected when a quota is spent and are retried/handled upstream; don't log
+        # them at ERROR (non-actionable Grafana noise). Other HTTP errors are real.
+        if cre.status != 429:
+            logger.error(f"{type(cre).__name__}: {str(cre)}")
+        raise
     except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:
         error_message = f"{type(e).__name__}: {str(e)}"
         logger.error(error_message)
@@ -122,10 +135,13 @@ async def fetch_opendota_api_uncached(endpoint: str, params: Optional[Dict[str, 
             # Expected for not-yet-ingested / non-tracked matches. Return empty so the task
             # COMPLETES (no Failed-run pollution) and the caller treats it as "no data".
             # Uncached on purpose: the next stale cycle re-checks, which is what lets the
-            # 90min-2h window catch slow/long matches when they finally appear on OpenDota.
+            # wait window catch slow/long matches when they finally appear on OpenDota.
             logger.info(f"OpenDota 404 for '{endpoint}'; returning empty (will re-check next cycle).")
             return {}
-        logger.error(f"{type(cre).__name__}: {str(cre)}")
+        # 429s are expected when a quota is spent and are retried by the task; don't log at
+        # ERROR (non-actionable Grafana noise). Other HTTP errors are real.
+        if cre.status != 429:
+            logger.error(f"{type(cre).__name__}: {str(cre)}")
         raise
     except (aiohttp.ClientConnectionError, aiohttp.ClientError, aiohttp.http.HttpProcessingError, ValueError) as e:
         error_message = f"{type(e).__name__}: {str(e)}"

@@ -76,12 +76,28 @@ class FeatureEngineeringOrchestrator:
                 count_success += 1
                 logger.debug(f"Successfully processed feature engineering for event {event_id}")
 
-            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError) as data_err:
                 count_failure += 1
+                # Permanent data problem (malformed / incomplete match data): retrying cannot
+                # fix it, so drop it terminally instead of routing to the retryable DLQ where it
+                # would churn every sweep. If the match's data is ever valid, the proMatches ->
+                # DB batch backfill captures it independently.
+                logger.warning(f"Feature engineering: dropping match {match_id} (event {event_id}); {data_err}")
+                await self.redis.discard_unresolvable_event(
+                    match_id=match_id,
+                    event_id=event_id,
+                    consumer_group=FEATURE_ENGINEER_GROUP,
+                    event_stream=STREAM_NEW_MATCHES,
+                    reason=f"feature engineering data error: {data_err}",
+                )
+            except RuntimeError as re_err:
+                count_failure += 1
+                # Operational / possibly-transient: route to the retryable DLQ (now bounded by
+                # max_retries since the retry cap works).
                 await self.redis.handle_processing_failure(
                     event_data=task_result.inputs,
                     event_id=event_id,
-                    error=ve,
+                    error=re_err,
                     consumer_group=FEATURE_ENGINEER_GROUP,
                     event_stream=STREAM_NEW_MATCHES,
                 )

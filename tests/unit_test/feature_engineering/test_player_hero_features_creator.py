@@ -44,18 +44,19 @@ async def test_create_player_hero_features_success(
 @pytest.mark.parametrize(
     "missing_data",
     [
-        pytest.param({"match_id": 123, "slot_0_account_id": None}, id="missing_account_id"),
         pytest.param({"match_id": 124, "slot_0_hero_id": None}, id="missing_hero_id"),
         pytest.param({"match_id": 125, "start_time": None}, id="missing_start_time"),
     ],
 )
-async def test_create_features_skips_match_with_missing_data(
+async def test_create_features_skips_match_with_missing_structural_data(
     player_hero_features_creator,
     mock_async_session,
     match_table_factory,
     mocker,
     missing_data: dict,
 ) -> None:
+    """hero_id / start_time are structural -- without them no prior can be computed, so the
+    whole match is skipped. (A missing account_id is handled separately via the prior fallback.)"""
     match_instance = match_table_factory.build(**missing_data)
     mock_logger_error = mocker.patch(f"{FUNCTION_FP}.logger.error")
 
@@ -66,6 +67,35 @@ async def test_create_features_skips_match_with_missing_data(
 
     assert result == []
     mock_logger_error.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_anonymous_account_falls_back_to_hero_prior(
+    player_hero_features_creator,
+    mock_async_session,
+    match_table_factory,
+    mocker,
+) -> None:
+    """A missing (anonymous) account_id must NOT drop the match: that slot falls back to the
+    hero prior, and the match still produces a full feature row."""
+    # slot 0 anonymous; all other slots keep their account_ids from the factory.
+    match_instance = match_table_factory.build(match_id=1002, slot_0_account_id=None)
+
+    mocker.patch.object(player_hero_features_creator, "_calculate_hero_prior", return_value=0.55)
+    mock_decayed = mocker.patch.object(player_hero_features_creator, "_calculate_decayed_win_rate", return_value=0.6)
+
+    result = await player_hero_features_creator.create_player_hero_features(
+        session=mock_async_session,
+        match_instances=[match_instance],
+    )
+
+    assert len(result) == 1
+    feature_row = result[0]
+    # Anonymous slot 0 uses the hero prior; the other 9 slots use the decayed per-player rate.
+    assert feature_row.player_hero_0_win_rate == 0.55
+    assert feature_row.player_hero_1_win_rate == 0.6
+    # Decayed rate computed only for the 9 non-anonymous slots (slot 0 skipped it).
+    assert mock_decayed.await_count == 9
 
 
 @pytest.mark.asyncio
