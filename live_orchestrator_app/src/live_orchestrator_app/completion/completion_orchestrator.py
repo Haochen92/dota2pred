@@ -1,4 +1,5 @@
 import pydantic
+from sqlalchemy.exc import SQLAlchemyError
 from dota_oracle_common.utils.set_logging import get_logger
 from live_orchestrator_app.redis_services.redis_service import RedisService
 from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
@@ -59,7 +60,10 @@ class CompletionOrchestrator:
                 await self.redis.mark_match_as_completed(match_id=match_id, event_id_to_ack=event_id)
                 count_success += 1
 
-            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError) as ve:
+            except (pydantic.ValidationError, ValueError, KeyError, RuntimeError, SQLAlchemyError) as ve:
+                # Per-match failures (incl. DB errors like an FK violation for an orphaned
+                # stream entry whose match row no longer exists) must DLQ that one match,
+                # not fail the whole completion stage.
                 await self.redis.handle_processing_failure(
                     event_data=original_event,
                     event_id=event_id,

@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
 from dota_oracle_common.constants.redis_constants import COMPLETION_GROUP, STREAM_PENDING_COMPLETION
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletedMatchPayload
 
@@ -84,6 +85,34 @@ async def test_run_completion_cycle_one_failure(
         event_data=work_item,
         event_id=work_item.event_id,
     )
+
+
+@pytest.mark.asyncio
+async def test_run_completion_cycle_db_error_is_dlqd_not_raised(
+    completion_orchestrator, mocker, completed_match_payload_factory, task_result_factory
+) -> None:
+    """A per-match DB error (e.g. FK violation for an orphaned entry whose match row is gone)
+    must DLQ that one match and not fail the whole completion stage."""
+    # ARRANGE
+    payload = completed_match_payload_factory.build()
+    work_item = ConsumedEvent[CompletedMatchPayload](match_id=12345, event_id="event_123", payload=payload)
+
+    db_error = IntegrityError("INSERT INTO match_outcomes ...", {}, Exception("match_outcomes_match_id_fkey"))
+    mock_task_results = task_result_factory.build(key=work_item.event_id, inputs=work_item, outcome=db_error)
+
+    mocker.patch.object(completion_orchestrator.data_provider, "get_work_items", return_value=[work_item])
+    mocker.patch(f"{F_PATH}.TaskRunner.run_concurrently", return_value=[mock_task_results])
+    mock_handle_failure = mocker.patch.object(completion_orchestrator.redis, "handle_processing_failure")
+    mock_mark_as_completed = mocker.patch.object(completion_orchestrator.redis, "mark_match_as_completed")
+
+    # ACT — must not raise
+    result = await completion_orchestrator.run_completion_cycle()
+
+    # ASSERT — DLQ'd, stage survived.
+    assert result == 0
+    mock_mark_as_completed.assert_not_called()
+    mock_handle_failure.assert_awaited_once()
+    assert mock_handle_failure.call_args.kwargs["error"] is db_error
 
 
 @pytest.mark.asyncio
