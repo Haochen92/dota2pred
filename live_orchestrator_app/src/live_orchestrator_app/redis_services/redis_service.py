@@ -3,6 +3,7 @@ from redis.asyncio.client import Pipeline
 import asyncio
 import json
 import logging
+import os
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp, convert_redis_timestamp
 from typing import Awaitable, Callable, List, Set, Type, Tuple, Dict
@@ -38,6 +39,11 @@ from dota_oracle_common.constants.redis_constants import (
 )
 
 logger = get_logger(__name__)
+
+# Backstop cap so the streams can't grow unbounded (pending_completion had reached ~69k
+# entries since Aug 2025 because completed events were ACKed but never deleted). Approximate
+# trimming (~) is cheap; with XDEL-on-complete the stream normally stays far below this.
+STREAM_MAXLEN = int(os.getenv("REDIS_STREAM_MAXLEN", "50000"))
 
 DecodedStreamResponse = List[Tuple[str, List[Tuple[str, Dict[str, str]]]]]
 
@@ -118,8 +124,8 @@ class RedisService:
 
         event_json["payload"] = payload_json
 
-        # 3. Add the XADD command to the pipeline
-        pipe.xadd(stream_name, event_json)  # type: ignore
+        # 3. Add the XADD command to the pipeline (capped so the stream can't grow unbounded)
+        pipe.xadd(stream_name, event_json, maxlen=STREAM_MAXLEN, approximate=True)  # type: ignore
 
     async def _fetch_events(
         self, group: str, consumer: str, stream: str, payload_model: Type[PayloadModel], batch: int
@@ -339,6 +345,9 @@ class RedisService:
             async with self.redis.pipeline(transaction=True) as pipe:
                 pipe.delete(f"{MATCH_STATUS}:{match_id}")
                 pipe.xack(STREAM_PENDING_COMPLETION, COMPLETION_GROUP, event_id_to_ack)
+                # Delete the entry too: ACK alone leaves it in the stream forever (the source
+                # of the ~69k backlog). XDEL keeps the stream bounded to in-flight work.
+                pipe.xdel(STREAM_PENDING_COMPLETION, event_id_to_ack)
                 await pipe.execute()
             return True
         except Exception as e:
@@ -346,6 +355,32 @@ class RedisService:
                 f"Redis failure marking match {match_id} as completed (ACK ID: {event_id_to_ack}): {e}", exc_info=True
             )
             return False
+
+    async def discard_unresolvable_event(
+        self,
+        match_id: int,
+        event_id: str,
+        consumer_group: str,
+        event_stream: str,
+        reason: str,
+    ) -> None:
+        """Terminally drop a pending event we've decided will never resolve.
+
+        Unlike handle_processing_failure (which routes to the retryable DLQ and gets
+        re-injected by the DLQ sweep), this ACKs *and* XDELs the entry so it leaves the
+        pipeline for good. A match's outcome, if it's ever real, still arrives via the
+        separate proMatches -> DB batch backfill.
+        """
+        try:
+            async with self.redis.pipeline(transaction=True) as pipe:
+                pipe.xack(event_stream, consumer_group, event_id)
+                pipe.xdel(event_stream, event_id)
+                await pipe.execute()
+            logger.warning(
+                f"Discarded unresolvable match {match_id} (event {event_id}) from '{event_stream}': {reason}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to discard unresolvable match {match_id} (event {event_id}): {e}", exc_info=True)
 
     # =======================================================
     # Failure Events Management

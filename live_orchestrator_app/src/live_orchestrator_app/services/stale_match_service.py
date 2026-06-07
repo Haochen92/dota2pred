@@ -32,8 +32,11 @@ class StaleMatchService:
         self.expiry_duration = 5400
         self.batch_size = 50
         # A match still unavailable on OpenDota after this long is treated as never coming
-        # (abandoned/private) and dead-lettered instead of retried forever.
-        self.max_pending_age = timedelta(days=1)
+        # (abandoned/private/not a tracked pro match) and terminally discarded. Pro matches are
+        # parsed by OpenDota within minutes-to-an-hour, so a 404 past this window is almost
+        # certainly never resolving; if it ever is real, the proMatches -> DB batch backfill
+        # still captures it independently of this live stream.
+        self.max_pending_age = timedelta(hours=2)
 
     async def run_stream_cleaning_cycle(
         self, consumer_name: str = "stale_match_consumer"
@@ -117,13 +120,15 @@ class StaleMatchService:
                     # almost certainly never coming (abandoned/private) -> dead-letter it.
                     pending_age = get_current_utc_iso_timestamp() - convert_redis_timestamp(event_id)
                     if pending_age > self.max_pending_age:
-                        logger.warning(f"Match {match_id} still unavailable after {pending_age}; moving to DLQ.")
-                        await self.redis.handle_processing_failure(
-                            event_data=original_event,
+                        logger.warning(f"Match {match_id} still unavailable after {pending_age}; discarding.")
+                        # Terminal discard (XACK + XDEL), NOT the retryable DLQ -- otherwise the
+                        # DLQ sweep re-injects it and the same unresolvable match churns forever.
+                        await self.redis.discard_unresolvable_event(
+                            match_id=match_id,
                             event_id=event_id,
-                            error=TimeoutError(f"Match {match_id} not on OpenDota after {pending_age}"),
                             consumer_group=self.group,
                             event_stream=self.stream,
+                            reason=f"not on OpenDota after {pending_age}",
                         )
                     continue
 

@@ -416,8 +416,8 @@ class TestStaleMatchService:
     async def test_404_recent_event_left_pending_not_dlqd(
         self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
     ):
-        """A recently-pending 404 (not on OpenDota yet) is left pending, not dead-lettered."""
-        # ARRANGE
+        """A recently-pending 404 (not on OpenDota yet) is left pending, not discarded."""
+        # ARRANGE — 1h old, within the 2h age-out window.
         recent_id = _event_id_at(_NOW - timedelta(hours=1))
         event = consumed_event_factory(match_id=556, event_id=recent_id)
         mock_redis_service.fetch_expired_events.return_value = [recent_id]
@@ -431,14 +431,19 @@ class TestStaleMatchService:
         # ASSERT
         assert result == []
         mock_redis_service.handle_processing_failure.assert_not_awaited()
+        mock_redis_service.discard_unresolvable_event.assert_not_awaited()
 
     @patch("live_orchestrator_app.services.stale_match_service.get_current_utc_iso_timestamp", return_value=_NOW)
-    async def test_404_old_event_is_dlqd(
+    async def test_404_old_event_is_discarded(
         self, _mock_now, mock_redis_service: AsyncMock, mock_task_runner: AsyncMock, consumed_event_factory
     ):
-        """A 404 that has been pending past max_pending_age is dead-lettered (never coming)."""
-        # ARRANGE
-        old_id = _event_id_at(_NOW - timedelta(days=2))
+        """A 404 pending past max_pending_age (2h) is terminally discarded, not DLQ'd.
+
+        Discard (XACK+XDEL) instead of the retryable DLQ -- otherwise the DLQ sweep would
+        re-inject the same unresolvable match and it would churn forever.
+        """
+        # ARRANGE — 3h old, past the 2h age-out window.
+        old_id = _event_id_at(_NOW - timedelta(hours=3))
         event = consumed_event_factory(match_id=557, event_id=old_id)
         mock_redis_service.fetch_expired_events.return_value = [old_id]
         mock_redis_service.claim_expired_events.return_value = [event]
@@ -448,7 +453,8 @@ class TestStaleMatchService:
         # ACT
         result = await service.run_stream_cleaning_cycle()
 
-        # ASSERT — not returned as completed, and routed to DLQ.
+        # ASSERT — not returned as completed, terminally discarded (never re-injected).
         assert result == []
-        mock_redis_service.handle_processing_failure.assert_awaited_once()
-        assert mock_redis_service.handle_processing_failure.call_args.kwargs["event_id"] == old_id
+        mock_redis_service.handle_processing_failure.assert_not_awaited()
+        mock_redis_service.discard_unresolvable_event.assert_awaited_once()
+        assert mock_redis_service.discard_unresolvable_event.call_args.kwargs["event_id"] == old_id
