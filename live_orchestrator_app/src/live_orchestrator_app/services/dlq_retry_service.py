@@ -38,6 +38,13 @@ class DlqRetryService:
         if not raw_events:
             return 0
 
+        # Clean up retry counts for matches that have genuinely left this DLQ (succeeded, or
+        # were dropped) BEFORE touching anything this sweep. Running it *after* the reinject
+        # loop was the bug: a just-reinjected match is transiently absent from the DLQ (it only
+        # re-enters in a later pipeline stage), so cleanup wiped its count to 0 on every sweep
+        # and `max_retries` never tripped -> permanently-failing matches churned forever.
+        await self._cleanup_stale_counts(stream_name, dlq_hash_name)
+
         reinjected = 0
         for event_id, event_json in raw_events.items():
             record = self._parse_failure_record(event_id, event_json, stream_name)
@@ -49,17 +56,32 @@ class DlqRetryService:
             retry_count = await self._get_retry_count(retry_key)
 
             if retry_count >= self.max_retries:
+                # Retries exhausted: this failure won't be fixed by retrying, so drop it for
+                # good (remove from the DLQ and forget its count) instead of leaving it to be
+                # re-evaluated -- and logged -- on every future sweep. If the match's data ever
+                # becomes valid, the batch backfill still captures it independently.
                 logger.warning(
-                    f"DLQ: match {match_id} in '{stream_name}' exhausted {self.max_retries} retries, skipping"
+                    f"DLQ: match {match_id} in '{stream_name}' exhausted {self.max_retries} retries; "
+                    "dropping permanently"
                 )
+                await self._drop_exhausted_event(record, dlq_hash_name, retry_key)
                 continue
 
             success = await self._reinject_event(record, dlq_hash_name, retry_key)
             if success:
                 reinjected += 1
 
-        await self._cleanup_stale_counts(stream_name, dlq_hash_name)
         return reinjected
+
+    async def _drop_exhausted_event(self, record: FailureRecord, dlq_hash_name: str, retry_key: str) -> None:
+        """Permanently remove a retry-exhausted event from the DLQ and forget its retry count."""
+        try:
+            async with self.redis.pipeline(transaction=True) as pipe:
+                pipe.hdel(dlq_hash_name, record.original_event_id)
+                pipe.hdel(DLQ_RETRY_COUNTS_HASH, retry_key)
+                await pipe.execute()
+        except Exception as e:
+            logger.error(f"DLQ: failed to drop exhausted event {record.original_event_id}: {e}", exc_info=True)
 
     def _parse_failure_record(self, event_id: str, event_json: str, stream_name: str) -> Optional[FailureRecord]:
         """Parse a raw DLQ entry into a typed FailureRecord."""
