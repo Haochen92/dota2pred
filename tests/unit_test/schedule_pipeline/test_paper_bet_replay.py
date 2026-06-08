@@ -59,3 +59,24 @@ def test_evaluate_bet_picks_dire_when_thats_the_edge() -> None:
     decision, skip = evaluate_bet(0.25, _snap(), BetConfig(tau=0.03))
     assert skip is None
     assert decision["side"] == "dire"
+
+
+def test_min_confidence_skips_low_confidence_sides() -> None:
+    # Near coin-flip (radiant 0.55 / dire 0.45): with a 0.65 floor, neither side is confident enough.
+    decision, skip = evaluate_bet(0.55, _snap(), BetConfig(tau=0.03, min_confidence=0.65))
+    assert decision is None
+    assert skip == "below_min_confidence"
+
+
+def test_min_confidence_allows_confident_side() -> None:
+    # Radiant 0.70 clears the 0.65 floor; ask 0.60 -> edge 0.10 > tau -> bet radiant.
+    decision, skip = evaluate_bet(0.70, _snap(), BetConfig(tau=0.03, min_confidence=0.65))
+    assert skip is None
+    assert decision["side"] == "radiant"
+
+
+def test_min_confidence_default_off_preserves_behaviour() -> None:
+    # Default min_confidence=0.0 must not change the no-floor decision.
+    decision, skip = evaluate_bet(0.70, _snap(), BetConfig(tau=0.03))
+    assert skip is None
+    assert decision["side"] == "radiant"

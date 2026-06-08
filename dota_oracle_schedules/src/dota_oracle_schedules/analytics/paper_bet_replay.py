@@ -47,6 +47,12 @@ class BetConfig:
     min_liquidity: float = 500.0  # skip thin markets
     max_spread: float = 0.06  # skip markets whose spread eats the edge
     flat_stake_pct: float = 0.01  # baseline: 1% of starting bankroll per bet
+    # Selective betting: only bet a side whose model probability is at least this. The model is
+    # well-calibrated and slightly UNDER-confident on favorites (acc > conf in the upper calibration
+    # bins, persistent at 365d), while the 50-60% bin is near coin-flip. A floor concentrates bets on
+    # the reliable confident calls and avoids tiny, probably-noise edges in the toss-up region.
+    # 0.0 = off (bet on edge alone), which is the default so the scheduled run is unchanged.
+    min_confidence: float = 0.0
 
 
 def full_kelly_fraction(q: float, p: float) -> float:
@@ -79,7 +85,12 @@ def evaluate_bet(
         thin = any(liq is not None and liq < cfg.min_liquidity for _, _, _, _, liq in sides)
         return None, ("market_too_thin" if thin else "spread_too_wide")
 
-    side, q, ask = max(tradeable, key=lambda s: s[1] - s[2])
+    # Selective betting: only consider the side(s) we're confident in (>= min_confidence).
+    confident = [(side, q, ask) for side, q, ask in tradeable if q >= cfg.min_confidence]
+    if not confident:
+        return None, "below_min_confidence"
+
+    side, q, ask = max(confident, key=lambda s: s[1] - s[2])
     edge = q - ask
     if edge <= cfg.tau:
         return None, "edge_below_threshold"
@@ -194,6 +205,9 @@ def _replay_predictor(
     settled = len(pnls)
     report = {
         "predictor": predictor_name,
+        "tau": cfg.tau,
+        "kelly_fraction": cfg.kelly_fraction,
+        "min_confidence": cfg.min_confidence,
         "snapshots": len(snapshots),
         "n_bets": n_bets,
         "n_settled": settled,
@@ -238,6 +252,7 @@ async def run_replay(predictor_name: Optional[str], cfg: BetConfig, starting_ban
 
 def _print_report(r: dict) -> None:
     print(f"\n=== paper-bet replay: {r['predictor']} ===")
+    print(f"  config             : tau={r['tau']} kelly={r['kelly_fraction']} min_conf={r['min_confidence']}")
     print(f"  snapshots replayed : {r['snapshots']}")
     print(f"  bets placed        : {r['n_bets']}  (settled {r['n_settled']})")
     if r["hit_rate"] is not None:
@@ -255,16 +270,18 @@ async def paper_bet_replay_flow(
     predictor: Optional[str] = None,
     tau: float = 0.03,
     kelly_fraction: float = 0.25,
+    min_confidence: float = 0.0,
     bankroll: float = 1000.0,
 ) -> List[dict]:
     """Scheduled entry point. Re-runs the replay (idempotent) so newly-settled outcomes get picked
     up; defaults replay all predictors. Logs a one-line summary per predictor for Loki/Prefect."""
-    cfg = BetConfig(tau=tau, kelly_fraction=kelly_fraction)
+    cfg = BetConfig(tau=tau, kelly_fraction=kelly_fraction, min_confidence=min_confidence)
     reports = await run_replay(predictor_name=predictor, cfg=cfg, starting_bankroll=bankroll)
     for r in reports:
         logger.info(
-            f"paper_bet_replay[{r['predictor']}]: bets={r['n_bets']} settled={r['n_settled']} "
-            f"pnl={r['pnl']} roi={r['roi']} brier={r['brier']} bankroll={r['final_bankroll_kelly']}"
+            f"paper_bet_replay[{r['predictor']}]: tau={r['tau']} min_conf={r['min_confidence']} "
+            f"bets={r['n_bets']} settled={r['n_settled']} pnl={r['pnl']} roi={r['roi']} "
+            f"brier={r['brier']} bankroll={r['final_bankroll_kelly']}"
         )
     return reports
 
@@ -274,10 +291,16 @@ def main() -> None:
     parser.add_argument("--predictor", default=None, help="Limit to one predictor_name (default: all present).")
     parser.add_argument("--tau", type=float, default=0.03, help="Min edge to bet.")
     parser.add_argument("--kelly-fraction", type=float, default=0.25, help="Fraction of full Kelly.")
+    parser.add_argument(
+        "--min-confidence",
+        type=float,
+        default=0.0,
+        help="Selective betting: only bet sides with model prob >= this (0 = off).",
+    )
     parser.add_argument("--bankroll", type=float, default=1000.0, help="Starting bankroll.")
     args = parser.parse_args()
 
-    cfg = BetConfig(tau=args.tau, kelly_fraction=args.kelly_fraction)
+    cfg = BetConfig(tau=args.tau, kelly_fraction=args.kelly_fraction, min_confidence=args.min_confidence)
     asyncio.run(run_replay(predictor_name=args.predictor, cfg=cfg, starting_bankroll=args.bankroll))
 
 
