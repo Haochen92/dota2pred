@@ -130,5 +130,7 @@ jobs:
         git checkout main
         git pull --ff-only origin main
         docker compose up -d --build --remove-orphans
+        docker image prune -f
+        docker builder prune -f --filter until=168h
         docker compose ps
         REMOTE_SCRIPT
