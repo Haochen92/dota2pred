@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from dota_oracle_common.models.utils.schema import TaskResult
-from live_orchestrator_app.constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
+from dota_oracle_common.constants.redis_constants import STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP
 from live_orchestrator_app.feature_engineering.feature_engineering_orchestrator import (
     FeatureEngineeringOrchestrator,
 )

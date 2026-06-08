@@ -1,5 +1,5 @@
 from ..redis_services.redis_service import RedisService
-from ..constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
+from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 from ..constants.match_constants import COMPLETION_FREE_FEED_WINDOW_SECONDS
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner

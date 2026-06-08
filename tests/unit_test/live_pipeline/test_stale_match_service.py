@@ -6,7 +6,7 @@ from tenacity import RetryError
 from dota_oracle_common.models.redis.schema import ConsumedEvent, CompletionPayload
 from dota_oracle_common.models.utils.schema import TaskResult
 from live_orchestrator_app.services.stale_match_service import StaleMatchService
-from live_orchestrator_app.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
+from dota_oracle_common.constants.redis_constants import STREAM_PENDING_COMPLETION, COMPLETION_GROUP
 
 
 # Use pytest-asyncio for async tests
