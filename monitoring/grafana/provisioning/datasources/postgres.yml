@@ -1,0 +1,19 @@
+# Auto-provisioned Postgres datasource so the paper-betting dashboard survives container recreates.
+# Creds come from .env.production (POSTGRES_*), which the grafana container already loads. Host is
+# the compose service name `db` on the dota-pred network.
+apiVersion: 1
+
+datasources:
+  - name: Postgres
+    type: postgres
+    access: proxy
+    uid: dota_postgres
+    url: db:5432
+    user: ${POSTGRES_USER}
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      database: ${POSTGRES_DB}
+      sslmode: disable
+      postgresVersion: 1400
+    editable: true
