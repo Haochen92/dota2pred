@@ -65,6 +65,20 @@ class CompletedMatchPayload(BaseModel):
     match_outcome: bool
 
 
+class OddsPayload(BaseModel):
+    """
+    Payload FROM Prediction stage TO the (terminal) Odds-capture stage.
+
+    Published in the same transaction as CompletionPayload (fan-out): the prediction stage
+    branches to both completion and odds so odds can snapshot market prices at draft-lock,
+    before the match progresses. Carries only the identity needed to find the match again;
+    team identity and the model probability are read from the DB in the odds stage.
+    """
+
+    match_id: int
+    radiant_win: bool
+
+
 class StreamEvent(BaseModel, Generic[PayloadModel]):
     match_id: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

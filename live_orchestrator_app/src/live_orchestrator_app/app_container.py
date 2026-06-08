@@ -35,6 +35,10 @@ from dota_oracle_pipeline.feature_engineering.heroes_features_creator import Her
 # --- Inference Components ---
 from dota_oracle_pipeline.inference.model_inference_service import ModelInferenceService
 
+# --- Odds capture (Polymarket) ---
+from dota_oracle_pipeline.data_extraction.api_clients.polymarket_client import PolymarketClient
+from .constants.match_constants import ODDS_SNAPSHOT_WINDOW_SECONDS
+
 # --- Pipeline Services (Business Logic Wrappers) ---
 from .redis_services.redis_service import RedisService
 from .services.feature_engineering_service import FeatureEngineeringService
@@ -44,24 +48,28 @@ from .services.feature_preparation_service import FeaturePreparationService
 from .services.stale_match_service import StaleMatchService
 from .services.notifications_service import NotificationService
 from .services.dlq_retry_service import DlqRetryService
+from .services.odds_market_service import OddsMarketService
 
 # --- Pipeline Data Providers ---
 from .data_fetching.new_match_data_provider import NewMatchDataProvider
 from .feature_engineering.feature_engineering_data_provider import FeatureEngineeringDataProvider
 from .prediction.prediction_data_provider import PredictionDataProvider
 from .completion.completion_data_provider import CompletionDataProvider
+from .odds.odds_data_provider import OddsDataProvider
 
 # --- Pipeline Event Processors ---
 from .data_fetching.new_match_event_processor import NewMatchEventProcessor
 from .feature_engineering.feature_engineering_processor import FeatureEngineeringEventProcessor
 from .prediction.prediction_event_processor import PredictionEventProcessor
 from .completion.completion_event_processor import CompletionEventProcessor
+from .odds.odds_event_processor import OddsEventProcessor
 
 # --- Orchestrators (Workflow Controllers) ---
 from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
 from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator
 from .prediction.prediction_orchestrator import PredictionOrchestrator
 from .completion.completion_orchestrator import CompletionOrchestrator
+from .odds.odds_orchestrator import OddsOrchestrator
 
 # --- Hero Repository for fetching hero map ---
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
@@ -124,6 +132,15 @@ class AppContainer(containers.DeclarativeContainer):
         prediction_url=service_url.PRO_MATCHES_INFERENCE_URL,
     )
 
+    # --- Odds capture (Polymarket) ---
+    polymarket_client = providers.Factory(
+        PolymarketClient,
+        http_client=http_client,
+        gamma_url=service_url.BASE_GAMMA_URL,
+        clob_url=service_url.BASE_CLOB_URL,
+        tag_slug=service_url.ODDS_DOTA_TAG_SLUG,
+    )
+
     # --- Core Pipeline Services ---
     feature_preparation_service = providers.Factory(
         FeaturePreparationService,
@@ -149,6 +166,13 @@ class AppContainer(containers.DeclarativeContainer):
     stale_match_service = providers.Factory(StaleMatchService, redis_service=redis_service)
     dlq_retry_service = providers.Factory(DlqRetryService, redis_service=redis_service)
 
+    odds_market_service = providers.Factory(
+        OddsMarketService,
+        db_session_factory=db_session_factory,
+        polymarket_client=polymarket_client,
+        snapshot_window_seconds=ODDS_SNAPSHOT_WINDOW_SECONDS,
+    )
+
     notification_service = providers.Factory(
         NotificationService, redis_service=redis_service, db_session_factory=db_session_factory, http_client=http_client
     )
@@ -165,6 +189,10 @@ class AppContainer(containers.DeclarativeContainer):
 
     completion_data_provider = providers.Factory(
         CompletionDataProvider, redis_service=redis_service, stale_match_service=stale_match_service
+    )
+
+    odds_data_provider = providers.Factory(
+        OddsDataProvider, redis_service=redis_service, odds_market_service=odds_market_service
     )
 
     # --- Event Processors ---
@@ -186,6 +214,8 @@ class AppContainer(containers.DeclarativeContainer):
     completion_event_processor = providers.Factory(
         CompletionEventProcessor, history_update_service=history_update_service, db_session_factory=db_session_factory
     )
+
+    odds_event_processor = providers.Factory(OddsEventProcessor, db_session_factory=db_session_factory)
 
     # --- Orchestrators ---
     new_match_orchestrator = providers.Factory(
@@ -212,6 +242,12 @@ class AppContainer(containers.DeclarativeContainer):
         completion_data_provider=completion_data_provider,
         completion_event_processor=completion_event_processor,
     )
+    odds_orchestrator = providers.Factory(
+        OddsOrchestrator,
+        redis_service=redis_service,
+        data_provider=odds_data_provider,
+        event_processor=odds_event_processor,
+    )
 
     # --- Root application ---
     app = providers.Factory(
@@ -220,8 +256,10 @@ class AppContainer(containers.DeclarativeContainer):
         feature_engineering_orchestrator=feature_engineering_orchestrator,
         prediction_orchestrator=prediction_orchestrator,
         completion_orchestrator=completion_orchestrator,
+        odds_orchestrator=odds_orchestrator,
         notification_service=notification_service,
         dlq_retry_service=dlq_retry_service,
+        odds_capture_enabled=service_url.ODDS_CAPTURE_ENABLED,
     )
 
 

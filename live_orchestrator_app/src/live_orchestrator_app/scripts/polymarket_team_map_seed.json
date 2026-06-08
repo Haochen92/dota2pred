@@ -1,0 +1,63 @@
+[
+  {
+    "canonical_name": "BALU",
+    "polymarket_slug": "balu",
+    "steam_team_id": 10101793,
+    "verified": true,
+    "needs_review": false,
+    "matched_source": "our_matches_db",
+    "matches_table_name": "BALU TEAM"
+  },
+  {
+    "canonical_name": "Ilbirs eSports",
+    "polymarket_slug": "ilbirs-esports",
+    "steam_team_id": 10047709,
+    "verified": true,
+    "needs_review": false,
+    "matched_source": "our_matches_db",
+    "matches_table_name": "Ilbirs Esports"
+  },
+  {
+    "canonical_name": "Nande+4",
+    "polymarket_slug": "nande-4",
+    "steam_team_id": null,
+    "verified": false,
+    "needs_review": true,
+    "matched_source": null
+  },
+  {
+    "canonical_name": "Noir Esports",
+    "polymarket_slug": "noir-esports",
+    "steam_team_id": null,
+    "verified": false,
+    "needs_review": true,
+    "matched_source": null
+  },
+  {
+    "canonical_name": "VP.Prodigy",
+    "polymarket_slug": "vp-prodigy",
+    "steam_team_id": 9872558,
+    "verified": true,
+    "needs_review": false,
+    "matched_source": "our_matches_db",
+    "matches_table_name": "VP.Prodigy"
+  },
+  {
+    "canonical_name": "Zero Tenacity",
+    "polymarket_slug": "zero-tenacity",
+    "steam_team_id": 9600141,
+    "verified": true,
+    "needs_review": false,
+    "matched_source": "our_matches_db",
+    "matches_table_name": "Zero Tenacity"
+  },
+  {
+    "canonical_name": "summer bear",
+    "polymarket_slug": "summer-bear",
+    "steam_team_id": 10164643,
+    "verified": true,
+    "needs_review": false,
+    "matched_source": "our_matches_db",
+    "matches_table_name": "Summer Bear"
+  }
+]

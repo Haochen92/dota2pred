@@ -10,6 +10,7 @@ from .data_fetching.new_match_orchestrator import NewMatchOrchestrator
 from .feature_engineering.feature_engineering_orchestrator import FeatureEngineeringOrchestrator
 from .prediction.prediction_orchestrator import PredictionOrchestrator
 from .completion.completion_orchestrator import CompletionOrchestrator
+from .odds.odds_orchestrator import OddsOrchestrator
 from .services.notifications_service import NotificationService
 from .services.dlq_retry_service import DlqRetryService
 
@@ -26,15 +27,19 @@ class MatchPipelineOrchestrator:
         feature_engineering_orchestrator: FeatureEngineeringOrchestrator,
         prediction_orchestrator: PredictionOrchestrator,
         completion_orchestrator: CompletionOrchestrator,
+        odds_orchestrator: OddsOrchestrator,
         notification_service: NotificationService,
         dlq_retry_service: DlqRetryService,
+        odds_capture_enabled: bool = False,
     ):
         self.new_match_orchestrator = new_match_orchestrator
         self.feature_engineering_orchestrator = feature_engineering_orchestrator
         self.prediction_orchestrator = prediction_orchestrator
         self.completion_orchestrator = completion_orchestrator
+        self.odds_orchestrator = odds_orchestrator
         self.notification_service = notification_service
         self.dlq_retry_service = dlq_retry_service
+        self.odds_capture_enabled = odds_capture_enabled
 
     async def run_cycle(self) -> None:
         """Runs one cycle of the live match processing pipeline.
@@ -84,15 +89,23 @@ class MatchPipelineOrchestrator:
         # 4. Process predicted matches to check for completion
         count_completed = await _run_stage("completion", self.completion_orchestrator.run_completion_cycle())
 
+        # 5. Capture live Polymarket odds for just-predicted matches (terminal, parallel to
+        # completion). Off by default and fully isolated: skipped entirely unless enabled, and a
+        # failure here is recorded like any other stage without affecting the rest of the pipeline.
+        count_odds = 0
+        if self.odds_capture_enabled:
+            count_odds = await _run_stage("odds", self.odds_orchestrator.run_odds_cycle())
+
         logger.info(
             f"Pipeline cycle stats: "
             f"New={count_new_matches}, "
             f"FE_Processed={count_features_engineered}, "
             f"Predicted={count_predicted}, "
-            f"Completed={count_completed}"
+            f"Completed={count_completed}, "
+            f"Odds={count_odds}"
         )
 
-        total_counts = count_new_matches + count_features_engineered + count_predicted + count_completed
+        total_counts = count_new_matches + count_features_engineered + count_predicted + count_completed + count_odds
         if total_counts:
             try:
                 await self.notification_service.notify_state_change()

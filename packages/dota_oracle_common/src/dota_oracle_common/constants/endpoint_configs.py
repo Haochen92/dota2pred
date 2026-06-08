@@ -6,6 +6,18 @@ class Service_URL(BaseSettings):
     BASE_INFERENCE_URL: str = "http://localhost:3333"
     BASE_FRONTEND_URL: str = ""  # Placeholder for frontend URL later
 
+    # --- Polymarket odds capture (paper-betting feasibility; read-only, public endpoints) ---
+    # Disabled by default: the stage stays inert until explicitly turned on, so it can ship
+    # dormant while the match->market join is validated against live data. See
+    # docs/2026-06-08-polymarket-odds-capture.md.
+    ODDS_CAPTURE_ENABLED: bool = False
+    BASE_GAMMA_URL: str = "https://gamma-api.polymarket.com"  # market discovery (no auth)
+    BASE_CLOB_URL: str = "https://clob.polymarket.com"  # order books (no auth)
+    # Dota events are discovered via Gamma's /events endpoint filtered by this tag slug (confirmed
+    # against the live API -- it returns events whose markets carry per-game "Game N Winner"
+    # child_moneyline markets). Configurable in case Polymarket re-slugs the tag.
+    ODDS_DOTA_TAG_SLUG: str = "dota-2"
+
     @property
     def PUBLIC_MATCHES_INFERENCE_URL(self) -> str:
         return f"{self.BASE_INFERENCE_URL}/predict/public"

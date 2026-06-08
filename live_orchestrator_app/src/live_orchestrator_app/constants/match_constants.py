@@ -1,3 +1,5 @@
+import os
+
 DRAFT_COLS = [
     "slot_0_hero_id",
     "slot_1_hero_id",
@@ -32,3 +34,10 @@ UUID_COL = "match_id"
 # (free) lookup cutoff and the stale takeover point use this single value so they can't drift
 # apart and leave a coverage gap.
 COMPLETION_FREE_FEED_WINDOW_SECONDS = 7200  # 2h
+
+# Odds capture only bounds how long an UNRESOLVED odds event (transient resolution error) keeps
+# retrying before it is recorded as no-market and discarded -- NOT the accuracy gate. Pre-game
+# accuracy is enforced offline via the per-snapshot game_time_seconds field. At the 2-min poll
+# cadence this default allows ~3 attempts, surviving a couple of network blips while any late
+# capture is still filtered out offline. Env-overridable.
+ODDS_SNAPSHOT_WINDOW_SECONDS = int(os.getenv("ODDS_SNAPSHOT_WINDOW_SECONDS", "360"))  # 6m

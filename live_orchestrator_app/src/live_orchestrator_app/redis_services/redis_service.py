@@ -20,9 +20,11 @@ from dota_oracle_common.models.redis.schema import (
     FeatureEngineeringPayload,
     PredictionPayload,
     CompletionPayload,
+    OddsPayload,
     PayloadModel,
 )
 from dota_oracle_common.models.match import MatchTable
+from dota_oracle_common.constants.endpoint_configs import service_url
 
 # Constants
 from dota_oracle_common.constants.redis_constants import (
@@ -32,9 +34,11 @@ from dota_oracle_common.constants.redis_constants import (
     STREAM_NEW_MATCHES,
     STREAM_PENDING_PREDICTION,
     STREAM_PENDING_COMPLETION,
+    STREAM_PENDING_ODDS,
     FEATURE_ENGINEER_GROUP,
     PREDICTION_GROUP,
     COMPLETION_GROUP,
+    ODDS_GROUP,
     FAILED_EVENTS_MAPPING,
 )
 
@@ -77,6 +81,9 @@ class RedisService:
             self._create_group(STREAM_NEW_MATCHES, FEATURE_ENGINEER_GROUP),
             self._create_group(STREAM_PENDING_PREDICTION, PREDICTION_GROUP),
             self._create_group(STREAM_PENDING_COMPLETION, COMPLETION_GROUP),
+            # Always create the odds group (idempotent) so enabling the flag mid-run picks up
+            # any already-published odds events; the fan-out itself is gated by the flag.
+            self._create_group(STREAM_PENDING_ODDS, ODDS_GROUP),
         )
         self._initialized = True
         logger.info("RedisService initialized.")
@@ -330,7 +337,16 @@ class RedisService:
                 # 2. Call the generic helper to publish the event
                 await self._publish_event(pipe, STREAM_PENDING_COMPLETION, match_id, prediction)
 
-                # 3. ACK the message from the previous (prediction) stream
+                # 3. Fan out to the terminal odds-capture stage (when enabled) in the SAME
+                # transaction as the completion publish + prediction ACK. Odds must branch off
+                # prediction -- not chain after completion, which only settles once the match is
+                # over -- so the market is snapshotted at draft-lock. The odds stage owns its own
+                # stream lifecycle and never touches the match_status hash that completion drives.
+                if service_url.ODDS_CAPTURE_ENABLED:
+                    odds_payload = OddsPayload(match_id=match_id, radiant_win=prediction.radiant_win)
+                    await self._publish_event(pipe, STREAM_PENDING_ODDS, match_id, odds_payload)
+
+                # 4. ACK the message from the previous (prediction) stream
                 pipe.xack(STREAM_PENDING_PREDICTION, PREDICTION_GROUP, event_id_to_ack)
 
             await self._run_transaction_with_retry(_build)
@@ -363,6 +379,35 @@ class RedisService:
         except Exception as e:
             logger.error(
                 f"Redis failure marking match {match_id} as completed (ACK ID: {event_id_to_ack}): {e}", exc_info=True
+            )
+            return False
+
+    # ============================================
+    #   Terminal stage: Odds capture (parallel to completion)
+    # ============================================
+
+    async def fetch_matches_for_odds(self, consumer: str, count: int = 50) -> List[ConsumedEvent[OddsPayload]]:
+        """Fetches events from the pending odds stream with the expected payload."""
+        return await self._fetch_events(ODDS_GROUP, consumer, STREAM_PENDING_ODDS, OddsPayload, count)
+
+    async def mark_odds_done(self, match_id: int, event_id_to_ack: str) -> bool:
+        """ACK + XDEL an odds event once its snapshot is stored (or deliberately skipped).
+
+        Deliberately does NOT delete the match_status hash: that lifecycle is owned by the
+        completion stage, which runs in parallel. Odds only manages its own stream so the two
+        terminal stages stay fully isolated.
+        """
+        try:
+            async with self.redis.pipeline(transaction=True) as pipe:
+                pipe.xack(STREAM_PENDING_ODDS, ODDS_GROUP, event_id_to_ack)
+                # XDEL too: ACK alone leaves the entry in the stream forever (the source of the
+                # historical pending_completion backlog). XDEL keeps the stream bounded.
+                pipe.xdel(STREAM_PENDING_ODDS, event_id_to_ack)
+                await pipe.execute()
+            return True
+        except Exception as e:
+            logger.error(
+                f"Redis failure marking odds done for match {match_id} (ACK ID: {event_id_to_ack}): {e}", exc_info=True
             )
             return False
 
