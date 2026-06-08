@@ -1,13 +1,24 @@
 import json
+import os
 from typing import Optional
 
-from dota_oracle_common.constants.redis_constants import FAILED_EVENTS_MAPPING, DLQ_RETRY_COUNTS_HASH
+from dota_oracle_common.constants.redis_constants import FAILED_EVENTS_MAPPING, DLQ_RETRY_COUNT_PREFIX
 from dota_oracle_common.models.redis.schema import FailureRecord
 from dota_oracle_common.utils.set_logging import get_logger
 from ..constants.payload_mappings import PAYLOAD_MODEL_MAPPING
 from ..redis_services.redis_service import RedisService
 
 logger = get_logger(__name__)
+
+# A retry count must outlive the individual DLQ entries it tracks: a DLQ entry is deleted on
+# reinject and a fresh one (new event id) is created if the match fails again, so the count is
+# keyed by the stable match id, not the event id. A TTL makes it self-cleaning -- a count whose
+# match eventually *succeeds* is never explicitly deleted, so without a TTL it would leak (the
+# original design swept a separate hash to GC these, which was both extra machinery and the source
+# of a churn bug). The TTL is refreshed on every increment and is comfortably longer than any retry
+# sequence, so it only fires once a match has genuinely left the pipeline. Mirrors the match_status
+# hash's self-cleaning TTL.
+DLQ_RETRY_COUNT_TTL_SECONDS = int(os.getenv("DLQ_RETRY_COUNT_TTL_SECONDS", str(6 * 3600)))
 
 
 class DlqRetryService:
@@ -34,16 +45,9 @@ class DlqRetryService:
 
     async def _process_dlq_hash(self, stream_name: str, dlq_hash_name: str) -> int:
         """Process a single DLQ hash. Returns number of events reinjected."""
-        raw_events = await self.redis.hgetall(dlq_hash_name)
+        raw_events = await self.redis.hgetall(dlq_hash_name)  # type: ignore[misc]  # redis-py async union-return
         if not raw_events:
             return 0
-
-        # Clean up retry counts for matches that have genuinely left this DLQ (succeeded, or
-        # were dropped) BEFORE touching anything this sweep. Running it *after* the reinject
-        # loop was the bug: a just-reinjected match is transiently absent from the DLQ (it only
-        # re-enters in a later pipeline stage), so cleanup wiped its count to 0 on every sweep
-        # and `max_retries` never tripped -> permanently-failing matches churned forever.
-        await self._cleanup_stale_counts(stream_name, dlq_hash_name)
 
         reinjected = 0
         for event_id, event_json in raw_events.items():
@@ -73,12 +77,17 @@ class DlqRetryService:
 
         return reinjected
 
+    @staticmethod
+    def _count_key(retry_key: str) -> str:
+        """Redis key holding the retry count for a (stream, match_id) pair."""
+        return f"{DLQ_RETRY_COUNT_PREFIX}:{retry_key}"
+
     async def _drop_exhausted_event(self, record: FailureRecord, dlq_hash_name: str, retry_key: str) -> None:
         """Permanently remove a retry-exhausted event from the DLQ and forget its retry count."""
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
                 pipe.hdel(dlq_hash_name, record.original_event_id)
-                pipe.hdel(DLQ_RETRY_COUNTS_HASH, retry_key)
+                pipe.delete(self._count_key(retry_key))
                 await pipe.execute()
         except Exception as e:
             logger.error(f"DLQ: failed to drop exhausted event {record.original_event_id}: {e}", exc_info=True)
@@ -99,21 +108,24 @@ class DlqRetryService:
             return None
 
     async def _get_retry_count(self, retry_key: str) -> int:
-        """Get the current retry count for a match from the retry tracking hash."""
-        count = await self.redis.hget(DLQ_RETRY_COUNTS_HASH, retry_key)
+        """Get the current retry count for a match from its TTL'd count key."""
+        count = await self.redis.get(self._count_key(retry_key))
         return int(count) if count else 0
 
     async def _reinject_event(self, record: FailureRecord, dlq_hash_name: str, retry_key: str) -> bool:
-        """Atomically reinject an event into its stream, remove from DLQ, and increment retry count."""
+        """Atomically reinject an event into its stream, remove it from the DLQ, and bump the
+        match's retry count (refreshing its TTL)."""
         match_id = record.original_data.match_id
         target_stream = record.original_stream
         payload = record.original_data.payload
+        count_key = self._count_key(retry_key)
 
         try:
             async with self.redis.pipeline(transaction=True) as pipe:
                 await self.redis_service._publish_event(pipe, target_stream, match_id, payload)
                 pipe.hdel(dlq_hash_name, record.original_event_id)
-                pipe.hincrby(DLQ_RETRY_COUNTS_HASH, retry_key, 1)
+                pipe.incr(count_key)
+                pipe.expire(count_key, DLQ_RETRY_COUNT_TTL_SECONDS)
                 await pipe.execute()
 
             retry_count = await self._get_retry_count(retry_key)
@@ -124,31 +136,3 @@ class DlqRetryService:
         except Exception as e:
             logger.error(f"DLQ: failed to reinject match {match_id} into '{target_stream}': {e}", exc_info=True)
             return False
-
-    async def _cleanup_stale_counts(self, stream_name: str, dlq_hash_name: str) -> None:
-        """Remove retry counts for matches no longer in this DLQ hash."""
-        all_counts = await self.redis.hgetall(DLQ_RETRY_COUNTS_HASH)
-        if not all_counts:
-            return
-
-        dlq_events = await self.redis.hgetall(dlq_hash_name)
-        dlq_match_ids = set()
-        for event_json in dlq_events.values():
-            try:
-                raw = json.loads(event_json)
-                dlq_match_ids.add(str(raw.get("original_data", {}).get("match_id", "")))
-            except Exception:
-                continue
-
-        prefix = f"{stream_name}:"
-        stale_keys = []
-        for retry_key in all_counts:
-            if not retry_key.startswith(prefix):
-                continue
-            match_id = retry_key[len(prefix) :]
-            if match_id not in dlq_match_ids:
-                stale_keys.append(retry_key)
-
-        if stale_keys:
-            await self.redis.hdel(DLQ_RETRY_COUNTS_HASH, *stale_keys)
-            logger.debug(f"DLQ: cleaned up {len(stale_keys)} stale retry counts for '{stream_name}'")

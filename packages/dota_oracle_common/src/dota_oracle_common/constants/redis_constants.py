@@ -32,5 +32,7 @@ FAILED_EVENTS_MAPPING = {
     STREAM_PENDING_ODDS: FAILED_EVENTS_HASH_PENDING_ODDS,
 }
 
-# DLQ retry tracking
-DLQ_RETRY_COUNTS_HASH = "dlq:retry_counts"
+# DLQ retry tracking. One key per (stream, match_id) -- `dlq:retry_count:{stream}:{match_id}` --
+# carrying an integer count with a TTL, so an orphaned count (a match that eventually succeeded)
+# self-expires instead of needing a reconciliation sweep.
+DLQ_RETRY_COUNT_PREFIX = "dlq:retry_count"
