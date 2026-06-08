@@ -1,27 +1,76 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 0,
-  "title": "dota2pred — service logs",
+  "title": "dota2pred \u2014 service logs",
   "uid": "dota2pred-logs",
-  "tags": ["dota2pred", "logs"],
+  "tags": [
+    "dota2pred",
+    "logs"
+  ],
   "timezone": "",
   "schemaVersion": 39,
-  "version": 1,
-  "time": { "from": "now-6h", "to": "now" },
+  "version": 2,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "templating": {
     "list": [
       {
         "name": "service",
         "label": "Service",
         "type": "query",
-        "datasource": { "type": "loki", "uid": "loki" },
-        "query": { "label": "service", "stream": "", "type": 1 },
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "service",
+          "stream": "",
+          "type": 1
+        },
         "refresh": 2,
         "includeAll": true,
         "multi": true,
         "allValue": ".*",
-        "current": { "text": "All", "value": "$__all" }
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "severity",
+        "label": "Level",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "severity",
+          "stream": "",
+          "type": 1
+        },
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": [
+            "error",
+            "critical"
+          ],
+          "value": [
+            "error",
+            "critical"
+          ]
+        },
+        "options": [],
+        "hide": 0
       }
     ]
   },
@@ -29,12 +78,23 @@
     {
       "type": "timeseries",
       "title": "Log rate by service",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "loki", "uid": "loki" },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
           "expr": "sum by (service) (count_over_time({service=~\"$service\"}[5m]))",
           "legendFormat": "{{service}}"
         }
@@ -42,23 +102,42 @@
     },
     {
       "type": "timeseries",
-      "title": "Error rate by service (severity=error/critical)",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "title": "Log rate by level",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (service) (count_over_time({service=~\"$service\", severity=~\"error|critical\"}[5m]))",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (service) (count_over_time({service=~\"$service\", severity=~\"${severity:pipe}\"}[5m]))",
           "legendFormat": "{{service}}"
         }
       ]
     },
     {
       "type": "logs",
-      "title": "Recent errors",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "title": "Recent logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
       "options": {
         "showTime": true,
         "wrapLogMessage": true,
@@ -70,8 +149,11 @@
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{service=~\"$service\", severity=~\"error|critical\"} | json"
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{service=~\"$service\", severity=~\"${severity:pipe}\"} | json"
         }
       ]
     }
