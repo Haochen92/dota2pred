@@ -37,9 +37,11 @@ export default function Navbar() {
           <Link href="/">
             <Image
               src="/Logo.svg"
-              h={{ base: 60, sm: '100%' }} // Smaller logo on mobile
+              width={210} // intrinsic SVG size (210x80): reserves aspect ratio so the LCP logo doesn't shift layout
+              height={80}
+              h={{ base: 60, sm: '100%' }} // CSS display size (smaller on mobile); aspect ratio held by width/height above
               w="auto"
-              alt="logo"
+              alt="Dota Oracle logo"
             />
           </Link>
 

@@ -20,7 +20,7 @@ export default function NavMenu({ links }: NavMenuProps) {
 
   return (
     <>
-      <Burger opened={opened} size="md" color="var(--mantine-color-gray-1)" onClick={open} />
+      <Burger opened={opened} size="md" color="var(--mantine-color-gray-1)" onClick={open} aria-label="Open navigation menu" />
       <Drawer
         opened={opened}
         onClose={close}

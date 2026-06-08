@@ -8,6 +8,17 @@ import localFont from 'next/font/local';
 import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
 import Providers from './Providers';
 
+// Default document metadata for every route. Page files override `title` via the template
+// (e.g. "Match Tracker | Dota Oracle") and may set their own description.
+export const metadata = {
+  title: {
+    default: 'Dota Oracle',
+    template: '%s | Dota Oracle',
+  },
+  description:
+    'Real-time Dota 2 match outcome prediction: live pro-match predictions, an interactive draft predictor, and model performance analytics.',
+};
+
 const Apercu = localFont({
   src: [
     {
