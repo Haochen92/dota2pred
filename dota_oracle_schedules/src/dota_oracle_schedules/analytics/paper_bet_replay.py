@@ -21,6 +21,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from prefect import flow
 from sqlmodel import select
 
 from dota_oracle_common.models.inference import MatchPredictionTable
@@ -92,7 +93,7 @@ def evaluate_bet(
 
 def _p_radiant(pred: MatchPredictionTable) -> Optional[float]:
     """P(radiant win) from a stored prediction. Assumes prediction_probability is P(radiant win)."""
-    return pred.prediction_probability
+    return None if pred.prediction_probability is None else float(pred.prediction_probability)
 
 
 async def _load(session, predictor_name: Optional[str]):
@@ -247,6 +248,25 @@ def _print_report(r: dict) -> None:
     if r["brier"] is not None:
         print(f"  Brier              : {r['brier']:.4f}")
     print(f"  bankroll Kelly     : ${r['final_bankroll_kelly']:,.2f}  (flat ${r['final_bankroll_flat']:,.2f})")
+
+
+@flow(name="paper_bet_replay")
+async def paper_bet_replay_flow(
+    predictor: Optional[str] = None,
+    tau: float = 0.03,
+    kelly_fraction: float = 0.25,
+    bankroll: float = 1000.0,
+) -> List[dict]:
+    """Scheduled entry point. Re-runs the replay (idempotent) so newly-settled outcomes get picked
+    up; defaults replay all predictors. Logs a one-line summary per predictor for Loki/Prefect."""
+    cfg = BetConfig(tau=tau, kelly_fraction=kelly_fraction)
+    reports = await run_replay(predictor_name=predictor, cfg=cfg, starting_bankroll=bankroll)
+    for r in reports:
+        logger.info(
+            f"paper_bet_replay[{r['predictor']}]: bets={r['n_bets']} settled={r['n_settled']} "
+            f"pnl={r['pnl']} roi={r['roi']} brier={r['brier']} bankroll={r['final_bankroll_kelly']}"
+        )
+    return reports
 
 
 def main() -> None:

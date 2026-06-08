@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from dota_oracle_common.models.odds import MatchOddsSnapshotTable
-from live_orchestrator_app.scripts.paper_bet_replay import BetConfig, full_kelly_fraction, evaluate_bet
+from dota_oracle_schedules.analytics.paper_bet_replay import BetConfig, full_kelly_fraction, evaluate_bet
 
 
 def _snap(a_bid=0.58, a_ask=0.60, a_liq=50_000, b_bid=0.38, b_ask=0.40, b_liq=50_000) -> MatchOddsSnapshotTable:

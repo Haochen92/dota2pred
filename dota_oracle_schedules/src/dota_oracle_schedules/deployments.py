@@ -37,6 +37,11 @@ sync_pro_matches = flow.from_source(
     entrypoint="dota_oracle_schedules/data_fetching/sync_pro_matches.py:sync_pro_matches_flow",
 )
 
+paper_bet_replay = flow.from_source(
+    source="./",
+    entrypoint="dota_oracle_schedules/analytics/paper_bet_replay.py:paper_bet_replay_flow",
+)
+
 collect_public_matches_incremental = flow.from_source(
     source="./",
     entrypoint="dota_oracle_schedules/data_fetching/fetch_public_matches.py:collect_public_matches_incremental_flow",
@@ -73,6 +78,17 @@ async def create_deployment():
         concurrency_limit=1,
     )
     logger.info("Deployment 'fetch_completed_matches' applied successfully.")
+
+    await paper_bet_replay.deploy(
+        # Once a day is plenty: paper betting has no execution, outcomes lag hours, and the replay
+        # recomputes from scratch (idempotent) so a daily run settles whatever has since completed.
+        # Runs at 07:00, after the 06:00 completion batch has landed fresh outcomes.
+        name="paper_bet_replay",
+        work_pool_name="dota_oracle_scheduler",
+        cron="0 7 * * *",
+        concurrency_limit=1,
+    )
+    logger.info("Deployment 'paper_bet_replay' applied successfully.")
 
     await scheduled_feature_engineering_and_inference_backfill.deploy(
         name="scheduled_feature_engineering_and_inference_backfill",
