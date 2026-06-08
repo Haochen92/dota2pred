@@ -1,3 +1,4 @@
+import React from 'react';
 import { Group, Stack } from '@mantine/core';
 import HeroIcon from '@/components/icons/HeroIcon';
 import { TextMdRegular } from '@/components/typography/TextVariants';
@@ -7,7 +8,7 @@ type TeamDisplayProps = {
     heroPicks: number[];
 };
 
-export default function TeamDisplay({ teamName, heroPicks }: TeamDisplayProps) {
+function TeamDisplay({ teamName, heroPicks }: TeamDisplayProps) {
     return (
         <Stack align="flex-start" justify="center" gap={4} flex={2.5} h='100%' pt={8} pb={8} pl={12} pr={12}>
             <Group
@@ -25,3 +26,5 @@ export default function TeamDisplay({ teamName, heroPicks }: TeamDisplayProps) {
         </Stack>
     );
 }
+
+export default React.memo(TeamDisplay);

@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useCallback, useMemo } from "react";
 import { useForm } from "@mantine/form";
 import type { DraftContextType, FormValues, ActiveSlot } from "@/types/domain";
 import type { PredictionResponse } from "@/types/contracts";
@@ -21,7 +21,7 @@ export function DraftProvider({children}: {children: React.ReactNode}) {
         }
     });
 
-    const handleHeroPick = ( heroId: number ) => {
+    const handleHeroPick = useCallback(( heroId: number ) => {
         const { activeSlot } = form.values;
         if (!activeSlot) return;
 
@@ -41,18 +41,18 @@ export function DraftProvider({children}: {children: React.ReactNode}) {
             // If the next slot is already filled, clear activeSlot
             form.setFieldValue('activeSlot', null);
         }
-    }
+    }, [form]);
 
 
-    const handleRemoveHero = (slot: ActiveSlot)  => {
+    const handleRemoveHero = useCallback((slot: ActiveSlot)  => {
         if (!slot) return; // Safety check for null activeSlot
         const { team, index } = slot;
         const valueKey = `${team}.${index}`;
 
         form.setFieldValue(valueKey, null);
-    };
+    }, [form]);
 
-    const handleSubmit = async (values: FormValues) : Promise<PredictionResponse | null> => {
+    const handleSubmit = useCallback(async (values: FormValues) : Promise<PredictionResponse | null> => {
         try {
             const prediction = await fetchDraftPrediction(values);
             return prediction;
@@ -60,10 +60,15 @@ export function DraftProvider({children}: {children: React.ReactNode}) {
             console.error("Error fetching prediction:", error);
             return null;
         }
-    }
+    }, []);
+
+    const value = useMemo(
+        () => ({ form, handleHeroPick, handleRemoveHero, handleSubmit }),
+        [form, handleHeroPick, handleRemoveHero, handleSubmit]
+    );
 
     return (
-        <DraftContext.Provider value={{ form, handleHeroPick, handleRemoveHero, handleSubmit }}>
+        <DraftContext.Provider value={value}>
             {children}
         </DraftContext.Provider>
     );

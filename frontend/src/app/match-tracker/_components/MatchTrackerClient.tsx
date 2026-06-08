@@ -17,8 +17,8 @@ import { useFilterState } from '@/hooks/useFilterState';
 import useMatchTableData from '@/hooks/useMatchTableData';
 
 export default function MatchTrackerClient() {
-  const { page, filters, handlePageChange, handleFiltersChange } = useFilterState();
-  const { matchTableData, totalPages, completedError, isValidating } = useMatchTableData();
+  const { page, pageSize, filters, handlePageChange, handleFiltersChange } = useFilterState();
+  const { matchTableData, totalPages, completedError, isValidating } = useMatchTableData({ page, pageSize, filters });
 
   return (
     <Container size={1280} c="white" pl={0} pr={0}>

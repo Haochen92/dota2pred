@@ -1,9 +1,10 @@
+import React from "react";
 import HeroIcon from "@/components/icons/HeroIcon";
 import type { SelectableHeroProps } from "@/types/domain";
 import { UnstyledButton } from "@mantine/core";
 import classes from "../../draft-predictor.module.css";
 
-export default function SelectableHero({
+function SelectableHero({
     hero_id,
     hero_name,
     minHeight = 45,
@@ -36,3 +37,5 @@ export default function SelectableHero({
         </UnstyledButton>
     );
 }
+
+export default React.memo(SelectableHero);

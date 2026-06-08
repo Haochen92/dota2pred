@@ -5,16 +5,24 @@ import useSWR from 'swr';
 import fetchModelHistory from '@/api-client/fetch-model-history';
 import { weightedMean } from '@/utils/weighted-mean';
 import { Title, NumberFormatter, Center, Loader } from '@mantine/core';
+import type { ModelHistoryRequest, AggregateBy, HistoryRange } from '@/types/contracts';
 
 // Same params as the Model History 7D card so the two figures are obviously the
 // same request. The weighted mean below is bucketing-invariant, so the daily
 // aggregation here produces an identical number to any other aggregate_by.
-const fetcher = () => fetchModelHistory({ history_range: 7, aggregate_by: 1 });
+//
+// Share SWR cache with ModelHistoryClient by using the identical key shape
+// ({ historyRange, aggregateBy }) and fetcher args — SWR can only dedupe when
+// the serialized keys match.
+const historyFetcher = ({ historyRange, aggregateBy }: { historyRange: HistoryRange, aggregateBy: AggregateBy }) => {
+    const params: ModelHistoryRequest = { history_range: historyRange, aggregate_by: aggregateBy };
+    return fetchModelHistory(params);
+};
 
 function AccuracyTitle() {
     const { data, error, isLoading } = useSWR(
-        'model-accuracy',
-        fetcher,
+        { historyRange: 7 as HistoryRange, aggregateBy: 1 as AggregateBy },
+        historyFetcher,
         {
             revalidateOnReconnect: true,
             refreshInterval: 60 * 60 * 24 * 1000,

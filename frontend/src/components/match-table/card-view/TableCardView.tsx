@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Group, Stack, Paper, Badge, Box, Collapse, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import Image from 'next/image';
@@ -13,7 +13,7 @@ import brut from '@/styles/brutalist.module.css';
 
 const HARD_DIVIDER = '2px solid var(--mantine-color-gray-6)';
 
-export default function TableCardView({
+function TableCardView({
     matchId,
     tournamentName,
     formattedTime,
@@ -100,3 +100,5 @@ export default function TableCardView({
         </Paper>
     );
 }
+
+export default React.memo(TableCardView);

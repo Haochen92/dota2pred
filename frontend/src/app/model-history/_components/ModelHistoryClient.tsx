@@ -1,13 +1,21 @@
 "use client";
 
 import { Suspense, useState, useMemo, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@mantine/core";
 import useSWR from "swr";
 import fetchModelHistory from "@/api-client/fetch-model-history";
 import { weightedMean } from "@/utils/weighted-mean";
 import type { ModelHistoryRequest, AggregateBy, HistoryRange, ModelHistoryResponse } from "@/types/contracts/index";
 import ModelHistorySkeleton from './ModelHistorySkeleton';
-import ModelHistoryGraphView from './ModelHistoryGraphView';
 import ModelHistoryMobileView from './ModelHistoryMobileView';
+
+// Code-split the recharts-backed desktop chart view so its bundle only loads
+// client-side when this page renders (ssr:false avoids shipping it to the server).
+const ModelHistoryGraphView = dynamic(() => import('./ModelHistoryGraphView'), {
+    ssr: false,
+    loading: () => <Skeleton h={560} radius="md" />,
+});
 
 const historyRangeOptions = [
     { label: '7D', value: '7' },

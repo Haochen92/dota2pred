@@ -1,0 +1,17 @@
+/* Pure-CSS replacement for the former framer-motion pulse. Mirrors the previous
+   3s ease-in-out background + glow loop without shipping an animation runtime. */
+.livePulse {
+  animation: livePulse 3s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    background-color: var(--mantine-color-red-3);
+    box-shadow: 0 0 8px 0px var(--mantine-color-red-3);
+  }
+  50% {
+    background-color: var(--mantine-color-red-4);
+    box-shadow: 0 0 16px 4px var(--mantine-color-red-4);
+  }
+}

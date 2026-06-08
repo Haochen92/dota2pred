@@ -1,4 +1,5 @@
 
+import React from "react";
 import Image from "next/image";
 import { Flex } from "@mantine/core";
 
@@ -9,7 +10,7 @@ type HeroIconProps = {
     minWidth?: number
 }
 
-export default function HeroIcon ({hero_id, hero_name, minHeight, minWidth } : HeroIconProps) {
+function HeroIcon ({hero_id, hero_name, minHeight, minWidth } : HeroIconProps) {
 
     return (
     <Flex
@@ -31,3 +32,5 @@ export default function HeroIcon ({hero_id, hero_name, minHeight, minWidth } : H
     </Flex>
     )
 }
+
+export default React.memo(HeroIcon);

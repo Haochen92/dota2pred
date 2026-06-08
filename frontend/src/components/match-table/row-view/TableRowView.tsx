@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Group, Stack, Flex } from '@mantine/core';
 import { StarIcon } from '@/components/icons/StarIcon';
 import { IconCircleCheckFilled, IconCircleXFilled} from '@tabler/icons-react';
@@ -10,7 +11,7 @@ import { LiveIndicator } from '@/components/motion/LiveIndicator';
 import PredictionDetailsModal from './PredictionDetailsModal';
 import brut from '@/styles/brutalist.module.css';
 
-export default function TableRowView({
+function TableRowView({
     matchId,
     tournamentName,
     formattedTime,
@@ -80,3 +81,5 @@ export default function TableRowView({
         </Group>
     );
 }
+
+export default React.memo(TableRowView);

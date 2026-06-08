@@ -1,11 +1,17 @@
 "use client";
 
-import { Paper, Stack, Group, SegmentedControl, Chip, Table, ScrollArea, Badge, Divider } from '@mantine/core';
+import dynamic from 'next/dynamic';
+import { Paper, Stack, Group, SegmentedControl, Chip, Table, ScrollArea, Badge, Divider, Skeleton } from '@mantine/core';
 import type { HistoryRange, CalibrationPlotPoint } from '@/types/contracts';
 import { dateFormatter } from '@/utils/date-formatter';
 import { TextMdBold } from '@/components/typography/TextVariants';
-import CalibrationPlot from './CalibrationPlot';
 import brut from '@/styles/brutalist.module.css';
+
+// Code-split the calibration chart: it only mounts when the user toggles to it.
+const CalibrationPlot = dynamic(() => import('./CalibrationPlot'), {
+  ssr: false,
+  loading: () => <Skeleton h={400} radius="md" />,
+});
 
 const segClassNames = { root: brut.segRoot, indicator: brut.segIndicator, label: brut.segLabel };
 const METRIC_LABELS: Record<string, string> = { accuracy: 'Accuracy', auc: 'AUC', root_brier: 'Root Brier' };

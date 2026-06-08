@@ -6,15 +6,19 @@ import fetchCompletedMatches from '@/api-client/fetch-completed-matches';
 
 // Hooks
 import useSSEStream from '@/hooks/useSSEStream';
-import { useFilterState } from './useFilterState';
 import { useConstantsStore } from './useConstantsStore';
 
 // Typings
 import type { LiveMatchData, PaginatedMatchesResponse } from '@/types/contracts'
-import type { MatchData } from '@/types/domain';
+import type { MatchData, MatchFilterOptions } from '@/types/domain';
 
-export default function useMatchTableData() {
-    const { page, pageSize, filters} = useFilterState();
+interface UseMatchTableDataArgs {
+    page: number;
+    pageSize: number;
+    filters: MatchFilterOptions;
+}
+
+export default function useMatchTableData({ page, pageSize, filters }: UseMatchTableDataArgs) {
     const liveMatchData: LiveMatchData[] = useSSEStream();
     const { patches, hasFetched, fetchConstants } = useConstantsStore();
 

@@ -34,11 +34,17 @@ type FiltersBarProps = {
 };
 
 export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) {
-  // Fetch Data from global store for filter options
-  const {
-    patches, heroes, leagues, hasFetched, isLoading, fetchConstants,
-    tournamentIdToNameMap, tournamentNameToIdMap
-  } = useConstantsStore();
+  // Fetch Data from global store for filter options. Per-slice selectors so this
+  // component only re-renders when a field it actually uses changes (not on every
+  // store mutation).
+  const patches = useConstantsStore(s => s.patches);
+  const heroes = useConstantsStore(s => s.heroes);
+  const leagues = useConstantsStore(s => s.leagues);
+  const hasFetched = useConstantsStore(s => s.hasFetched);
+  const isLoading = useConstantsStore(s => s.isLoading);
+  const fetchConstants = useConstantsStore(s => s.fetchConstants);
+  const tournamentIdToNameMap = useConstantsStore(s => s.tournamentIdToNameMap);
+  const tournamentNameToIdMap = useConstantsStore(s => s.tournamentNameToIdMap);
 
   // Fetch constants on mount if not already done
   useEffect(() => {
@@ -88,7 +94,7 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
   );
 
   const heroOptions = useMemo(
-    () => (heroes ?? [])
+    () => [...(heroes ?? [])]
     .sort((a, b) => a.hero_id - b.hero_id)
     .map((h) => ({ value: h.hero_id.toString(), label: h.hero_name })),
     [heroes]
@@ -96,7 +102,7 @@ export default function FiltersBar({ filterValues, onChange }: FiltersBarProps) 
 
 
   const leagueOptions = useMemo(
-    () => (leagues?? []).filter((l): l is LeagueData & { name: string } => Boolean(l.name))
+    () => [...(leagues ?? [])].filter((l): l is LeagueData & { name: string } => Boolean(l.name))
     .sort((a, b) => b.leagueid - a.leagueid)
     .map(l => ({value: l.leagueid.toString(), label: l.name})),
     [leagues]
