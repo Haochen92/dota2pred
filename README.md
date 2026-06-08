@@ -1,6 +1,6 @@
 # Dota Oracle: Real-Time Match Prediction Platform
 
-A microservices platform that predicts Dota 2 match outcomes in real time. It ingests live match data from the Steam API, engineers time-decayed features from player and hero histories, runs inference through a trained classifier, and streams predictions to a React frontend via SSE.
+A microservices platform that predicts Dota 2 match outcomes in real time. It ingests live match data from the Steam API, engineers time-decayed features from player and hero histories, runs inference through trained classifiers, and streams predictions to a React frontend via SSE. It also serves an interactive draft predictor and a model-performance dashboard, and optionally captures betting-market odds for offline paper-betting analysis.
 
 ## Architecture
 
@@ -42,69 +42,73 @@ A microservices platform that predicts Dota 2 match outcomes in real time. It in
 
 ### Live Orchestrator (`live_orchestrator_app/`)
 
-The central real-time pipeline. Runs as a Prefect flow on a 2-minute polling cycle, processing matches through 4 sequential stages connected by Redis Streams with consumer groups:
+The central real-time pipeline. Runs as a Prefect flow on a 2-minute polling cycle. Each cycle begins with a DLQ retry sweep, then processes matches through five stages connected by Redis Streams with consumer groups:
 
 ```
-Steam API ──► New Match Detection ──► Feature Engineering ──► Prediction ──► Completion
-                  │                        │                     │              │
-                  ▼                        ▼                     ▼              ▼
-             Redis Stream:            Redis Stream:         Redis Stream:   Match outcome
-             STREAM_NEW_MATCHES       STREAM_PENDING_       STREAM_PENDING_ stored, history
-                                      PREDICTION            COMPLETION      tables updated
+Steam API ─► New Match Detection ─► Feature Engineering ─► Prediction ─► Completion ─► Odds Capture
+                  │                       │                    │             │            (optional)
+                  ▼                       ▼                    ▼             ▼              ▼
+             STREAM_NEW_           STREAM_PENDING_       STREAM_PENDING_  Match outcome  STREAM_PENDING_
+             MATCHES               PREDICTION            COMPLETION       stored         ODDS
 ```
 
-Each stage follows the same pattern: **Data Provider** (reads from stream/API) → **Event Processor** (business logic) → **Orchestrator** (coordinates and publishes to next stream).
+Each stage follows the same pattern: **Data Provider** (reads from stream/API) → **Event Processor** (business logic) → **Orchestrator** (coordinates and publishes to the next stream).
 
 Key design decisions:
-- **Redis Streams with consumer groups** for exactly-once processing semantics via ACKs
-- **Dead Letter Queue with automatic retry** — failed events are moved to per-stage DLQ hashes. A `DlqRetryService` sweeps all DLQ hashes at the start of each cycle, reinjecting events that haven't exhausted their retry limit (default 3). Retry counts are tracked in a separate Redis hash (`dlq:retry_counts`) to decouple retry logic from the failure-recording path. Events that exceed max retries remain in the DLQ for manual inspection via a CLI tool
-- **Concurrent event processing** within each stage using `TaskRunner` with semaphore-based concurrency
-- **Stale event recovery** — events stuck for >90 minutes are automatically reclaimed with exponential backoff (5 retries)
-- **DI container** (`dependency-injector`) wires all clients, services, and orchestrators — makes the dependency graph explicit and testable
+- **Redis Streams with consumer groups** — at-least-once delivery with ACKs, combined with idempotent `INSERT...ON CONFLICT` upserts to make reprocessing safe (effective exactly-once).
+- **Dead Letter Queue with automatic retry** — failed events are moved to per-stage DLQ hashes. A `DlqRetryService` sweeps all DLQ hashes at the start of each cycle, reinjecting events that haven't exhausted their retry limit (default 3). Retry counts are tracked in a separate Redis hash (`dlq:retry_counts`) to decouple retry logic from the failure-recording path. Events that exceed max retries remain in the DLQ for manual inspection via a CLI tool.
+- **Concurrent event processing** within each stage using `TaskRunner` with semaphore-based concurrency.
+- **Stale event recovery** — events stuck for >90 minutes are reclaimed with exponential backoff (5 retries).
+- **Isolated terminal odds stage** — the optional odds-capture stage (see below) has its own stream and consumer group and never writes the shared match-status hash, so it cannot interfere with the prediction path. It is gated by `ODDS_CAPTURE_ENABLED` (off by default).
+- **DI container** (`dependency-injector`) wires all clients, services, and orchestrators, making the dependency graph explicit and testable.
+
+### Odds Capture & Paper-Betting (optional, off by default)
+
+When `ODDS_CAPTURE_ENABLED` is set, the fifth pipeline stage snapshots Polymarket order-book odds for a pro match at the moment its draft-time prediction is generated, storing them in `match_odds_snapshots`. A separate daily Prefect flow (`paper_bet_replay`, 07:00) joins those snapshots with model predictions and final outcomes and replays a betting rule (edge threshold + fractional Kelly, with a configurable confidence floor) to record hypothetical profit/loss in `match_paper_bets`. No real money is involved; capture and decision are decoupled so the rule can be re-tuned and replayed without re-fetching. Results are surfaced on a Grafana dashboard.
 
 ### API Service (`services/api_service/`)
 
 FastAPI gateway with three main concerns:
 
-- **Inference endpoints** (`/inference/`) — accepts hero drafts, transforms features via the shared pipeline package, calls BentoML, returns predictions
-- **Match data** (`/matches/`) — paginated match history with eager-loaded relationships (`selectinload`) to avoid N+1 queries
-- **Live streaming** (`/streaming/`) — SSE endpoint backed by a `PubSubHub` that fans out Redis pub/sub messages to connected clients. Sends cached snapshot on connect, then streams updates with 30s heartbeat
+- **Inference endpoints** (`/inference/`) — accept hero drafts, transform features via the shared pipeline package, call BentoML, return predictions.
+- **Match data** (`/matches/`) — paginated match history with eager-loaded relationships (`selectinload`) to avoid N+1 queries.
+- **Live streaming** (`/streaming/`) — SSE endpoint backed by a `PubSubHub` that fans out Redis pub/sub messages to connected clients. Sends a cached snapshot on connect, then streams updates with a 30s heartbeat.
 
 Request-scoped database sessions with automatic commit/rollback. App-scoped singletons for Redis, HTTP clients, and service instances managed via FastAPI's lifespan context manager.
 
 ### Scheduler (`dota_oracle_schedules/`)
 
-Prefect-based batch ETL for data that doesn't need real-time processing:
+Prefect-based batch ETL for data that doesn't need real-time processing. All flows are deployed to the `dota_oracle_scheduler` work pool.
 
-| Schedule | Flow | Purpose |
+| Schedule (UTC) | Flow | Purpose |
 |---|---|---|
-| 00:00, 12:00 | `fetch_completed_matches` | Ingest match outcomes from OpenDota |
-| 00:30, 12:30 | `feature_engineering_backfill` | Generate features for newly completed matches |
-| 01:00, 13:00 | `fetch_hero_data` | Sync hero metadata |
+| Every 3h | `fetch_completed_matches` | Ingest completed-match outcomes from OpenDota (skips already-stored, falls back to paid key on 429) |
+| 00:30, 12:30 | `scheduled_feature_engineering_and_inference_backfill` | Generate features and run inference for newly completed matches |
+| 01:00, 13:00 | `fetch_heros_data` | Sync hero metadata |
 | 02:00, 14:00 | `fetch_patch_data` | Sync patch metadata |
 | 03:00 | `fetch_league_data` | Sync league metadata |
-| Fridays | `collect_public_matches` | Weekly public match collection for training data |
-| Every 3 days | `clear_prefect_cache` | Maintenance |
+| 05:00 | `collect_public_matches_incremental` | Daily top-up of public matches (feeds the public model's win-rate feature) |
+| 07:00 | `paper_bet_replay` | Replay the paper-betting rule over captured odds (active only when odds capture is enabled) |
+| Every 3 days, 02:00 | `clear_prefect_cache` | Maintenance |
+| Manual | `sync_pro_matches`, `backfill_public_matches_by_patches`, `backup_db` | On-demand flows (no schedule) |
 
-The backfill pipeline is the most complex flow — it determines feature coverage gaps, warms up decay state history (5x half-life window = 300 days), processes in 2000-match batches, and runs inference on the backfilled features.
-
-Scheduling uses separate Prefect work pools: `dota_oracle_scheduler` for batch jobs, `dota-work-pool` for live orchestration.
+The feature-engineering/inference backfill is the most involved flow: it determines feature coverage gaps, warms up decay-state history (5× the 60-day half-life ≈ 300 days), processes in 2000-match batches, and runs inference on the backfilled features.
 
 ### ML Inference (`services/inference_service/`)
 
-BentoML service hosting two scikit-learn classifiers:
-- `/predict/pro` — professional match predictions
-- `/predict/public` — public match predictions
+BentoML service hosting two scikit-learn classifiers, each returning `P(radiant_win)` via `predict_proba`:
+- `/predict/pro` — professional-match predictions (full match context: team, player-hero, hero, and matchup features).
+- `/predict/public` — public-match / draft predictions (hero-only features, since a draft is all the input available).
 
-Each model returns `P(radiant_win)` via `predict_proba`. The API service handles feature preparation; BentoML only handles raw inference.
+The API service prepares features; BentoML handles raw inference only. Both models compute their features at request time from recent match history rather than encoding patch-specific patterns in their weights, so they are not retrained on a per-patch cadence. The professional model has held ~57–58% accuracy (Brier ≈ 0.24) across patches over roughly a year.
 
 ### Frontend (`frontend/`)
 
 Next.js 15 (App Router) with React 19, TypeScript, and Mantine v7:
 
-- **Match Tracker** — live + historical matches in a unified paginated view. Live matches stream via SSE; completed matches fetched via SWR with `keepPreviousData`
-- **Draft Predictor** — interactive hero draft tool. Pick 10 heroes, get a real-time win probability prediction
-- **Model History** — performance analytics dashboard with calibration plots, time-series accuracy, ROC-AUC, and Brier score (computed from pandas/sklearn on the backend)
+- **Match Tracker** — live + historical matches in a unified paginated view. Live matches stream via SSE; completed matches are fetched via SWR with `keepPreviousData`.
+- **Draft Predictor** — interactive hero draft tool. Pick 10 heroes, get a win-probability prediction.
+- **Model History** — performance analytics with calibration plots, time-series accuracy, ROC-AUC, and Brier score (computed with pandas/sklearn on the backend), shown in a parallel-route intercepting modal.
 
 State management: Zustand for global constants (heroes, patches, leagues), React Context for draft state, React Query + SWR for server state. Mobile-responsive with separate desktop/mobile component variants.
 
@@ -114,46 +118,46 @@ State management: Zustand for global constants (heroes, patches, leagues), React
 
 Data layer shared by all Python services:
 
-- **Models** — SQLModel tables (ORM + Pydantic validation in one class). Schema/table split: Pydantic DTOs for API contracts, SQLModel classes for persistence
-- **Repositories** — generic `BaseRepository` with batched inserts, upserts (`INSERT...ON CONFLICT`), time-range queries, and eager-loading. Specialized repositories per domain entity
-- **Infrastructure** — async PostgreSQL (SQLAlchemy), Redis connection pooling, S3 client, HTTP client provider, Loki-integrated logging
+- **Models** — SQLModel tables (ORM + Pydantic validation in one class). Schema/table split: Pydantic DTOs for API contracts, SQLModel classes for persistence.
+- **Repositories** — generic `BaseRepository` with batched inserts, upserts (`INSERT...ON CONFLICT`), time-range queries, and eager-loading. Specialized repositories per domain entity.
+- **Infrastructure** — async PostgreSQL (SQLAlchemy), Redis connection pooling, S3 client, HTTP client provider, Loki-integrated logging.
 
 ### `dota_oracle_pipeline`
 
 ETL and feature engineering:
 
-- **Extraction** — async clients for Steam Web API and OpenDota API with retry logic (tenacity) and rate limiting
-- **Feature Engineering** — three-tier time-decayed features:
-  - **Hero features**: global hero win rates with exponential decay (half-life configurable)
-  - **Team features**: team win rates + head-to-head matchup history with Bayesian priors
-  - **Player-hero features**: per-player hero proficiency with two-level Bayesian smoothing (player prior → hero prior → global prior)
-- **Inference** — client for BentoML with retry and backoff
+- **Extraction** — async clients for the Steam Web API, OpenDota API, and Polymarket, with retry logic (tenacity) and rate limiting.
+- **Feature Engineering** — time-decayed features:
+  - **Hero features**: global hero win rates with exponential decay (configurable half-life).
+  - **Team features**: team win rates + head-to-head matchup history with Bayesian priors.
+  - **Player-hero features**: per-player hero proficiency with two-level Bayesian smoothing (player prior → hero prior → global prior).
+- **Inference** — client for BentoML with retry and backoff.
 
-The decay formula uses configurable half-lives to weight recent matches more heavily. History state is stored per-entity per-match for causally correct "time-travel" feature lookups — preventing data leakage by only using information available at prediction time.
+The decay formula uses configurable half-lives to weight recent matches more heavily. History state is stored per-entity per-match for causally correct "time-travel" feature lookups, using only information available at prediction time to avoid data leakage.
 
 ## Testing
 
-92 test files across 4 levels:
+Test files across five levels, plus shared test infrastructure:
 
 ```
 tests/
-├── unit_test/      27 files — business logic, feature engineering, services
-├── integration/    33 files — real PostgreSQL + Redis via TestContainers
-├── end_to_end/      5 files — full Docker Compose stack
-├── contract/        1 file  — external API contract validation
-├── factories/       4 files — Polyfactory-based test data generation
-└── fixtures/       10 files — pytest fixture infrastructure
+├── unit_test/      47 files — business logic, feature engineering, services
+├── integration/    39 files — real PostgreSQL + Redis via TestContainers
+├── end_to_end/      6 files — full Docker Compose stack
+├── contract/        4 files — external API contract validation
+├── factories/       5 files — Polyfactory-based test data generation
+└── fixtures/       13 files — pytest fixture infrastructure
 ```
 
 CI runs on every push/PR: Ruff → Black → MyPy → unit tests → integration tests → E2E tests.
 
 ## Infrastructure
 
-- **Docker Compose** with multi-stage builds (slim Python base, separate build/runtime stages)
-- **Caddy** reverse proxy with Cloudflare origin TLS certificates
-- **Alembic** for database migrations
-- **Grafana + Loki** for centralized logging
-- **Pre-commit hooks**: Black, Ruff, YAML validation, large file checks
+- **Docker Compose** with multi-stage builds (slim Python base, separate build/runtime stages).
+- **Caddy** reverse proxy with Cloudflare origin TLS certificates.
+- **Alembic** for database migrations.
+- **Grafana + Loki** for centralized logging and dashboards (pipeline health, model performance, paper-betting).
+- **Pre-commit hooks**: Black, Ruff, YAML validation, large-file checks.
 
 ## Quick Start
 
@@ -188,9 +192,9 @@ poetry run pytest tests/end_to_end/            # E2E (needs full stack)
 ## Known Issues
 
 ### Prefect Server Memory Creep
-The `prefect-server` container gradually leaks memory over time, growing from ~200MB at startup to several GB over days. This is a known upstream issue with the Prefect scheduler.
+The `prefect-server` container gradually grows in memory over time, from ~200MB at startup to several GB over days — a known upstream issue with the Prefect scheduler.
 
-**Mitigation**: A `mem_limit: 512m` is set on the container in `docker-compose.yml`. When the container exceeds this limit, Docker OOM-kills it and `restart: always` brings it back up within ~10-15 seconds. This may cause one missed polling cycle (2-minute interval) in the worst case. The scheduling flows and workers in `live-orchestrator-app` are unaffected during the restart.
+**Mitigation**: a `mem_limit: 512m` is set on the container in `docker-compose.yml`. When the container exceeds this limit, Docker OOM-kills it and `restart: always` brings it back up within ~10–15 seconds. In the worst case this drops one 2-minute polling cycle. The scheduling flows and workers in `live-orchestrator-app` are unaffected during the restart.
 
 ## License
 
