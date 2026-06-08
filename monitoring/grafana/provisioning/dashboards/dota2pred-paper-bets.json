@@ -18,7 +18,7 @@
   "editable": true,
   "graphTooltip": 0,
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "title": "Dota2Pred \u2014 Paper Betting",
   "uid": "dota-paper-bets",
   "tags": [
@@ -299,6 +299,146 @@
           "rawQuery": true,
           "refId": "A",
           "rawSql": "SELECT m.start_time, pb.match_id, pb.bet_side, round(pb.entry_price::numeric, 3) AS entry, round(pb.edge::numeric, 3) AS edge, pb.winner, round(pb.pnl::numeric, 2) AS pnl FROM match_paper_bets pb JOIN matches m ON m.match_id = pb.match_id WHERE pb.bet_side IS NOT NULL ORDER BY m.start_time DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Avg edge at entry (best side)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "dota_postgres"
+      },
+      "description": "Mean of the larger of (model_p - radiant ask) and (1-model_p - dire ask) across all captured matches. The model's average value vs the price, before any betting gate. >0 = model finds value.",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dota_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT avg(greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask)) AS avg_edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "% captured matches with edge > tau (0.03)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "dota_postgres"
+      },
+      "description": "Share of captured matches where the best-side edge clears tau, i.e. how often a bettable edge exists.",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dota_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT avg((greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) > 0.03)::int) AS pct_bettable FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "histogram",
+      "title": "Edge-at-entry distribution (best side, all captured)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "dota_postgres"
+      },
+      "description": "Distribution of best-side edge across all captured matches (pre-gate). Mass to the right of 0 = the model systematically beats the price; centred on/below 0 = it doesn't.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 70
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "bucketSize": 0.02,
+        "bucketOffset": 0,
+        "combine": false,
+        "legend": {
+          "showLegend": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dota_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A",
+          "rawSql": "SELECT greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) AS edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL"
         }
       ]
     }
