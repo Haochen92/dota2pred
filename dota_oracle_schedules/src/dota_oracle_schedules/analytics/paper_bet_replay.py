@@ -242,8 +242,11 @@ async def run_replay(predictor_name: Optional[str], cfg: BetConfig, starting_ban
             all_rows.extend(rows)
             reports.append(report)
 
-        async with session.begin():
-            await OddsRepository(session=session).upsert_paper_bets(all_rows)
+        # _load()'s reads have already autobegun a transaction on this session, so an explicit
+        # session.begin() here would raise "a transaction is already begun". Commit the open
+        # transaction (now carrying the upsert writes) directly instead.
+        await OddsRepository(session=session).upsert_paper_bets(all_rows)
+        await session.commit()
 
     for r in reports:
         _print_report(r)
