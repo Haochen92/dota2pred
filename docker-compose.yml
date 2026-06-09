@@ -3,6 +3,7 @@ services:
   db:
     image: postgres:14
     container_name: my-postgres
+    restart: unless-stopped
     env_file: ./.env.production
     ports:
       - "6000:5432"
@@ -20,6 +21,7 @@ services:
   redis:
     image: redis:latest
     container_name: my-redis
+    restart: unless-stopped
     # Cap memory as a backstop (peak was ~148M). Keep noeviction: this is a work queue, so
     # evicting stream/PEL/status keys would corrupt pipeline state -- a full Redis should
     # reject writes (loud, recoverable), not silently drop data. Data is bounded by stream
@@ -42,6 +44,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin-web
+    restart: unless-stopped
     env_file: ./.env.production
     ports:
       - "5050:80"
@@ -59,7 +62,7 @@ services:
   prefect-server:
     image: prefecthq/prefect:3-latest
     container_name: prefect-server
-    restart: always
+    restart: unless-stopped
     command: prefect server start --host 0.0.0.0
     mem_limit: 512m
     env_file: ./.env.production
@@ -82,6 +85,7 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     container_name: dota-frontend
+    restart: unless-stopped
     ports:
       - "3050:3000"
     env_file: ./.env.production
@@ -104,6 +108,7 @@ services:
       context: .
       dockerfile: ./services/api_service/Dockerfile
     container_name: api-service
+    restart: unless-stopped
     ports:
       - "8000:8000"
     env_file: ./.env.production
@@ -134,6 +139,7 @@ services:
       context: .
       dockerfile: ./live_orchestrator_app/Dockerfile
     container_name: live-orchestrator-app
+    restart: unless-stopped
     env_file: ./.env.production
     environment:
       - SERVICE_NAME=live-orchestrator
@@ -154,6 +160,7 @@ services:
       context: .
       dockerfile: ./dota_oracle_schedules/Dockerfile
     container_name: dota-oracle-schedules
+    restart: unless-stopped
     env_file: ./.env.production
     environment:
       - SERVICE_NAME=dota-oracle-schedules
@@ -172,6 +179,7 @@ services:
   bentoml:
     container_name: bentoml
     image: dota_prediction_service:latest
+    restart: unless-stopped
     ports:
       - "3333:3000"
     healthcheck:
@@ -187,6 +195,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
+    restart: unless-stopped
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -202,6 +211,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    restart: unless-stopped
     # Admin creds come from .env.production (GF_SECURITY_ADMIN_USER/PASSWORD). Without a
     # persistent volume Grafana resets its password, datasource and dashboards on every
     # recreate -- the volume + file provisioning below make the setup reproducible.
