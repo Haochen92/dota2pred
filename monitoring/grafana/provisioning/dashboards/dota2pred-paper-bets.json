@@ -18,8 +18,8 @@
   "editable": true,
   "graphTooltip": 0,
   "schemaVersion": 39,
-  "version": 2,
-  "title": "Dota2Pred \u2014 Paper Betting",
+  "version": 3,
+  "title": "Dota2Pred — Paper Betting",
   "uid": "dota-paper-bets",
   "tags": [
     "dota2pred",
@@ -51,7 +51,14 @@
         "defaults": {
           "unit": "currencyUSD",
           "mappings": [],
-          "decimals": 2
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -98,7 +105,14 @@
         "defaults": {
           "unit": "percentunit",
           "mappings": [],
-          "decimals": 1
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -144,7 +158,14 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -191,7 +212,14 @@
         "defaults": {
           "unit": "none",
           "mappings": [],
-          "decimals": 4
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -223,11 +251,12 @@
     },
     {
       "type": "timeseries",
-      "title": "Cumulative PnL (settled, by match start)",
+      "title": "Cumulative PnL: Kelly vs flat baseline (settled, by match start)",
       "datasource": {
         "type": "postgres",
         "uid": "dota_postgres"
       },
+      "description": "Compounding fractional-Kelly bankroll vs a fixed 1%-of-starting-bankroll flat stake per bet, over settled bets. Flat is the does-edge-weighting-beat-naive-staking baseline.",
       "gridPos": {
         "h": 9,
         "w": 24,
@@ -240,14 +269,23 @@
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 2
+            "lineWidth": 2,
+            "spanNulls": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Flat baseline" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 6] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }
+            ]
+          }
+        ]
       },
       "options": {
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         },
         "legend": {
@@ -265,7 +303,7 @@
           "format": "time_series",
           "rawQuery": true,
           "refId": "A",
-          "rawSql": "SELECT m.start_time AS \"time\", sum(pb.pnl) OVER (ORDER BY m.start_time) AS cumulative_pnl FROM match_paper_bets pb JOIN matches m ON m.match_id = pb.match_id WHERE pb.pnl IS NOT NULL ORDER BY m.start_time"
+          "rawSql": "SELECT m.start_time AS \"time\", sum(pb.pnl) OVER (ORDER BY m.start_time) AS \"Kelly\", sum(pb.flat_pnl) OVER (ORDER BY m.start_time) AS \"Flat baseline\" FROM match_paper_bets pb JOIN matches m ON m.match_id = pb.match_id WHERE pb.pnl IS NOT NULL ORDER BY m.start_time"
         }
       ]
     },
@@ -284,7 +322,24 @@
       },
       "fieldConfig": {
         "defaults": {},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "pnl" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "green", "value": 0 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true
@@ -304,12 +359,12 @@
     },
     {
       "type": "stat",
-      "title": "Avg edge at entry (best side)",
+      "title": "Avg edge at entry (best side, real books)",
       "datasource": {
         "type": "postgres",
         "uid": "dota_postgres"
       },
-      "description": "Mean of the larger of (model_p - radiant ask) and (1-model_p - dire ask) across all captured matches. The model's average value vs the price, before any betting gate. >0 = model finds value.",
+      "description": "Mean of the larger of (model_p - radiant ask) and (1-model_p - dire ask), over captured matches with a REAL two-sided book only (both asks in 0.02-0.98 and >= $500 liquidity each side). Empty/one-sided books -- where a phantom 0.001 ask manufactures a huge fake edge -- are excluded so the number reflects genuinely tradeable value. >0 = model beats the price.",
       "gridPos": {
         "h": 4,
         "w": 12,
@@ -320,7 +375,14 @@
         "defaults": {
           "unit": "percentunit",
           "decimals": 2,
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -345,19 +407,19 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT avg(greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask)) AS avg_edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL",
+          "rawSql": "SELECT avg(greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask)) AS avg_edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask BETWEEN 0.02 AND 0.98 AND s.b_best_ask BETWEEN 0.02 AND 0.98 AND s.a_liquidity >= 500 AND s.b_liquidity >= 500 AND p.prediction_probability IS NOT NULL",
           "refId": "A"
         }
       ]
     },
     {
       "type": "stat",
-      "title": "% captured matches with edge > tau (0.03)",
+      "title": "% real-book matches with edge > tau (0.03)",
       "datasource": {
         "type": "postgres",
         "uid": "dota_postgres"
       },
-      "description": "Share of captured matches where the best-side edge clears tau, i.e. how often a bettable edge exists.",
+      "description": "Share of captured matches with a real two-sided book whose best-side edge clears tau, i.e. how often a genuinely bettable edge exists. Empty/one-sided books are excluded.",
       "gridPos": {
         "h": 4,
         "w": 12,
@@ -368,7 +430,14 @@
         "defaults": {
           "unit": "percentunit",
           "decimals": 1,
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          }
         },
         "overrides": []
       },
@@ -393,19 +462,19 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT avg((greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) > 0.03)::int) AS pct_bettable FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL",
+          "rawSql": "SELECT avg((greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) > 0.03)::int) AS pct_bettable FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask BETWEEN 0.02 AND 0.98 AND s.b_best_ask BETWEEN 0.02 AND 0.98 AND s.a_liquidity >= 500 AND s.b_liquidity >= 500 AND p.prediction_probability IS NOT NULL",
           "refId": "A"
         }
       ]
     },
     {
       "type": "histogram",
-      "title": "Edge-at-entry distribution (best side, all captured)",
+      "title": "Edge-at-entry distribution (best side, real two-sided books)",
       "datasource": {
         "type": "postgres",
         "uid": "dota_postgres"
       },
-      "description": "Distribution of best-side edge across all captured matches (pre-gate). Mass to the right of 0 = the model systematically beats the price; centred on/below 0 = it doesn't.",
+      "description": "Distribution of best-side edge across captured matches with a real two-sided book (both asks in 0.02-0.98, >= $500 liquidity each side). Empty/one-sided books are excluded -- they manufacture phantom edges off a 0.001 ask. Mass right of 0 = the model beats the price.",
       "gridPos": {
         "h": 9,
         "w": 24,
@@ -438,7 +507,7 @@
           "format": "table",
           "rawQuery": true,
           "refId": "A",
-          "rawSql": "SELECT greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) AS edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL"
+          "rawSql": "SELECT greatest(p.prediction_probability - s.a_best_ask, (1 - p.prediction_probability) - s.b_best_ask) AS edge FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.skip_reason IS NULL AND s.a_best_ask BETWEEN 0.02 AND 0.98 AND s.b_best_ask BETWEEN 0.02 AND 0.98 AND s.a_liquidity >= 500 AND s.b_liquidity >= 500 AND p.prediction_probability IS NOT NULL"
         }
       ]
     }
