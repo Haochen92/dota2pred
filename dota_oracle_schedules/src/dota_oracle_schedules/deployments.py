@@ -83,10 +83,16 @@ async def create_deployment():
         # Once a day is plenty: paper betting has no execution, outcomes lag hours, and the replay
         # recomputes from scratch (idempotent) so a daily run settles whatever has since completed.
         # Runs at 07:00, after the 06:00 completion batch has landed fresh outcomes.
+        # min_confidence=0.6: only bet sides the model gives >= 60%. The first 137 settled bets
+        # showed edge-alone betting (0.0) loses -- realized win rates track the market price, not
+        # the model, below ~0.55; the >= 0.6 subset is the calibrated region. Full history is
+        # re-scored under this rule on each run; the Grafana Confidence Explorer can still view
+        # other thresholds counterfactually.
         name="paper_bet_replay",
         work_pool_name="dota_oracle_scheduler",
         cron="0 7 * * *",
         concurrency_limit=1,
+        parameters={"min_confidence": 0.6},
     )
     logger.info("Deployment 'paper_bet_replay' applied successfully.")
 
