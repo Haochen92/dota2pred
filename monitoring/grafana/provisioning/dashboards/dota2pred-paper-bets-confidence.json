@@ -1,0 +1,281 @@
+{
+  "uid": "dota-paper-bets-confidence",
+  "title": "Dota2Pred — Paper Betting: Confidence Explorer",
+  "description": "Counterfactual replay of the paper-betting rules at a selectable min_confidence floor. Recomputes evaluate_bet (liquidity >= 500, spread <= 0.06, per-side max edge among sides with model_p >= floor, tau = 0.03, quarter-Kelly compounding) live from match_odds_snapshots + match_predictions + match_outcomes. The stored match_paper_bets table (the scheduled replay's official record) is not touched or read here.",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-90d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "min_confidence",
+        "label": "Min model confidence",
+        "description": "Only bet a side whose model probability is at least this. 0.0 = current scheduled rules (bet on edge alone).",
+        "type": "custom",
+        "query": "0.0, 0.50, 0.55, 0.60, 0.65",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "0.60", "value": "0.60", "selected": true },
+        "options": [
+          { "text": "0.0", "value": "0.0", "selected": false },
+          { "text": "0.50", "value": "0.50", "selected": false },
+          { "text": "0.55", "value": "0.55", "selected": false },
+          { "text": "0.60", "value": "0.60", "selected": true },
+          { "text": "0.65", "value": "0.65", "selected": false }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Bets (settled)",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "auto", "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won, 0.25 * (b.q - b.ask) / (1.0 - b.ask) AS frac FROM best b WHERE b.edge > 0.03) SELECT count(*) AS bets FROM bets WHERE won IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Hit rate",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "auto", "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won FROM best b WHERE b.edge > 0.03) SELECT avg(won::int) AS hit_rate FROM bets WHERE won IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Kelly PnL (compounded)",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "auto", "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won, 0.25 * (b.q - b.ask) / (1.0 - b.ask) AS frac FROM best b WHERE b.edge > 0.03), curve AS (SELECT *, CASE WHEN won THEN 1.0 + frac * (1.0 - ask) / ask ELSE 1.0 - frac END AS mult FROM bets WHERE won IS NOT NULL) SELECT coalesce(1000.0 * exp(sum(ln(mult))) - 1000.0, 0.0) AS kelly_pnl FROM curve",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Flat PnL ($10/bet)",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "auto", "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won FROM best b WHERE b.edge > 0.03) SELECT coalesce(sum(CASE WHEN won THEN (10.0 / ask) * (1.0 - ask) ELSE -10.0 END), 0.0) AS flat_pnl FROM bets WHERE won IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "ROI per $ staked (flat)",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "auto", "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won FROM best b WHERE b.edge > 0.03) SELECT coalesce(sum(CASE WHEN won THEN (10.0 / ask) * (1.0 - ask) ELSE -10.0 END) / nullif(10.0 * count(*), 0), 0.0) AS roi FROM bets WHERE won IS NOT NULL",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Bankroll at min_confidence = $min_confidence: Kelly (compounded) vs flat baseline",
+      "description": "Both series start at $1,000. Bet order = snapshot capture order. Selection rule replayed with the chosen confidence floor; sizing rule unchanged (quarter-Kelly of the model's stated edge).",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "spanNulls": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Flat baseline" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won, 0.25 * (b.q - b.ask) / (1.0 - b.ask) AS frac FROM best b WHERE b.edge > 0.03), curve AS (SELECT *, CASE WHEN won THEN 1.0 + frac * (1.0 - ask) / ask ELSE 1.0 - frac END AS mult, CASE WHEN won THEN (10.0 / ask) * (1.0 - ask) ELSE -10.0 END AS flat_pnl FROM bets WHERE won IS NOT NULL) SELECT captured_at AS \"time\", 1000.0 * exp(sum(ln(mult)) OVER w) AS \"Kelly bankroll\", 1000.0 + sum(flat_pnl) OVER w AS \"Flat baseline\" FROM curve WINDOW w AS (ORDER BY captured_at ROWS UNBOUNDED PRECEDING) ORDER BY captured_at",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "All thresholds at a glance (same data, same rules)",
+      "description": "One row per candidate confidence floor, so the selected value can be judged in context. Small samples at high floors — treat with caution.",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 9, "w": 9, "x": 0, "y": 13 },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": false }, "mappings": [] },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "kelly_pnl" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "flat_pnl" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "hit_rate" },
+            "properties": [ { "id": "unit", "value": "percentunit" }, { "id": "decimals", "value": 1 } ]
+          }
+        ]
+      },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), th AS (SELECT unnest(ARRAY[0.0, 0.50, 0.55, 0.60, 0.65]) AS threshold), sides AS (SELECT th.threshold, sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN th CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= th.threshold), best AS (SELECT DISTINCT ON (threshold, match_id) threshold, match_id, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY threshold, match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won, 0.25 * (b.q - b.ask) / (1.0 - b.ask) AS frac FROM best b WHERE b.edge > 0.03) SELECT threshold, count(*) AS bets, avg(won::int) AS hit_rate, 1000.0 * exp(sum(ln(CASE WHEN won THEN 1.0 + frac * (1.0 - ask) / ask ELSE 1.0 - frac END))) - 1000.0 AS kelly_pnl, sum(CASE WHEN won THEN (10.0 / ask) * (1.0 - ask) ELSE -10.0 END) AS flat_pnl FROM bets WHERE won IS NOT NULL GROUP BY threshold ORDER BY threshold",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Bets under selected threshold",
+      "description": "The counterfactual bet list at the chosen confidence floor. flat_pnl is per-bet ($10 flat stake); Kelly per-bet PnL is path-dependent and shown only in the bankroll chart.",
+      "datasource": { "type": "postgres", "uid": "dota_postgres" },
+      "gridPos": { "h": 9, "w": 15, "x": 9, "y": 13 },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [] },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "flat_pnl" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [ { "displayName": "time", "desc": true } ] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dota_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH snaps AS (SELECT s.match_id, s.captured_at, p.prediction_probability AS p_rad, o.radiant_win, s.a_best_bid, s.a_best_ask, s.a_liquidity, s.b_best_bid, s.b_best_ask, s.b_liquidity FROM match_odds_snapshots s JOIN match_predictions p ON p.match_id = s.match_id AND p.predictor_name = 'logistic_regression_pro_matches' LEFT JOIN match_outcomes o ON o.match_id = s.match_id WHERE s.snapshot_kind = 'entry' AND s.a_best_ask IS NOT NULL AND s.b_best_ask IS NOT NULL AND p.prediction_probability IS NOT NULL), sides AS (SELECT sn.match_id, sn.captured_at, sn.radiant_win, v.side, v.q, v.ask FROM snaps sn CROSS JOIN LATERAL (VALUES ('radiant', sn.p_rad, sn.a_best_ask, sn.a_best_bid, sn.a_liquidity), ('dire', 1.0 - sn.p_rad, sn.b_best_ask, sn.b_best_bid, sn.b_liquidity)) AS v(side, q, ask, bid, liq) WHERE v.ask IS NOT NULL AND v.bid IS NOT NULL AND (v.liq IS NULL OR v.liq >= 500.0) AND (v.ask - v.bid) <= 0.06 AND v.q >= ${min_confidence}::float), best AS (SELECT DISTINCT ON (match_id) match_id, captured_at, radiant_win, side, q, ask, q - ask AS edge FROM sides ORDER BY match_id, (q - ask) DESC), bets AS (SELECT b.*, (b.radiant_win = (b.side = 'radiant')) AS won FROM best b WHERE b.edge > 0.03) SELECT bets.captured_at AS \"time\", bets.match_id, m.radiant_name || ' vs ' || m.dire_name AS matchup, bets.side, round(bets.q::numeric, 3) AS model_p, round(bets.ask::numeric, 3) AS entry_price, round(bets.edge::numeric, 3) AS edge, bets.won, CASE WHEN bets.won IS NULL THEN NULL WHEN bets.won THEN (10.0 / bets.ask) * (1.0 - bets.ask) ELSE -10.0 END AS flat_pnl FROM bets JOIN matches m ON m.match_id = bets.match_id ORDER BY bets.captured_at DESC",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
