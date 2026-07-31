@@ -1,4 +1,4 @@
-from fastapi import Request, status, APIRouter, HTTPException
+from fastapi import Request, Response, status, APIRouter, HTTPException
 import asyncio
 from dota_oracle_common.models.api import LiveStateUpdateRequest
 from dota_oracle_common.utils import get_logger
@@ -44,6 +44,18 @@ async def post_live_state_update(request_payload: LiveStateUpdateRequest, pubsub
     except Exception as e:
         logger.error(f"Failed to publish live update: {e}")
         raise HTTPException(status_code=500, detail="Failed to publish live update")
+
+
+@router.get("/snapshot/live_matches", summary="Latest live-match snapshot (poll fallback)")
+async def get_live_snapshot(pubsub_service: PubSub) -> Response:
+    snapshot = await pubsub_service.get_cached_snapshot(key=LAST_LIVE_SNAPSHOT_KEY)
+    if snapshot is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(
+        content=snapshot.model_dump_json(),
+        media_type="application/json",
+        headers={"Cache-Control": "public, max-age=30"},
+    )
 
 
 async def sse_event_stream(request: Request, hub: PubSubHub, pubsub_service: RedisPubSubService):
