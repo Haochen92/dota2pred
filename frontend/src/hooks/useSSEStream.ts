@@ -7,6 +7,16 @@ export default function useSSEStream() : LiveMatchData[] {
     const [data, setData] = useState<LiveMatchData[]>([]);
 
     useEffect(() => {
+        // Fetch the cached snapshot for a fast first paint; the SSE replay wins if it arrives first
+        fetch(`${API_BASE_URL}/streaming/snapshot/live_matches`)
+            .then(res => (res.status === 200 ? res.json() : null))
+            .then((notification: LiveStateUpdateRequest | null) => {
+                if (notification) {
+                    setData(prev => prev.length > 0 ? prev : notification.live_matches);
+                }
+            })
+            .catch(() => { /* non-fatal: SSE snapshot replay covers this */ });
+
         const eventSource = new EventSource(`${API_BASE_URL}/streaming/sse/live_matches`);
 
         // Log when SSE connection opens
