@@ -5,7 +5,7 @@ from typing import List, Any
 
 from dota_oracle_common.models.live_games.schema import LiveLeagueAPIResponse, ResultData
 
-pytestmark = pytest.mark.asyncio(loop_scope="session")
+pytestmark = [pytest.mark.asyncio(loop_scope="session"), pytest.mark.e2e]
 
 
 class TestContainerValidation:

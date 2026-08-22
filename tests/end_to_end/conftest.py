@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlmodel import SQLModel
+from testcontainers.postgres import PostgresContainer
 
 # --- Imports from your application code ---
 from dota_oracle_common.utils.set_logging import get_logger
@@ -96,18 +97,29 @@ def _build_inference_mock_transport() -> httpx.MockTransport:
 
 
 @pytest.fixture(scope="session")
-def e2e_environment(postgres_container_instance, redis_container_instance) -> Dict[str, str]:
+def e2e_postgres_container_instance():
+    """Own a PostgreSQL container that is isolated from integration tests."""
+    with PostgresContainer("postgres:14-alpine") as postgres:
+        logger.info(
+            f"E2E Postgres container started on {postgres.get_container_host_ip()}:{postgres.get_exposed_port(5432)}"
+        )
+        yield postgres
+        logger.info("E2E Postgres container stopped")
+
+
+@pytest.fixture(scope="session")
+def e2e_environment(e2e_postgres_container_instance, redis_container_instance) -> Dict[str, str]:
     """
     Provides connection details for the E2E environment.
 
-    This reuses the existing Postgres/Redis testcontainers and a mocked
-    inference HTTP backend, avoiding a CI dependency on a prebuilt Bento image.
+    This uses an isolated Postgres testcontainer, the shared Redis testcontainer,
+    and a mocked inference HTTP backend, avoiding a CI dependency on a prebuilt Bento image.
     """
-    db_host = postgres_container_instance.get_container_host_ip()
-    db_port = postgres_container_instance.get_exposed_port(5432)
-    db_user = postgres_container_instance.username
-    db_password = postgres_container_instance.password
-    db_name = postgres_container_instance.dbname
+    db_host = e2e_postgres_container_instance.get_container_host_ip()
+    db_port = e2e_postgres_container_instance.get_exposed_port(5432)
+    db_user = e2e_postgres_container_instance.username
+    db_password = e2e_postgres_container_instance.password
+    db_name = e2e_postgres_container_instance.dbname
     db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
     redis_host = redis_container_instance.get_container_host_ip()
