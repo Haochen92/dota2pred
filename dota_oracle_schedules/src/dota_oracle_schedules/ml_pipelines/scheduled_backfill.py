@@ -27,7 +27,7 @@ from dota_oracle_common.models.inference.schema import (
     ModelPredictionAPIResponse,
 )
 from dota_oracle_common.models.match import MatchTable
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.repositories.features_repository import FeaturesRepository
 from dota_oracle_common.repositories.history_repository import HistoryRepository
 from dota_oracle_common.repositories.match_repository import MatchRepository
@@ -99,8 +99,7 @@ async def determine_backfill_window(predictor_name: str, max_lookback_days: Opti
     Determines the time window for backfilling based on the earliest missing data.
     Returns None if no gap is found or the gap is too old.
     """
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         feat_repo = FeaturesRepository(session)
         pred_repo = PredictionRepository(session)
         history_repo = HistoryRepository(session)
@@ -140,8 +139,7 @@ async def determine_backfill_window(predictor_name: str, max_lookback_days: Opti
 @task(name="Fetch Matches in Window")
 async def fetch_matches_in_window(window: BackfillWindow) -> List[MatchTable]:
     """Fetches all completed match details within the specified time window."""
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         match_repo = MatchRepository(session)
         matches = await match_repo.get_match_details(
             relationship_fields=["outcome"], start_time=window.window_start_time, end_time=window.end_time
@@ -240,8 +238,7 @@ async def store_backfill_data(
         f"team_matchup_states={total_counts['team_matchup_states']}→{filtered_counts['team_matchup_states']}"
     )
 
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         features_repo = FeaturesRepository(session)
         history_repo = HistoryRepository(session)
 
@@ -345,8 +342,7 @@ async def store_predictions(predictions: List[dict], model_metadata: ModelMetaDa
         for p in predictions
     ]
 
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         pred_repo = PredictionRepository(session)
         await pred_repo.store_match_predictions_bulk(to_upsert)
         await session.commit()

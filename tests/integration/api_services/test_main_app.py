@@ -2,7 +2,10 @@
 Integration Test for the Main FastAPI Application.
 """
 
-from unittest.mock import patch, MagicMock
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def test_app_startup_and_basic_functionality(api_layer_client):
@@ -75,38 +78,41 @@ def test_cors_rejects_disallowed_origin():
     assert response.headers.get("access-control-allow-origin") != "*"
 
 
-@patch("api_service.main.DatabaseManager")
-@patch("api_service.main.RedisClientFactory")
-def test_lifespan_startup_and_shutdown(mock_redis_factory, mock_db_manager):
+@pytest.mark.asyncio
+async def test_lifespan_startup_and_shutdown():
     """Test the lifespan context manager for startup and shutdown."""
-    # ARRANGE
-    mock_session_factory = MagicMock()
-    mock_db_manager.get_session_factory.return_value = mock_session_factory
-    mock_redis_client = MagicMock()
-    mock_redis_factory.create_instance.return_value = mock_redis_client
-
-    # Import here to avoid issues with patches
     from api_service.main import lifespan
     from fastapi import FastAPI
 
-    # ACT
+    mock_session_factory = MagicMock()
+    mock_redis_client = MagicMock()
+    mock_http_client = AsyncMock()
+
+    @asynccontextmanager
+    async def resource(value):
+        yield value
+
+    setup = AsyncMock()
+    teardown = AsyncMock()
     app = FastAPI()
 
-    # Test the lifespan context manager
-    async def test_lifespan():
+    with (
+        patch("api_service.main.http_client_provider", side_effect=lambda: resource(mock_http_client)),
+        patch(
+            "api_service.main.database_session_factory_resource",
+            side_effect=lambda: resource(mock_session_factory),
+        ),
+        patch("api_service.main.redis_client_resource", side_effect=lambda: resource(mock_redis_client)),
+        patch("api_service.main.setup_dependencies", setup),
+        patch("api_service.main.teardown_dependencies", teardown),
+    ):
         async with lifespan(app):
-            # ASSERT - During startup
-            assert hasattr(app.state, "db_session_factory")
-            assert hasattr(app.state, "pubsub_service")
-            mock_db_manager.get_session_factory.assert_called_once()
-            mock_redis_factory.create_instance.assert_called_once()
+            assert app.state.db_session_factory is mock_session_factory
+            assert app.state.redis_client is mock_redis_client
+            assert app.state.http_client is mock_http_client
+            setup.assert_awaited_once_with(app)
 
-        # After shutdown
-        mock_db_manager.close_engine.assert_called_once()
-        mock_redis_factory.close_instance.assert_called_once()
-
-    # This would need to be run in an async context in a real test
-    # For now, we're just testing the imports and structure
+    teardown.assert_awaited_once_with(app)
 
 
 def test_app_title_and_version():

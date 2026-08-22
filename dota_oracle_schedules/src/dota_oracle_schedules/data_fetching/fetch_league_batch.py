@@ -1,5 +1,5 @@
 from prefect import flow
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.repositories.leagues_repository import LeaguesRepository
 from dota_oracle_common.models.leagues import LeagueTable, LeagueItem
@@ -13,18 +13,17 @@ logger = get_logger(__name__)
 
 @flow
 async def league_data_orchestrator():
-    # fetch league data from api endpoint
-    league_data = await fetch_league_data()
+    async with database_session_factory_resource() as session_factory:
+        # fetch league data from api endpoint
+        league_data = await fetch_league_data()
 
-    local_session = DatabaseManager.get_session_factory()
-
-    # Store data
-    async with local_session() as session:
-        async with session.begin():
-            try:
-                await store_league_data(session, league_data)
-            except Exception as e:
-                raise e
+        # Store data
+        async with session_factory() as session:
+            async with session.begin():
+                try:
+                    await store_league_data(session, league_data)
+                except Exception as e:
+                    raise e
 
     logger.info("Successfully updated league data")
 

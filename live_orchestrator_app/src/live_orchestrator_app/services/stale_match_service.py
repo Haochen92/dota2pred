@@ -5,6 +5,7 @@ from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_common.models.redis.schema import CompletionPayload, ConsumedEvent, CompletedMatchPayload
 from dota_oracle_common.models.utils.schema import AsyncTask
+from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import OpenDotaClient
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
 from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import List, Optional
@@ -14,7 +15,7 @@ logger = get_logger(__name__)
 
 
 class StaleMatchService:
-    def __init__(self, redis_service: RedisService):
+    def __init__(self, redis_service: RedisService, opendota_client: OpenDotaClient):
         """_summary_
         Audit matches in pending_list of completion_stream.
         Any event which has not been processed within expiry_time
@@ -25,6 +26,7 @@ class StaleMatchService:
             expiry_time (float): duration to exceed to be eligible for claiming (in seconds)
         """
         self.redis = redis_service
+        self.opendota_client = opendota_client
         self.stream = STREAM_PENDING_COMPLETION
         self.group = COMPLETION_GROUP
         # How long to let the FREE /proMatches feed try to resolve a match before we spend a
@@ -153,7 +155,7 @@ class StaleMatchService:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
     async def _fetch_single_completed_match(self, event: ConsumedEvent[CompletionPayload]) -> Optional[bool]:
         match_id = event.payload.match_id
-        match_details = await fetch_match_details(match_id)
+        match_details = await fetch_match_details(match_id, self.opendota_client)
         if match_details is None:
             # Not available on OpenDota yet (404): leave pending, no retry, no DLQ.
             logger.info(f"Match {match_id} not available on OpenDota yet; leaving pending for a later cycle.")

@@ -2,9 +2,9 @@ from typing import List, Optional
 
 from prefect import task
 from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from dota_oracle_common.utils import get_logger, load_workspace_env
-from dota_oracle_common.postgresql import DatabaseManager
 from dota_oracle_common.models.patches import PatchTable
 
 from ..data_extraction.opendota_explorer import find_match_id_by_timestamp
@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 
 @task
-async def hydrate_patch_boundaries_task() -> int:
+async def hydrate_patch_boundaries_task(session_factory: async_sessionmaker[AsyncSession]) -> int:
     """
     Hydrate start_match_id and end_match_id on PatchTable rows that are missing them.
 
@@ -25,7 +25,6 @@ async def hydrate_patch_boundaries_task() -> int:
 
     Returns the number of patches updated.
     """
-    session_factory = DatabaseManager.get_session_factory()
     updated = 0
 
     async with session_factory() as session:

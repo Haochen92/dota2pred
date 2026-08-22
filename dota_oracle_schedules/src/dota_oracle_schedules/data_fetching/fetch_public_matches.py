@@ -5,7 +5,7 @@ from prefect import flow
 from sqlalchemy import select
 
 from dota_oracle_common.utils import get_logger, load_workspace_env
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.models.patches import PatchTable
 from dota_oracle_common.repositories.public_match_repository import PublicMatchRepository
 from dota_oracle_pipeline.data_extraction.public_match_collector import PublicMatchCollector
@@ -71,32 +71,32 @@ async def collect_public_matches_incremental_flow(
     per-patch-after-14-days collector, which paged through hundreds of millions of
     already-unfetchable historical ids for zero inserts (and the bulk of the API bill).
     """
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
-        repo = PublicMatchRepository(session)
-        frontier = await repo.get_max_match_id()
+    async with database_session_factory_resource() as session_factory:
+        async with session_factory() as session:
+            repo = PublicMatchRepository(session)
+            frontier = await repo.get_max_match_id()
 
-    if frontier is None:
-        logger.warning("public_matches is empty; first run will collect whatever the current sample serves.")
-        frontier = 0
+        if frontier is None:
+            logger.warning("public_matches is empty; first run will collect whatever the current sample serves.")
+            frontier = 0
 
-    collector = _build_collector(DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank)
-    result = await collector.collect_incremental(
-        start_match_id=MAX_MATCH_ID_CURSOR,
-        frontier_match_id=frontier,
-        max_pages=max_pages,
-        per_page_sleep=per_page_sleep,
-        use_paid=use_paid,
-    )
-    logger.info(
-        f"Incremental public-match collection inserted {result['total_new']} new rows (frontier was {frontier})."
-    )
+        collector = _build_collector(session_factory, min_rank=min_rank, max_rank=max_rank)
+        result = await collector.collect_incremental(
+            start_match_id=MAX_MATCH_ID_CURSOR,
+            frontier_match_id=frontier,
+            max_pages=max_pages,
+            per_page_sleep=per_page_sleep,
+            use_paid=use_paid,
+        )
+        logger.info(
+            f"Incremental public-match collection inserted {result['total_new']} new rows (frontier was {frontier})."
+        )
 
-    # Keep the rolling window bounded: drop the oldest rows beyond the cap.
-    async with DatabaseManager.get_session_factory()() as session:
-        repo = PublicMatchRepository(session)
-        trimmed = await repo.trim_to_max_rows(max_rows=max_rows, batch_size=TRIM_BATCH_SIZE)
-    logger.info(f"Trimmed {trimmed} old public_matches rows (cap {max_rows}).")
+        # Keep the rolling window bounded: drop the oldest rows beyond the cap.
+        async with session_factory() as session:
+            repo = PublicMatchRepository(session)
+            trimmed = await repo.trim_to_max_rows(max_rows=max_rows, batch_size=TRIM_BATCH_SIZE)
+        logger.info(f"Trimmed {trimmed} old public_matches rows (cap {max_rows}).")
 
 
 @flow(name="Backfill Public Matches By Patches")
@@ -110,28 +110,29 @@ async def backfill_public_matches_by_patches_flow(
     Manually trigger backfill for specific patch versions.
     Skips any patch not found or missing boundaries.
     """
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
-        for pnum in patch_numbers:
-            stmt = select(PatchTable).where(PatchTable.patch_number == pnum)
-            res = await session.execute(stmt)
-            patch: Optional[PatchTable] = res.scalar_one_or_none()
-            if patch is None:
-                logger.warning(f"Patch {pnum} not found. Skipping.")
-                continue
-            if patch.start_match_id is None or patch.end_match_id is None:
-                logger.warning(f"Patch {pnum} is missing boundaries. Skipping.")
-                continue
+    async with database_session_factory_resource() as session_factory:
+        async with session_factory() as session:
+            for pnum in patch_numbers:
+                stmt = select(PatchTable).where(PatchTable.patch_number == pnum)
+                res = await session.execute(stmt)
+                patch: Optional[PatchTable] = res.scalar_one_or_none()
+                if patch is None:
+                    logger.warning(f"Patch {pnum} not found. Skipping.")
+                    continue
+                if patch.start_match_id is None or patch.end_match_id is None:
+                    logger.warning(f"Patch {pnum} is missing boundaries. Skipping.")
+                    continue
 
-            start_id = patch.end_match_id
-            end_id = patch.start_match_id
+                start_id = patch.end_match_id
+                end_id = patch.start_match_id
 
-            logger.info(
-                f"Backfilling patch {pnum} between match_id [{end_id}, {start_id}] up to {matches_per_patch} unique matches."
-            )
-            collector = _build_collector(DatabaseManager.get_session_factory(), min_rank=min_rank, max_rank=max_rank)
-            await collector.collect_range(
-                start_match_id=start_id,
-                end_match_id=end_id,
-                target_match_count=matches_per_patch,
-            )
+                logger.info(
+                    f"Backfilling patch {pnum} between match_id [{end_id}, {start_id}] "
+                    f"up to {matches_per_patch} unique matches."
+                )
+                collector = _build_collector(session_factory, min_rank=min_rank, max_rank=max_rank)
+                await collector.collect_range(
+                    start_match_id=start_id,
+                    end_match_id=end_id,
+                    target_match_count=matches_per_patch,
+                )

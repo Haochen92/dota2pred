@@ -1,4 +1,4 @@
-from .api_clients.opendota_api import fetch_opendota_api_uncached
+from .api_clients.opendota_api import OpenDotaClient, fetch_opendota_api_uncached
 from dota_oracle_common.models.match import MatchesAPIResponse
 from dota_oracle_common.utils import get_logger
 from typing import Optional
@@ -9,12 +9,17 @@ import aiohttp
 logger = get_logger(__name__)
 
 
-async def fetch_match_details(match_id: int) -> Optional[MatchesAPIResponse]:
+async def fetch_match_details(
+    match_id: int, opendota_client: OpenDotaClient | None = None
+) -> Optional[MatchesAPIResponse]:
     endpoint = f"matches/{match_id}"
     try:
         # Uncached: a 404 must be re-checked each stale cycle (the 90min-2h window exists to
         # catch slow/long matches), so we deliberately avoid the 1-day result cache here.
-        res = await fetch_opendota_api_uncached(endpoint=endpoint)
+        if opendota_client is None:
+            res = await fetch_opendota_api_uncached(endpoint=endpoint)
+        else:
+            res = await opendota_client.fetch_paid_uncached(endpoint=endpoint)
         if not res:
             return None
         validated_input = MatchesAPIResponse(**res)

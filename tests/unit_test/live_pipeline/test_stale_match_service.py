@@ -40,6 +40,9 @@ def consumed_event_factory():
 
 
 class TestStaleMatchService:
+    @pytest.fixture(autouse=True)
+    def _inject_opendota_client(self, mock_opendota_client):
+        self.opendota_client = mock_opendota_client
 
     async def test_run_cycle_no_expired_events(self, mock_redis_service: AsyncMock):
         """
@@ -47,7 +50,7 @@ class TestStaleMatchService:
         """
         # ARRANGE
         mock_redis_service.fetch_expired_events.return_value = []
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         result = await service.run_stream_cleaning_cycle()
@@ -64,7 +67,7 @@ class TestStaleMatchService:
         # ARRANGE
         mock_redis_service.fetch_expired_events.return_value = ["123-0", "456-0"]
         mock_redis_service.claim_expired_events.return_value = []
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         result = await service.run_stream_cleaning_cycle()
@@ -104,7 +107,7 @@ class TestStaleMatchService:
         task_result_2 = TaskResult(key="222-0", inputs=claimed_event_2, outcome=False)
         mock_task_runner.return_value = [task_result_1, task_result_2]
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         final_results = await service.run_stream_cleaning_cycle()
@@ -157,7 +160,7 @@ class TestStaleMatchService:
         task_result_fail = TaskResult(key="999-0", inputs=claimed_event_fail, outcome=failure_exception)
         mock_task_runner.return_value = [task_result_1, task_result_fail]
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         final_results = await service.run_stream_cleaning_cycle()
@@ -192,7 +195,7 @@ class TestStaleMatchService:
             MagicMock(radiant_win=True),  # Success on the 3rd attempt
         ]
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
         fake_event = ConsumedEvent[CompletionPayload](
             match_id=777, event_id="777-0", payload=CompletionPayload(match_id=777, radiant_win=False)
         )
@@ -214,7 +217,7 @@ class TestStaleMatchService:
         """
         # ARRANGE
         mock_redis_service.fetch_expired_events.side_effect = Exception("Redis connection error")
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT & ASSERT
         with pytest.raises(Exception, match="Redis connection error"):
@@ -230,7 +233,7 @@ class TestStaleMatchService:
         # ARRANGE
         mock_redis_service.fetch_expired_events.return_value = ["123-0"]
         mock_redis_service.claim_expired_events.side_effect = Exception("Failed to claim events")
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT & ASSERT
         with pytest.raises(Exception, match="Failed to claim events"):
@@ -252,7 +255,7 @@ class TestStaleMatchService:
         # Simulate persistent transient failures that exhaust all retry attempts
         mock_fetch_details.side_effect = asyncio.TimeoutError("API always times out")
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
         fake_event = ConsumedEvent[CompletionPayload](
             match_id=888, event_id="888-0", payload=CompletionPayload(match_id=888, radiant_win=False)
         )
@@ -278,7 +281,7 @@ class TestStaleMatchService:
         # ARRANGE
         mock_fetch_details.return_value = None
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
         fake_event = ConsumedEvent[CompletionPayload](
             match_id=999, event_id="999-0", payload=CompletionPayload(match_id=999, radiant_win=False)
         )
@@ -309,7 +312,7 @@ class TestStaleMatchService:
         task_result_2 = TaskResult(key="200-0", inputs=claimed_event_2, outcome=False)
         mock_task_runner.return_value = [task_result_1, task_result_2]
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         result = await service._fetch_completed_work_items(claimed_events)
@@ -349,7 +352,7 @@ class TestStaleMatchService:
         task_result_fail = TaskResult(key="400-0", inputs=claimed_event_fail, outcome=failure_exception)
         mock_task_runner.return_value = [task_result_success, task_result_fail]
 
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         result = await service._fetch_completed_work_items(claimed_events)
@@ -376,7 +379,7 @@ class TestStaleMatchService:
         mock_redis = AsyncMock()
 
         # ACT
-        service = StaleMatchService(redis_service=mock_redis)
+        service = StaleMatchService(redis_service=mock_redis, opendota_client=self.opendota_client)
 
         # ASSERT
         assert service.redis == mock_redis
@@ -390,7 +393,7 @@ class TestStaleMatchService:
     ):
         """A large backlog must be capped to batch_size per cycle so it can't dominate the live cycle."""
         # ARRANGE
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
         too_many = [f"{i}-0" for i in range(1, service.batch_size + 11)]  # batch_size + 10
         mock_redis_service.fetch_expired_events.return_value = too_many
         mock_redis_service.claim_expired_events.return_value = []
@@ -419,7 +422,7 @@ class TestStaleMatchService:
         mock_redis_service.fetch_expired_events.return_value = ["557-0"]
         mock_redis_service.claim_expired_events.return_value = [event]
         mock_task_runner.return_value = [TaskResult(key="557-0", inputs=event, outcome=None)]
-        service = StaleMatchService(redis_service=mock_redis_service)
+        service = StaleMatchService(redis_service=mock_redis_service, opendota_client=self.opendota_client)
 
         # ACT
         result = await service.run_stream_cleaning_cycle()

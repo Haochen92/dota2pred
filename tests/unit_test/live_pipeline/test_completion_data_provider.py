@@ -24,7 +24,9 @@ def _aged_id() -> str:
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_successfully(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_get_work_items_successfully(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     # ARRANGE
     match_id = 12345
     event_id = _recent_id()
@@ -39,14 +41,14 @@ async def test_get_work_items_successfully(mock_redis_service, mock_stale_match_
         mock_redis_service, "fetch_matches_for_completion", return_value=[consumed_event]
     )
 
-    mock_fetch_outcome = mocker.patch(
-        f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={match_id: mock_outcome}
+    mock_fetch_outcome = mocker.patch.object(
+        mock_fetch_outcome_service, "fetch_outcomes_batch", return_value={match_id: mock_outcome}
     )
 
     mock_stale_matches = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
     # create
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -68,12 +70,14 @@ async def test_get_work_items_successfully(mock_redis_service, mock_stale_match_
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_no_events(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_get_work_items_no_events(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     # ARRANGE
     mock_fetch_matches = mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", return_value=[])
     mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -86,7 +90,9 @@ async def test_get_work_items_no_events(mock_redis_service, mock_stale_match_ser
 
 
 @pytest.mark.asyncio
-async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_get_work_items_no_outcomes(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     # ARRANGE
     match_id = 12345
     event_id = _recent_id()
@@ -100,10 +106,10 @@ async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_s
     )
 
     # Mock FetchOutcomeService to return empty outcomes
-    mock_fetch_outcome = mocker.patch(f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={})
+    mock_fetch_outcome = mocker.patch.object(mock_fetch_outcome_service, "fetch_outcomes_batch", return_value={})
     mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -117,7 +123,9 @@ async def test_get_work_items_no_outcomes(mock_redis_service, mock_stale_match_s
 
 
 @pytest.mark.asyncio
-async def test_stale_sweep_runs_when_fresh_fetch_fails(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_stale_sweep_runs_when_fresh_fetch_fails(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     """A failure in the fresh path must not stop the independent stale recovery path."""
     # ARRANGE
     recovered = ConsumedEvent(match_id=999, event_id="stale_1", payload=CompletedMatchPayload(match_outcome=False))
@@ -125,7 +133,7 @@ async def test_stale_sweep_runs_when_fresh_fetch_fails(mock_redis_service, mock_
     mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", side_effect=RuntimeError("redis blip"))
     mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[recovered])
 
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -136,7 +144,9 @@ async def test_stale_sweep_runs_when_fresh_fetch_fails(mock_redis_service, mock_
 
 
 @pytest.mark.asyncio
-async def test_aged_events_skip_free_feed(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_aged_events_skip_free_feed(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     """Aged pending matches are excluded from the free-feed lookup (left for the paid stale
     path), so they can't widen the id-range and burn the free quota."""
     # ARRANGE — one fresh, one aged.
@@ -147,10 +157,12 @@ async def test_aged_events_skip_free_feed(mock_redis_service, mock_stale_match_s
         match_id=222, event_id=_aged_id(), payload=CompletionPayload(match_id=222, radiant_win=True)
     )
     mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", return_value=[fresh, aged])
-    mock_fetch_outcome = mocker.patch(f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={111: True})
+    mock_fetch_outcome = mocker.patch.object(
+        mock_fetch_outcome_service, "fetch_outcomes_batch", return_value={111: True}
+    )
     mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()
@@ -162,7 +174,9 @@ async def test_aged_events_skip_free_feed(mock_redis_service, mock_stale_match_s
 
 
 @pytest.mark.asyncio
-async def test_all_aged_events_skip_free_call(mock_redis_service, mock_stale_match_service, mocker) -> None:
+async def test_all_aged_events_skip_free_call(
+    mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service, mocker
+) -> None:
     """When every pending event is aged, the free feed is not called at all (zero free quota
     spent); the stale path still runs."""
     # ARRANGE
@@ -170,10 +184,10 @@ async def test_all_aged_events_skip_free_call(mock_redis_service, mock_stale_mat
         match_id=222, event_id=_aged_id(), payload=CompletionPayload(match_id=222, radiant_win=True)
     )
     mocker.patch.object(mock_redis_service, "fetch_matches_for_completion", return_value=[aged])
-    mock_fetch_outcome = mocker.patch(f"{F_PATH}.FetchOutcomeService.fetch_outcomes_batch", return_value={})
+    mock_fetch_outcome = mocker.patch.object(mock_fetch_outcome_service, "fetch_outcomes_batch", return_value={})
     mock_stale = mocker.patch.object(mock_stale_match_service, "run_stream_cleaning_cycle", return_value=[])
 
-    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service)
+    provider = CompletionDataProvider(mock_redis_service, mock_stale_match_service, mock_fetch_outcome_service)
 
     # ACT
     result = await provider.get_work_items()

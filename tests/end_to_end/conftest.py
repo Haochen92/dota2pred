@@ -332,7 +332,7 @@ async def full_stack_client(
 async def test_app_container(e2e_redis_client, e2e_postgres_engine) -> AppContainer:
     """Provides a configured AppContainer for live orchestrator app tests."""
     container = AppContainer()
-    container.redis_async_pool.override(e2e_redis_client)
+    container.redis_client.override(e2e_redis_client)
 
     # Create session factory from engine
     session_factory = async_sessionmaker(bind=e2e_postgres_engine, class_=AsyncSession, expire_on_commit=False)

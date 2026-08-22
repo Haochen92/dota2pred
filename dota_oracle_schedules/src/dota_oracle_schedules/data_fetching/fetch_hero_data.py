@@ -1,5 +1,5 @@
 from prefect import flow
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.models.heroes import HeroDataTable, HeroData
@@ -13,18 +13,17 @@ logger = get_logger(__name__)
 
 @flow
 async def hero_data_orchestrator():
-    # fetch hero data from api endpoint
-    hero_data = await fetch_hero_data()
+    async with database_session_factory_resource() as session_factory:
+        # fetch hero data from api endpoint
+        hero_data = await fetch_hero_data()
 
-    local_session = DatabaseManager.get_session_factory()
-
-    # Store data
-    async with local_session() as session:
-        async with session.begin():
-            try:
-                await store_hero_data(session, hero_data)
-            except Exception as e:
-                raise e
+        # Store data
+        async with session_factory() as session:
+            async with session.begin():
+                try:
+                    await store_hero_data(session, hero_data)
+                except Exception as e:
+                    raise e
 
     logger.info("Successfully updated hero data")
 

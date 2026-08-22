@@ -1,4 +1,4 @@
-from .api_clients.steam_api import fetch_steam_data
+from .api_clients.steam_api import SteamClient, fetch_steam_data
 from typing import List
 import asyncio
 from dota_oracle_common.utils.set_logging import get_logger
@@ -11,9 +11,12 @@ logger = get_logger(__name__)
 LIVE_LEAGUE_GAMES = "IDOTA2Match_570/GetLiveLeagueGames/v1"
 
 
-async def fetch_live_league_games() -> List[LiveLeagueGame]:
+async def fetch_live_league_games(steam_client: SteamClient | None = None) -> List[LiveLeagueGame]:
     try:
-        res = await fetch_steam_data(endpoint=LIVE_LEAGUE_GAMES)
+        if steam_client is None:
+            res = await fetch_steam_data(endpoint=LIVE_LEAGUE_GAMES)
+        else:
+            res = await steam_client.fetch_data(endpoint=LIVE_LEAGUE_GAMES)
         validated_res = LiveLeagueAPIResponse.model_validate(res)
         games_list = validated_res.result.games
         return games_list

@@ -10,7 +10,6 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 class TestContainerValidation:
     async def test_container_initializes_all_resources_successfully(self, test_app_container) -> None:
-
         try:
             await test_app_container.init_resources()  # type: ignore
 
@@ -83,7 +82,6 @@ class TestComprehensiveE2EWiring:
             with patch(
                 "dota_oracle_pipeline.data_extraction.fetch_live_leagues.fetch_live_league_games"
             ) as mock_live_games:
-
                 # Configure live games mock
                 mock_live_games.return_value = mock_live_games_data.result.games
 
@@ -117,7 +115,7 @@ class TestComprehensiveE2EWiring:
         """
 
         # Test that all providers are defined and configured
-        assert test_app_container.redis_async_pool is not None
+        assert test_app_container.redis_client is not None
         assert test_app_container.db_session_factory is not None
         assert test_app_container.http_client is not None
         assert test_app_container.model_metadata is not None

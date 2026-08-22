@@ -32,7 +32,7 @@ import httpx
 
 from dota_oracle_common.constants.endpoint_configs import service_url
 from dota_oracle_common.models.odds import PolymarketTeamMapTable
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.repositories.odds_repository import OddsRepository
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
@@ -134,8 +134,7 @@ async def cmd_load(only_verified: bool) -> None:
         logger.warning(f"No loadable rows (skipped {skipped}). Set steam_team_id/verified in {SEED_PATH.name}.")
         return
 
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         async with session.begin():
             await OddsRepository(session=session).upsert_team_mappings(rows)
     logger.info(f"Upserted {len(rows)} team mappings into polymarket_team_map (skipped {skipped}).")

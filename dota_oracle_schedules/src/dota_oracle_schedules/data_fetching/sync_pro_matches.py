@@ -9,7 +9,7 @@ from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match import MatchWithOutcome, ProMatchOutcome, ProMatchAPIResponse
 
 from dota_oracle_common.models.utils import AsyncTask, TaskResult
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.utils.async_utils import TaskRunner
 from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota_api
@@ -39,8 +39,22 @@ async def sync_pro_matches_flow(
     3. Triggers a sub-task to fetch full details for that batch and upsert them.
     4. Continues to the next page until the bookmark is reached.
     """
+    async with database_session_factory_resource() as session_factory:
+        await _sync_pro_matches(
+            start_after_match_id=start_after_match_id,
+            less_than_match_id=less_than_match_id,
+            concurrent_requests_limit=concurrent_requests_limit,
+            session_factory=session_factory,
+        )
+
+
+async def _sync_pro_matches(
+    start_after_match_id: int,
+    less_than_match_id: Optional[int],
+    concurrent_requests_limit: int,
+    session_factory,
+) -> None:
     prefect_logger = get_run_logger()
-    local_session = DatabaseManager.get_session_factory()
     total_processed_count = 0
     stop_pagination = False
 
@@ -81,7 +95,7 @@ async def sync_pro_matches_flow(
                 processed_count = await process_match_batch(
                     match_ids=match_ids_to_process,
                     concurrency_limit=concurrent_requests_limit,
-                    session_factory=local_session,
+                    session_factory=session_factory,
                 )
                 total_processed_count += processed_count
             elif not stop_pagination:  # Only log this if we're not about to stop anyway
@@ -98,8 +112,7 @@ async def sync_pro_matches_flow(
             raise
 
     prefect_logger.info(
-        f"Sync Pro Matches flow completed successfully. "
-        f"Total matches processed and upserted: {total_processed_count}."
+        f"Sync Pro Matches flow completed successfully. Total matches processed and upserted: {total_processed_count}."
     )
 
 
@@ -156,8 +169,7 @@ async def process_match_batch(match_ids: List[int], concurrency_limit: int, sess
         return 0
 
     prefect_logger.info(
-        f"Processing {len(missing_ids)}/{len(match_ids)} missing matches "
-        f"(from {missing_ids[0]} to {missing_ids[-1]})"
+        f"Processing {len(missing_ids)}/{len(match_ids)} missing matches (from {missing_ids[0]} to {missing_ids[-1]})"
     )
 
     completed_matches = await fetch_completed_matches_concurrently(set(missing_ids), concurrency_limit)

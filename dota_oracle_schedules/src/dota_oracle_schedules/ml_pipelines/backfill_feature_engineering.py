@@ -1,4 +1,4 @@
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,8 +50,7 @@ async def backfill_all_historical_matches(limit: Optional[int] = None):
     Backfills features by processing and storing each feature set (heroes, players, teams)
     sequentially to reduce memory pressure and isolate potential failures.
     """
-    local_session = DatabaseManager.get_session_factory()
-    async with local_session() as db_session:
+    async with database_session_factory_resource() as session_factory, session_factory() as db_session:
         # Memory bottleneck to consider when number of matches is very large. Change batch processing to stateful generators later.
         all_historical_matches = await get_all_matches(db_session)
         sorted_matches = sorted(all_historical_matches, key=lambda x: x.start_time)

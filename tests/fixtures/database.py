@@ -98,7 +98,7 @@ def mock_database_manager() -> DatabaseManager:
 async def test_session_factory(test_postgres_engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """
     Creates a real session factory for integration tests that connects to the test database.
-    This mimics what DatabaseManager.get_session_factory() would return in production.
+    This mimics what database_session_factory_resource() yields in production.
     """
     return async_sessionmaker(
         bind=test_postgres_engine,

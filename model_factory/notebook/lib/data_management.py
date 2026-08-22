@@ -16,7 +16,7 @@ from typing import Iterable, List, Sequence, Tuple
 
 import pandas as pd
 
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.repositories.patch_repository import PatchRepository
 from dota_oracle_common.repositories.match_repository import MatchRepository
 from dota_oracle_common.models.match.table import MatchTable
@@ -48,48 +48,47 @@ async def fetch_pro_matches(
     - Only matches with an outcome are included (label required for modeling).
     - `relationship_fields` defaults to ["outcome"] to eager-load outcomes.
     """
-    session_factory = DatabaseManager.get_session_factory()
+    async with database_session_factory_resource() as session_factory:
+        # Step 1: Resolve patch windows
+        async with session_factory() as session:
+            patch_repo = PatchRepository(session)
+            patches: List[PatchTable] = []
+            for p in patch_numbers:
+                patch = await patch_repo.get_patch_by_number(p)
+                if patch is not None:
+                    patches.append(patch)
 
-    # Step 1: Resolve patch windows
-    async with session_factory() as session:
-        patch_repo = PatchRepository(session)
-        patches: List[PatchTable] = []
-        for p in patch_numbers:
-            patch = await patch_repo.get_patch_by_number(p)
-            if patch is not None:
-                patches.append(patch)
+        if not patches:
+            # No patches found — return empty structures
+            return [], pd.DataFrame(columns=["match_id", "patch", "radiant_win", "start_time"])  # type: ignore[return-value]
 
-    if not patches:
-        # No patches found — return empty structures
-        return [], pd.DataFrame(columns=["match_id", "patch", "radiant_win", "start_time"])  # type: ignore[return-value]
+        # Step 2: Fetch matches within each patch window
+        all_match_tables: List[MatchTable] = []
+        all_match_records: List[dict] = []
 
-    # Step 2: Fetch matches within each patch window
-    all_match_tables: List[MatchTable] = []
-    all_match_records: List[dict] = []
+        async with session_factory() as session:
+            match_repo = MatchRepository(session)
 
-    async with session_factory() as session:
-        match_repo = MatchRepository(session)
-
-        for patch in patches:
-            matches = await match_repo.get_match_details(
-                relationship_fields=list(relationship_fields),
-                start_time=patch.start_time,  # use datetimes to match column type
-                end_time=patch.end_time,
-            )
-
-            for match in matches:
-                if not match.outcome:
-                    # Skip unlabeled rows; they don't help modeling and cannot update state
-                    continue
-                all_match_tables.append(match)
-                all_match_records.append(
-                    {
-                        "match_id": match.match_id,
-                        "patch": patch.patch_number,
-                        "radiant_win": match.outcome.radiant_win,
-                        "start_time": match.start_time,
-                    }
+            for patch in patches:
+                matches = await match_repo.get_match_details(
+                    relationship_fields=list(relationship_fields),
+                    start_time=patch.start_time,  # use datetimes to match column type
+                    end_time=patch.end_time,
                 )
+
+                for match in matches:
+                    if not match.outcome:
+                        # Skip unlabeled rows; they don't help modeling and cannot update state
+                        continue
+                    all_match_tables.append(match)
+                    all_match_records.append(
+                        {
+                            "match_id": match.match_id,
+                            "patch": patch.patch_number,
+                            "radiant_win": match.outcome.radiant_win,
+                            "start_time": match.start_time,
+                        }
+                    )
 
     # Step 3: Ensure chronological ordering (causal correctness)
     all_match_tables.sort(key=lambda m: m.start_time)

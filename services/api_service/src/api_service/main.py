@@ -8,8 +8,8 @@ from .config import api_settings
 # --- Import applications from common folder ---
 from dota_oracle_common.constants.endpoint_configs import service_url
 from dota_oracle_common.http_client import http_client_provider
-from dota_oracle_common.postgresql import DatabaseManager
-from dota_oracle_common.redis_component.redis_client_factory import RedisClientFactory
+from dota_oracle_common.postgresql import database_session_factory_resource
+from dota_oracle_common.redis_component.redis_client_factory import redis_client_resource
 from dota_oracle_common.repositories.heroes_repository import HeroesRepository
 from dota_oracle_common.utils import get_logger
 
@@ -37,14 +37,8 @@ async def setup_dependencies(app: FastAPI):
     """Initializes and attaches all application-level resources to the app state."""
     logger.info("Initializing application dependencies...")
 
-    # Initialize and store database session factory
-    app.state.db_session_factory = DatabaseManager.get_session_factory()
-    logger.info("Database session factory created.")
-
-    # Initialize and store Redis client and PubSub service
-    redis_client = RedisClientFactory.create_instance()
-    app.state.redis_client = redis_client
-    app.state.pubsub_service = RedisPubSubService(redis_client=redis_client)
+    # The lifespan owns the database and Redis resources stored on app.state.
+    app.state.pubsub_service = RedisPubSubService(redis_client=app.state.redis_client)
     logger.info("Redis client and PubSub service created.")
 
     # Start a single-process PubSub hub for fan-out to SSE clients
@@ -99,21 +93,27 @@ async def teardown_dependencies(app: FastAPI):
     hub = getattr(app.state, "pubsub_hub", None)
     if hub is not None:
         await hub.stop()
-    await DatabaseManager.close_engine()
-    await RedisClientFactory.close_instance()
-    logger.info("All resources closed.")
+    logger.info("Application services stopped.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manages the application's startup and shutdown lifecycle."""
-    async with http_client_provider() as client:
-        app.state.http_client = client
-        await setup_dependencies(app)
-        logger.info("API Gateway startup complete.")
-        yield
-        await teardown_dependencies(app)
-    logger.info("API Gateway shutdown complete.")
+    async with (
+        http_client_provider() as http_client,
+        database_session_factory_resource() as db_session_factory,
+        redis_client_resource() as redis_client,
+    ):
+        app.state.http_client = http_client
+        app.state.db_session_factory = db_session_factory
+        app.state.redis_client = redis_client
+        try:
+            await setup_dependencies(app)
+            logger.info("API Gateway startup complete.")
+            yield
+        finally:
+            await teardown_dependencies(app)
+    logger.info("API Gateway resources closed; shutdown complete.")
 
 
 # --- Application Factory ---

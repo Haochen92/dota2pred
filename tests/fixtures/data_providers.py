@@ -46,8 +46,8 @@ def mock_completion_data_provider() -> CompletionDataProvider:
 
 
 @pytest.fixture
-def new_match_data_provider(mock_redis_service: RedisService) -> NewMatchDataProvider:
-    return NewMatchDataProvider(redis_service=mock_redis_service)
+def new_match_data_provider(mock_redis_service: RedisService, mock_steam_client) -> NewMatchDataProvider:
+    return NewMatchDataProvider(redis_service=mock_redis_service, steam_client=mock_steam_client)
 
 
 @pytest.fixture

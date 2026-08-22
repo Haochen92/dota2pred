@@ -27,7 +27,7 @@ from sqlmodel import select
 from dota_oracle_common.models.inference import MatchPredictionTable
 from dota_oracle_common.models.match import MatchOutcomeTable
 from dota_oracle_common.models.odds import MatchOddsSnapshotTable, MatchPaperBetTable
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.repositories.odds_repository import OddsRepository
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.utils.time_utils import get_current_utc_iso_timestamp
@@ -224,8 +224,7 @@ def _replay_predictor(
 
 async def run_replay(predictor_name: Optional[str], cfg: BetConfig, starting_bankroll: float) -> List[dict]:
     replayed_at = get_current_utc_iso_timestamp()
-    session_factory = DatabaseManager.get_session_factory()
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         snapshots, preds_by_predictor, outcomes = await _load(session, predictor_name)
 
         if not snapshots:

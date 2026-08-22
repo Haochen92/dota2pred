@@ -8,13 +8,18 @@ from typing import Dict
 from dependency_injector import providers, containers
 
 # Redis client
-from dota_oracle_common.redis_component.redis_client_factory import RedisClientFactory
+from dota_oracle_common.redis_component.redis_client_factory import redis_client_resource
 
 # database
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 
 # HTTPX client
 from dota_oracle_common.http_client import http_client_provider
+
+# aiohttp API clients
+from dota_oracle_pipeline.data_extraction.api_clients.aiohttp_client import aiohttp_session_provider
+from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import OpenDotaClient
+from dota_oracle_pipeline.data_extraction.api_clients.steam_api import SteamClient
 
 # Model metadata
 from dota_oracle_common.models.inference.schema import ModelMetaDataAPIResponse
@@ -45,6 +50,7 @@ from .services.feature_engineering_service import FeatureEngineeringService
 from .services.history_update_service import HistoryUpdateService
 from .services.match_prediction_service import MatchPredictionService
 from .services.feature_preparation_service import FeaturePreparationService
+from .services.fetch_outcome_service import FetchOutcomeService
 from .services.stale_match_service import StaleMatchService
 from .services.notifications_service import NotificationService
 from .services.dlq_retry_service import DlqRetryService
@@ -93,9 +99,12 @@ class AppContainer(containers.DeclarativeContainer):
     # config = providers.Configuration() # Todo
 
     # --- Clients ---
-    redis_async_pool = providers.Resource(RedisClientFactory.create_instance)
-    db_session_factory = providers.Resource(DatabaseManager.get_session_factory)
+    redis_client = providers.Resource(redis_client_resource)
+    db_session_factory = providers.Resource(database_session_factory_resource)
     http_client = providers.Resource(http_client_provider)
+    aiohttp_session = providers.Resource(aiohttp_session_provider)
+    opendota_client = providers.Factory(OpenDotaClient, session=aiohttp_session)
+    steam_client = providers.Factory(SteamClient, session=aiohttp_session)
 
     # --- Configuration Provider ---
     # This will hold the metadata object once we fetch it.
@@ -147,7 +156,7 @@ class AppContainer(containers.DeclarativeContainer):
         model_metadata=model_metadata,
     )
 
-    redis_service = providers.Resource(RedisService.create, redis_client=redis_async_pool)
+    redis_service = providers.Resource(RedisService.create, redis_client=redis_client)
 
     feature_engineering_service = providers.Factory(
         FeatureEngineeringService,
@@ -163,7 +172,12 @@ class AppContainer(containers.DeclarativeContainer):
         model_inference_service=model_inference_service,
     )
 
-    stale_match_service = providers.Factory(StaleMatchService, redis_service=redis_service)
+    fetch_outcome_service = providers.Factory(FetchOutcomeService, opendota_client=opendota_client)
+    stale_match_service = providers.Factory(
+        StaleMatchService,
+        redis_service=redis_service,
+        opendota_client=opendota_client,
+    )
     dlq_retry_service = providers.Factory(DlqRetryService, redis_service=redis_service)
 
     odds_market_service = providers.Factory(
@@ -178,7 +192,11 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     # --- Data Providers ---
-    new_match_data_provider = providers.Factory(NewMatchDataProvider, redis_service=redis_service)
+    new_match_data_provider = providers.Factory(
+        NewMatchDataProvider,
+        redis_service=redis_service,
+        steam_client=steam_client,
+    )
 
     feature_engineering_data_provider = providers.Factory(FeatureEngineeringDataProvider, redis_service=redis_service)
 
@@ -188,7 +206,10 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     completion_data_provider = providers.Factory(
-        CompletionDataProvider, redis_service=redis_service, stale_match_service=stale_match_service
+        CompletionDataProvider,
+        redis_service=redis_service,
+        stale_match_service=stale_match_service,
+        fetch_outcome_service=fetch_outcome_service,
     )
 
     odds_data_provider = providers.Factory(

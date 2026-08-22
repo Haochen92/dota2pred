@@ -1,4 +1,4 @@
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from dota_oracle_pipeline.data_extraction.fetch_match_details import fetch_match_details
 from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import fetch_opendota_free_then_paid
@@ -23,9 +23,13 @@ logger = get_logger(__name__)
 
 @flow()
 async def batch_matches_orchestrator():
+    async with database_session_factory_resource() as session_factory:
+        await _run_batch_matches(session_factory)
+
+
+async def _run_batch_matches(session_factory) -> None:
     prefect_logger = get_run_logger()
-    local_session = DatabaseManager.get_session_factory()
-    async with local_session() as session:
+    async with session_factory() as session:
         async with session.begin():
             try:
                 # Fetch match_ids
@@ -108,7 +112,6 @@ async def find_existing_Ids(session: AsyncSession, ids_to_check: List[int]) -> S
 
 
 async def fetch_completed_matches_concurrently(match_ids_set: Set[int]) -> List[MatchWithOutcome]:
-
     concurrent_task_lists: List[AsyncTask[int, int, MatchWithOutcome]] = []
     for match_id in match_ids_set:
         task = AsyncTask(key=match_id, inputs=match_id, coro=fetch_and_parse_match(match_id))
@@ -161,7 +164,6 @@ async def fetch_and_parse_match(match_id: int) -> MatchWithOutcome:
 
 
 async def store_completed_matches(session: AsyncSession, completed_matches: List[MatchWithOutcome]) -> None:
-
     match_details_instances: List[MatchTable] = []
     match_outcome_instances: List[MatchOutcomeTable] = []
 

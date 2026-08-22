@@ -1,4 +1,4 @@
-from .api_clients.opendota_api import fetch_opendota_free_then_paid
+from .api_clients.opendota_api import OpenDotaClient, fetch_opendota_free_then_paid
 from dota_oracle_common.models.match import ProMatchAPIResponse, ProMatchOutcome
 from dota_oracle_common.utils.set_logging import get_logger
 from typing import List
@@ -18,7 +18,10 @@ DEFAULT_MAX_PAGES = 2
 
 
 async def fetch_pro_match(
-    max_match_id: int, min_match_id: int, max_pages: int = DEFAULT_MAX_PAGES
+    max_match_id: int,
+    min_match_id: int,
+    max_pages: int = DEFAULT_MAX_PAGES,
+    opendota_client: OpenDotaClient | None = None,
 ) -> List[ProMatchOutcome]:
     output_list: List[ProMatchOutcome] = []
     pages_fetched = 0
@@ -31,9 +34,11 @@ async def fetch_pro_match(
             )
             break
         try:
-            res = await fetch_opendota_free_then_paid(
-                endpoint="proMatches", params={"less_than_match_id": max_match_id}
-            )
+            params = {"less_than_match_id": max_match_id}
+            if opendota_client is None:
+                res = await fetch_opendota_free_then_paid(endpoint="proMatches", params=params)
+            else:
+                res = await opendota_client.fetch_free_then_paid(endpoint="proMatches", params=params)
             pages_fetched += 1
             logger.info(f"fetching api endpoint for less_than_match_id: {max_match_id}")
 

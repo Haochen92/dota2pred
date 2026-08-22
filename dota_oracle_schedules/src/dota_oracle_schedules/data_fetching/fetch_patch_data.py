@@ -1,5 +1,5 @@
 from prefect import flow
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 from dota_oracle_common.utils import get_logger
 from dota_oracle_common.repositories.patch_repository import PatchRepository
 from dota_oracle_common.models.patches import DotaPatch
@@ -18,26 +18,25 @@ async def patch_data_orchestrator():
     """
     Prefect flow to fetch, parse, and store patch data.
     """
-    # Fetch patch data from API endpoint
-    patch_data = await fetch_patch_data()
+    async with database_session_factory_resource() as session_factory:
+        # Fetch patch data from API endpoint
+        patch_data = await fetch_patch_data()
 
-    local_session = DatabaseManager.get_session_factory()
+        # Store data
+        async with session_factory() as session:
+            async with session.begin():
+                try:
+                    await store_patch_data(session, patch_data)
+                except Exception as e:
+                    raise e
 
-    # Store data
-    async with local_session() as session:
-        async with session.begin():
-            try:
-                await store_patch_data(session, patch_data)
-            except Exception as e:
-                raise e
-
-    # Hydrate match_id boundaries (start_match_id for all, end_match_id only for closed patches)
-    try:
-        updated = await hydrate_patch_boundaries_task()
-        logger.info(f"Hydrated match_id boundaries for {updated} patches")
-    except Exception as e:
-        logger.error(f"Failed to hydrate patch boundaries: {e}", exc_info=True)
-        raise
+        # Hydrate match_id boundaries (start_match_id for all, end_match_id only for closed patches)
+        try:
+            updated = await hydrate_patch_boundaries_task(session_factory)
+            logger.info(f"Hydrated match_id boundaries for {updated} patches")
+        except Exception as e:
+            logger.error(f"Failed to hydrate patch boundaries: {e}", exc_info=True)
+            raise
 
     logger.info("Successfully updated patch data and hydrated boundaries")
 

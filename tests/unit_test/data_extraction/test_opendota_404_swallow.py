@@ -46,27 +46,25 @@ class _FakeSession:
         return _FakeGetCM(self._resp)
 
 
-def _patch_session(mocker, status: int, payload=None):
-    mocker.patch.object(opendota_api, "API_KEY", "dummy-key")
-    mocker.patch.object(opendota_api, "_get_session", return_value=_FakeSession(_FakeResp(status, payload)))
+def _client(status: int, payload=None):
+    return opendota_api.OpenDotaClient(
+        session=_FakeSession(_FakeResp(status, payload)),
+        api_key="dummy-key",
+    )
 
 
-async def test_uncached_returns_empty_on_404(mocker):
-    _patch_session(mocker, 404)
-    # .fn bypasses the Prefect task engine to exercise the raw function.
-    out = await opendota_api.fetch_opendota_api_uncached.fn(endpoint="matches/123")
+async def test_uncached_returns_empty_on_404():
+    out = await _client(404).fetch_paid_uncached(endpoint="matches/123")
     assert out == {}
 
 
-async def test_uncached_raises_on_500(mocker):
-    _patch_session(mocker, 500)
+async def test_uncached_raises_on_500():
     with pytest.raises(aiohttp.ClientResponseError):
-        await opendota_api.fetch_opendota_api_uncached.fn(endpoint="matches/123")
+        await _client(500).fetch_paid_uncached(endpoint="matches/123")
 
 
-async def test_uncached_returns_payload_on_200(mocker):
-    _patch_session(mocker, 200, payload={"match_id": 7})
-    out = await opendota_api.fetch_opendota_api_uncached.fn(endpoint="matches/7")
+async def test_uncached_returns_payload_on_200():
+    out = await _client(200, payload={"match_id": 7}).fetch_paid_uncached(endpoint="matches/7")
     assert out == {"match_id": 7}
 
 

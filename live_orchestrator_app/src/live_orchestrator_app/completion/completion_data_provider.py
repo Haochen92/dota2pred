@@ -13,9 +13,15 @@ logger = get_logger(__name__)
 
 
 class CompletionDataProvider:
-    def __init__(self, redis_service: RedisService, stale_match_service: StaleMatchService):
+    def __init__(
+        self,
+        redis_service: RedisService,
+        stale_match_service: StaleMatchService,
+        fetch_outcome_service: FetchOutcomeService,
+    ):
         self.redis = redis_service
         self.stale_match_service = stale_match_service
+        self.fetch_outcome_service = fetch_outcome_service
 
     async def get_work_items(
         self, consumer_name: str = "default_consumer"
@@ -44,7 +50,7 @@ class CompletionDataProvider:
                 matches_pending_completion = [event.match_id for event in fresh_events]
                 logger.info(f"Found {len(matches_pending_completion)} fresh events pending completion")
 
-                outcome_map = await FetchOutcomeService.fetch_outcomes_batch(matches_pending_completion)
+                outcome_map = await self.fetch_outcome_service.fetch_outcomes_batch(matches_pending_completion)
                 for event in fresh_events:
                     match_outcome = outcome_map.get(event.match_id)
                     if match_outcome is not None:

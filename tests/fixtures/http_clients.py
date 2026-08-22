@@ -1,9 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock
 import httpx
+import aiohttp
 import respx
 from typing import AsyncGenerator, Iterator
 from httpx import AsyncClient
+from dota_oracle_pipeline.data_extraction.api_clients.opendota_api import OpenDotaClient
+from dota_oracle_pipeline.data_extraction.api_clients.steam_api import SteamClient
 
 
 # =================================================================================
@@ -19,6 +22,21 @@ def mock_http_client() -> AsyncMock:
     as a parameter, allowing for testing in complete isolation.
     """
     return AsyncMock(spec=httpx.AsyncClient)
+
+
+@pytest.fixture
+def mock_aiohttp_session() -> AsyncMock:
+    return AsyncMock(spec=aiohttp.ClientSession)
+
+
+@pytest.fixture
+def mock_opendota_client() -> AsyncMock:
+    return AsyncMock(spec=OpenDotaClient)
+
+
+@pytest.fixture
+def mock_steam_client() -> AsyncMock:
+    return AsyncMock(spec=SteamClient)
 
 
 # =================================================================================

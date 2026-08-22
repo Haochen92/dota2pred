@@ -13,7 +13,7 @@ from dota_oracle_common.repositories.prediction_repository import PredictionRepo
 
 from dota_oracle_common.constants.endpoint_configs import service_url
 from dota_oracle_common.http_client import http_client_provider
-from dota_oracle_common.postgresql import DatabaseManager
+from dota_oracle_common.postgresql import database_session_factory_resource
 
 from dota_oracle_common.models.features import (
     TeamFeaturesTable,
@@ -31,7 +31,6 @@ logger = get_logger(__name__)
 
 @flow(name="backfill model prediction from start", retries=2, retry_delay_seconds=10)
 async def backfill_model_prediction_from_start():
-
     # 1) Fetch features from DB
     all_features_tables = await fetch_features_from_db()
     team_features, hero_features, player_hero_features = all_features_tables
@@ -65,8 +64,7 @@ async def backfill_model_prediction_from_start():
 async def fetch_features_from_db(
     match_ids: Optional[List[int]] = None,
 ) -> Tuple[List[TeamFeaturesTable], List[HeroFeaturesTable], List[PlayerHeroFeatureTable]]:
-    local_session = DatabaseManager.get_session_factory()
-    async with local_session() as db_session:
+    async with database_session_factory_resource() as session_factory, session_factory() as db_session:
         features_repository = FeaturesRepository(session=db_session)
         team_features = await features_repository.get_team_features(match_ids=match_ids)
         hero_features = await features_repository.get_hero_features(match_ids=match_ids)
@@ -197,9 +195,8 @@ async def store_predictions(aligned_results: List[dict], model_metadata: ModelMe
     if not aligned_results:
         return 0
 
-    session_factory = DatabaseManager.get_session_factory()
     stored = 0
-    async with session_factory() as session:
+    async with database_session_factory_resource() as session_factory, session_factory() as session:
         repo = PredictionRepository(session=session)
         to_upsert: List[MatchPredictionTable] = []
         for r in aligned_results:

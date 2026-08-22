@@ -1,6 +1,7 @@
 from typing import List, Set
 from dota_oracle_common.utils.set_logging import get_logger
 from dota_oracle_common.models.live_games.schema import LiveLeagueGame, OngoingLeagueGame
+from dota_oracle_pipeline.data_extraction.api_clients.steam_api import SteamClient
 from dota_oracle_pipeline.data_extraction.fetch_live_leagues import fetch_live_league_games
 from ..redis_services.redis_service import RedisService
 from pydantic import ValidationError
@@ -11,8 +12,9 @@ logger = get_logger(__name__)
 class NewMatchDataProvider:
     """Data provider for new match processing pipeline."""
 
-    def __init__(self, redis_service: RedisService):
+    def __init__(self, redis_service: RedisService, steam_client: SteamClient):
         self.redis = redis_service
+        self.steam_client = steam_client
 
     async def get_new_ongoing_matches(self) -> List[OngoingLeagueGame]:
         """
@@ -42,7 +44,7 @@ class NewMatchDataProvider:
     async def _fetch_ongoing_matches(self) -> List[OngoingLeagueGame]:
         """Fetches current live league games from API & extract ongoing matches"""
         try:
-            curr_games: List[LiveLeagueGame] = await fetch_live_league_games()
+            curr_games: List[LiveLeagueGame] = await fetch_live_league_games(self.steam_client)
             ongoing_games = await self._extract_ongoing_matches(curr_games)
             return ongoing_games
         except Exception as e:

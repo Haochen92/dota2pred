@@ -2,11 +2,18 @@
 Unit tests for the patch data scheduler functions.
 """
 
+from contextlib import asynccontextmanager
+
 import pytest
 from unittest.mock import AsyncMock
 
 from dota_oracle_schedules.data_fetching.fetch_patch_data import store_patch_data, patch_data_orchestrator
 from pydantic import ValidationError
+
+
+@asynccontextmanager
+async def _database_resource(session_factory):
+    yield session_factory
 
 
 @pytest.mark.asyncio
@@ -92,8 +99,10 @@ async def test_patch_data_orchestrator_success(mock_db_session_factory, dota_pat
         "dota_oracle_schedules.data_fetching.fetch_patch_data.fetch_patch_data", return_value=mock_patch_data
     )
 
-    mock_database_manager = mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.DatabaseManager")
-    mock_database_manager.get_session_factory.return_value = mock_db_session_factory
+    mock_database_resource = mocker.patch(
+        "dota_oracle_schedules.data_fetching.fetch_patch_data.database_session_factory_resource",
+        side_effect=lambda: _database_resource(mock_db_session_factory),
+    )
 
     mock_store_patch_data = mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.store_patch_data")
     mock_hydrate = mocker.patch(
@@ -107,9 +116,9 @@ async def test_patch_data_orchestrator_success(mock_db_session_factory, dota_pat
 
     # ASSERT
     mock_fetch_patch_data.assert_awaited_once()
-    mock_database_manager.get_session_factory.assert_called_once()
+    mock_database_resource.assert_called_once()
     mock_store_patch_data.assert_awaited_once()
-    mock_hydrate.assert_awaited_once()
+    mock_hydrate.assert_awaited_once_with(mock_db_session_factory)
 
 
 @pytest.mark.asyncio
@@ -120,8 +129,10 @@ async def test_patch_data_orchestrator_store_exception(mock_db_session_factory, 
 
     mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.fetch_patch_data", return_value=mock_patch_data)
 
-    mock_database_manager = mocker.patch("dota_oracle_schedules.data_fetching.fetch_patch_data.DatabaseManager")
-    mock_database_manager.get_session_factory.return_value = mock_db_session_factory
+    mocker.patch(
+        "dota_oracle_schedules.data_fetching.fetch_patch_data.database_session_factory_resource",
+        side_effect=lambda: _database_resource(mock_db_session_factory),
+    )
 
     mocker.patch(
         "dota_oracle_schedules.data_fetching.fetch_patch_data.store_patch_data", side_effect=Exception("Storage failed")
